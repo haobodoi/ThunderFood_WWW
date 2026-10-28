@@ -12,6 +12,8 @@ import NotFoundPage from './pages/NotFoundPage.jsx';
 import CustomerHomePage from './pages/customer/CustomerHomePage.jsx';
 import MyRestaurantsPage from './pages/partner/MyRestaurantsPage.jsx';
 import RestaurantRegisterPage from './pages/partner/RestaurantRegisterPage.jsx';
+import RestaurantDetailPage from './pages/customer/RestaurantDetailPage.jsx';
+import RestaurantMenuPage from './pages/partner/RestaurantMenuPage.jsx';
 import AdminHomePage from './pages/admin/AdminHomePage.jsx';
 import RestaurantReviewListPage from './pages/admin/RestaurantReviewListPage.jsx';
 import RestaurantReviewDetailPage from './pages/admin/RestaurantReviewDetailPage.jsx';
@@ -24,6 +26,7 @@ export default function App() {
       <Routes>
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
 
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<LoginPage />} />
@@ -41,6 +44,7 @@ export default function App() {
         <Route element={<ProtectedRoute roles={[ROLES.RESTAURANT_PARTNER]} />}>
           <Route element={<DashboardLayout area="partner" />}>
             <Route path="/partner" element={<MyRestaurantsPage />} />
+            <Route path="/partner/restaurants/:restaurantId/menu" element={<RestaurantMenuPage />} />
             <Route path="/partner/register" element={<RestaurantRegisterPage />} />
             <Route path="/partner/register/:id" element={<RestaurantRegisterPage />} />
           </Route>

@@ -7,9 +7,9 @@ import Alert from '../components/Alert.jsx';
 
 const DEMO_ACCOUNTS = [
   { label: 'Quản trị viên', identifier: 'admin@thunderfood.vn' },
-  { label: 'Đối tác nhà hàng', identifier: 'partner@example.com' },
-  { label: 'Khách hàng', identifier: 'customer@example.com' },
-  { label: 'Khách bị khóa', identifier: 'customer.locked@example.com' },
+  { label: 'Đối tác nhà hàng', identifier: 'partner@example.com' }, // taste-skill-ignore: exact seeded demo account.
+  { label: 'Khách hàng', identifier: 'customer@example.com' }, // taste-skill-ignore: exact seeded demo account.
+  { label: 'Khách bị khóa', identifier: 'customer.locked@example.com' }, // taste-skill-ignore: exact seeded demo account.
 ];
 
 export default function LoginPage() {
@@ -65,7 +65,7 @@ export default function LoginPage() {
           <Alert type="success" title="Đăng ký thành công!">
             {registeredAs === 'RESTAURANT_PARTNER'
               ? 'Hãy đăng nhập để bắt đầu đăng ký quán của bạn.'
-              : 'Hãy đăng nhập để bắt đầu đặt món.'}
+              : 'Hãy đăng nhập để khám phá thực đơn.'}
           </Alert>
         )}
         {serverError && <Alert type="error">{serverError}</Alert>}
