@@ -10,7 +10,6 @@ export default function CustomerHomePage() {
       <div className="container customer-home__intro">
         <div className="welcome-card customer-home__welcome">
           <div>
-            <span className="tf-badge customer-home__badge"><Icon name="bolt" size={12} /> Dành cho bạn</span>
             <h1>Xin chào, {user?.fullName || 'bạn'}!</h1>
             <p>Khám phá thực đơn và chọn món cho bữa ăn hôm nay.</p>
           </div>

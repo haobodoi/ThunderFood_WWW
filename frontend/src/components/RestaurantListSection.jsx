@@ -84,8 +84,8 @@ export default function RestaurantListSection({
           </select>
           <button type="button" className={'tf-open-filter' + (onlyOpen ? ' is-active' : '')}
             onClick={() => setOnlyOpen((value) => !value)} aria-pressed={onlyOpen}>
-            <span className={'live-dot' + (onlyOpen ? '' : ' live-dot--muted')} />
-            Đang mở cửa
+            <Icon name={onlyOpen ? 'checkCircle' : 'clock'} size={16} />
+            Chỉ quán đang mở
           </button>
         </div>
       </div>
@@ -94,7 +94,7 @@ export default function RestaurantListSection({
         <div className="tf-cuisine-strip" aria-label="Lọc theo ẩm thực">
           {['ALL', ...cuisines].map((name) => (
             <button key={name} type="button" aria-pressed={activeCuisine === name}
-              className={'tf-cuisine-pill' + (activeCuisine === name ? ' is-active' : '')}
+              className={'tf-cuisine-tab' + (activeCuisine === name ? ' is-active' : '')}
               onClick={() => setActiveCuisine(name)}>
               {name === 'ALL' ? 'Tất cả' : name}
             </button>
@@ -141,10 +141,10 @@ export default function RestaurantListSection({
                     {cover ? <img src={cover} alt="" className="tf-rest-card__cover-img" loading="lazy" /> :
                       <div className="tf-rest-card__cover-placeholder"><Icon name="store" size={32} /><span>Chưa có ảnh bìa</span></div>}
                     <div className="tf-rest-card__cover-gradient" />
-                    <div className="tf-rest-card__top-badges">
-                      <span className={'tf-badge ' + (restaurant.open ? 'tf-badge--glass-open' : 'tf-badge--glass-closed')}>
-                        <span className={'live-dot' + (restaurant.open ? '' : ' live-dot--muted')} />
-                        {restaurant.open ? 'Đang mở cửa' : 'Tạm đóng'}
+                    <div className="tf-rest-card__availability-wrap">
+                      <span className={'tf-rest-card__availability' + (restaurant.open ? ' is-open' : '')}>
+                        <Icon name={restaurant.open ? 'checkCircle' : 'pauseCircle'} size={14} />
+                        {restaurant.open ? 'Đang phục vụ' : 'Tạm đóng'}
                       </span>
                     </div>
                     <div className="tf-rest-card__avatar">
@@ -154,7 +154,7 @@ export default function RestaurantListSection({
                   <div className="tf-rest-card__body">
                     <div>
                       <h3 className="tf-rest-card__title" title={restaurant.restaurantName}>{restaurant.restaurantName || 'Nhà hàng'}</h3>
-                      {restaurant.specialty && <p className="tf-rest-card__specialty">{restaurant.specialty}</p>}
+                      {restaurant.specialty && <p className="tf-rest-card__specialty"><Icon name="utensils" size={14} /><span>{restaurant.specialty}</span></p>}
                       {restaurant.address && <p className="tf-rest-card__address"><Icon name="mapPin" size={14} /><span>{restaurant.address}</span></p>}
                     </div>
                     <div className="tf-rest-card__footer">

@@ -4,7 +4,7 @@ import { adminRestaurantApi } from '../../api/adminRestaurantApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { formatDateTime } from '../../utils/restaurantUtils.js';
 import Alert from '../../components/Alert.jsx';
-import StatusBadge from '../../components/StatusBadge.jsx';
+import StatusLabel from '../../components/StatusLabel.jsx';
 import Icon from '../../components/Icon.jsx';
 
 const TABS = [
@@ -59,7 +59,7 @@ export default function RestaurantReviewListPage() {
               <td><strong>{item.restaurantName || 'Nhà hàng'}</strong><small>{item.address}</small></td>
               <td>{item.ownerName}<small>{item.ownerEmail}</small></td>
               <td>{formatDateTime(item.submittedAt)}</td>
-              <td><StatusBadge status={item.status} /></td>
+              <td><StatusLabel status={item.status} /></td>
               <td><Link to={'/admin/restaurants/' + item.id} className="btn btn--outline btn--sm">
                 {item.status === 'PENDING' ? 'Xem & duyệt' : 'Xem'}
               </Link></td>

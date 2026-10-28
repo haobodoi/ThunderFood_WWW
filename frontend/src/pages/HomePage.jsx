@@ -88,8 +88,10 @@ export default function HomePage() {
                   ? <img src={getSmartRestaurantCover(spotlight)} alt="" />
                   : <div className="tf-spotlight__placeholder"><Icon name="store" size={42} /></div>}
                 {spotlight && <div className="tf-spotlight__overlay-top">
-                  <span className="tf-spotlight__pill">Quán trên ThunderFood</span>
-                  <span className="tf-spotlight__eta">{spotlight.open ? 'Đang mở cửa' : 'Tạm đóng'}</span>
+                  <span className={'tf-spotlight__availability' + (spotlight.open ? ' is-open' : '')}>
+                    <Icon name={spotlight.open ? 'checkCircle' : 'pauseCircle'} size={15} />
+                    {spotlight.open ? 'Đang phục vụ' : 'Tạm đóng'}
+                  </span>
                 </div>}
               </div>
               <div className="tf-spotlight__body">

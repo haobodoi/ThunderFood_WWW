@@ -55,3 +55,48 @@ Phần trên phản ánh đợt triển khai ban đầu. Sau khi đối chiếu 
 - `design-taste-frontend lint --app`: 0 lỗi; các cảnh báo còn lại thuộc bóng đổ có chủ đích ở card, focus ring và overlay.
 - Visual QA tự động chưa hoàn tất vì Chrome inspector không khởi động được và trình duyệt tích hợp không truy cập được localhost trong môi trường chạy.
 - Không có lệnh Maven trong môi trường và backend `localhost:8081` không truy cập được, nên chưa biên dịch backend hoặc chạy test tích hợp MariaDB. Việc nạp SQL được ghi ở đợt lịch sử phía trên không được tái xác minh trong đợt kiểm định này.
+
+
+---
+
+## 4. CẬP NHẬT FONT #4 (`BALOO 2` + `NUNITO`) & CƠ SỞ DỮ LIỆU V3 (`thunderfood_mariadb_v3.sql`) — 28/10/2026
+
+1. **Đồng bộ Font `#4` (`Baloo 2` + `Nunito`) trên toàn hệ thống**:
+   - Cập nhật `frontend/index.html`, `frontend/src/styles/global.css` và `DESIGN_SYSTEM.md` (v3.1) sang bộ Font `#4`: `--font` và `--tf-font-heading` dùng `'Baloo 2', 'Nunito', sans-serif` (weight `700–800` cho tiêu đề, thanh điều hướng `Trang chủ` / `Khám phá quán ngon`, nút bấm, tab danh mục) và `--tf-font-body` dùng `'Nunito', 'Baloo 2', sans-serif` (weight `500–600`).
+2. **Xây dựng & Nạp Script CSDL Phiên Bản 3 (`backend/database/thunderfood_mariadb_v3.sql`)**:
+   - Đặt chung thư mục `backend/database/` cùng với `thunderfood_mariadb.sql` (v1) và `thunderfood_mariadb_v2.sql` (v2).
+   - Mở rộng quy mô dữ liệu lên **11 Nhà hàng** (9 quán `APPROVED` đang mở cửa lấp đầy lưới 3×3 trên trang chủ + 1 `PENDING` + 1 `DRAFT`), **27 Nhóm thực đơn** (mỗi quán `APPROVED` có đủ 3 nhóm món) và **109 Món ăn** (mỗi nhóm có đúng **4 món `APPROVED`** để lấp kín 100% hàng ngang 4 cột trên màn hình lớn, không bao giờ còn khoảng trống).
+   - Toàn bộ 12 món ăn trong mỗi nhà hàng đều có URL ảnh ẩm thực riêng biệt 100%, không bị trùng lặp và không còn xuất hiện khung `"Chưa có ảnh món"`.
+   - **Đồng bộ 100% Tên món & Hình ảnh thực tế (1-to-1 Dish-to-Image Mapping)**: Khắc phục triệt để tình trạng tên món Việt Nam nhưng ảnh minh họa lại là món Âu/Nhật không liên quan (ví dụ: Bún Đậu lại hiện ảnh cá hồi áp chảo hoặc mì ramen tôm). Toàn bộ **109 món ăn** và **11 ảnh bìa nhà hàng** trong `thunderfood_mariadb_v3.sql` đã được ánh xạ chính xác tuyệt đối với ảnh chụp món ăn thật từ Wikimedia Commons (`vi.wikipedia.org` / `en.wikipedia.org`) và `TheMealDB` (Mẹt Bún Đậu Mắm Tôm chuẩn mẹt tre bún lá - đậu rán - chả cốm - mắm tôm, Bún Chả Hà Nội, Bún Thang, Bún Riêu Cua, Nem Rán, Dồi Sụn, Lòng Non, Bánh Gối, Bún Ốc, Cơm Tấm Sườn Bì Chả, Phở Bò, Bún Bò Huế, Hủ Tiếu Nam Vang, Cao Lầu, Mì Quảng, Bánh Mì Thịt Nướng, Bánh Mì Chảo Bò Né, Gỏi Cuốn, Bánh Xèo, Lẩu Thái Tomyum, Sườn Bò Galbi, Sushi/Sashimi/Unagi/Udon/Takoyaki/Tempura/Tonkatsu...) và nạp thẳng vào MariaDB (`thunderfood`).
+3. **Loại bỏ triệt để mẫu "Viền màu đậm + Nền pastel nhạt" (Anti-AI-Slop Component Overhaul — 29/10/2026)**:
+   - Chuẩn hóa toàn bộ `.role-chip`, `.status-badge`, `.tf-badge`, `.tf-store-hero__tag` sang thiết kế **Borderless Soft Pill (`border: 0; border-radius: 999px`)** kèm chấm tròn ngữ nghĩa `6px` (`::before` / `.live-dot`).
+   - Đổi `.navbar__link.active` từ hộp nền hồng phấn sang chữ cam thương hiệu kèm **thanh gạch chân mảnh `2.5px` bo tròn ở đáy**.
+   - Đổi `.avatar` (Navy `#0e1e38` chữ trắng `#ffffff`) và `.avatar--lg` trên Sidebar tối (Cam `#d93d0c` chữ trắng `#ffffff`), xóa bỏ hoàn toàn màu nâu bùn xỉn do `rgba(249, 115, 22, 0.18)` pha với nền tối.
+   - Đổi `.dash__link.active` trên Sidebar tối sang nền sáng mờ `rgba(255, 255, 255, 0.09)` + chữ trắng + vạch chỉ thị dọc `3.5px` màu cam bên trái.
+   - Trong `MyRestaurantsPage.jsx`: Ẩn thanh `<progress>` cam khi quán đã `APPROVED` (chỉ hiện khi `DRAFT`), và thay hộp xanh dài 100% `.restaurant-card__open-state` bằng chỉ báo dòng đơn `.restaurant-card__open-inline` gọn gàng.
+   - Đồng bộ các bộ lọc/chip đang chọn (`.tf-open-filter.is-active`, `.chip.is-on`, `.segmented__option.is-active`) sang **Solid Navy `#0e1e38` chữ trắng**.
+   - Chuyển `.alert`, `.callout`, `.review-actions`, `.restaurant-card__note`, `.tip` sang bề mặt sáng kèm thanh nhấn dọc bên trái (`border-left: 3.5px–4px solid`).
+   - Cập nhật `DESIGN_SYSTEM.md` lên **v3.2** với bộ luật bắt buộc **Anti-AI-Slop Mandate**.
+
+---
+
+## 5. ĐỢT V3.3 — NGÔN NGỮ TRẠNG THÁI THEO NGỮ CẢNH (29/10/2026)
+
+Đợt v3.2 đã bỏ viền màu nhưng vẫn giữ cùng một công thức “pill nền tint + chấm màu” cho quá nhiều loại thông tin. Đây vẫn là AI slop về cấu trúc, đặc biệt rõ ở trạng thái mở cửa, “Đã duyệt”, vai trò đối tác và tag ẩm thực. V3.3 thay anatomy thay vì chỉ đổi màu:
+
+- Trạng thái duyệt chuyển sang `.status-label`: icon nét có nghĩa + chữ, không nền, viền hoặc pill. Component `StatusBadge` được thay bằng `StatusLabel` trên luồng admin, đăng ký quán và quản lý quán.
+- Trạng thái vận hành dùng `.service-status` trên nền sáng; khi đặt trên ảnh dùng bảng phẳng tối bo `4px` với icon `checkCircle`/`pauseCircle`. Không dùng chấm “live”.
+- Đặc trưng và tag ẩm thực chuyển thành metadata có icon, các giá trị ngăn bằng dấu `·`; bộ lọc ẩm thực trở thành tab chữ có gạch chỉ thị.
+- Vai trò người dùng chuyển thành breadcrumb ngữ cảnh ở topbar và dòng icon + chữ trong menu tài khoản.
+- Alert, callout, ghi chú và action review bỏ thanh màu dọc; dùng viền/nền trung tính và icon semantic.
+- Dọn toàn bộ selector cũ `.role-chip`, `.status-badge`, `.tf-badge`, `.live-dot`, `.tf-cuisine-pill`; bỏ badge “Dành cho bạn” và “Quán trên ThunderFood” không mang thêm thông tin.
+- QA trình duyệt thật phát hiện và sửa thêm hai lỗi horizontal overflow: navbar tại viewport `390px`, khối thống kê storefront tại vùng `954px`.
+- `DESIGN_SYSTEM.md` được nâng lên **v3.3**, quy định năm anatomy riêng cho trạng thái, taxonomy, filter, vai trò và thông báo; lịch sử v3.2 ở phần trên không còn là chuẩn áp dụng.
+
+### Xác minh v3.3
+
+- Trang chủ và trang nhà hàng đã được kiểm tra trực tiếp tại `http://127.0.0.1:5173` trên desktop và viewport `390 × 844`; không còn tràn ngang sau khi dữ liệu tải ổn định.
+- `npm run build`: thành công, 147 modules transformed.
+- `design-taste-frontend lint --app frontend/src`: 0 lỗi; cảnh báo còn lại là shadow/glass có chủ đích.
+- `rg` cho các mẫu cũ `role-chip|status-badge|tf-badge|live-dot|tf-cuisine-pill`: 0 kết quả.
+- `git diff --check` và kiểm tra inline style JSX: đạt.

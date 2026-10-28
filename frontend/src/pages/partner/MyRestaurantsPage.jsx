@@ -6,7 +6,7 @@ import { LAST_DATA_STEP, formatDate } from '../../utils/restaurantUtils.js';
 import { getSmartRestaurantCover } from '../../utils/mediaUtils.js';
 import Alert from '../../components/Alert.jsx';
 import FullPageLoader from '../../components/FullPageLoader.jsx';
-import StatusBadge from '../../components/StatusBadge.jsx';
+import StatusLabel from '../../components/StatusLabel.jsx';
 import Modal from '../../components/Modal.jsx';
 import Icon from '../../components/Icon.jsx';
 
@@ -45,22 +45,25 @@ function RestaurantCard({ restaurant, onDelete }) {
       <div className="restaurant-card__body">
         <div className="restaurant-card__heading">
           <h3>{restaurant.restaurantName || 'Nhà hàng'}</h3>
-          <StatusBadge status={status} />
+          <StatusLabel status={status} />
         </div>
         {restaurant.address && <p className="restaurant-card__address">
           <Icon name="mapPin" size={14} /><span>{restaurant.address}</span>
         </p>}
         <div className="restaurant-card__meta">
-          <progress className="restaurant-card__progress" max={LAST_DATA_STEP} value={progressValue}
-            aria-label={'Tiến độ hồ sơ ' + (restaurant.restaurantName || '')} />
+          {status === 'DRAFT' && (
+            <progress className="restaurant-card__progress" max={LAST_DATA_STEP} value={progressValue}
+              aria-label={'Tiến độ hồ sơ ' + (restaurant.restaurantName || '')} />
+          )}
+          {status === 'APPROVED' && (
+            <span className={'restaurant-card__open-inline' + (restaurant.open ? ' is-open' : '')}>
+              <Icon name={restaurant.open ? 'checkCircle' : 'pauseCircle'} size={15} />
+              <span>{restaurant.open ? 'Đang mở cửa nhận đơn' : 'Tạm ngưng nhận đơn'}</span>
+            </span>
+          )}
           {date && <span className="muted">Cập nhật {formatDate(date)}</span>}
         </div>
-        {status === 'APPROVED' ? (
-          <div className={'restaurant-card__open-state' + (restaurant.open ? ' is-open' : '')}>
-            <span className={'live-dot' + (restaurant.open ? '' : ' live-dot--muted')} />
-            <span>{restaurant.open ? 'Quán đang mở cửa nhận đơn' : 'Quán đang tạm ngưng nhận đơn'}</span>
-          </div>
-        ) : (
+        {status !== 'APPROVED' && (
           <div className={'restaurant-card__note restaurant-card__note--' + String(status || '').toLowerCase()}>
             <Icon name={status === 'REJECTED' || status === 'LOCKED' ? 'alert' : 'clock'} size={16} />
             <span>{message}</span>

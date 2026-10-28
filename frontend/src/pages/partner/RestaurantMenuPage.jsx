@@ -226,9 +226,9 @@ export default function RestaurantMenuPage() {
           </div>
           <div className="tf-partner-menu__identity-text">
             <h1>{restaurant.restaurantName || 'Nhà hàng'}</h1>
-            <span className={'tf-badge ' + (restaurant.open ? 'tf-badge--open' : 'tf-badge--closed')}>
-              <span className={'live-dot' + (restaurant.open ? '' : ' live-dot--muted')} />
-              {restaurant.open ? 'Đang mở cửa' : 'Tạm đóng cửa'}
+            <span className={'service-status' + (restaurant.open ? ' is-open' : '')}>
+              <Icon name={restaurant.open ? 'checkCircle' : 'pauseCircle'} size={16} />
+              {restaurant.open ? 'Đang nhận đơn' : 'Tạm ngưng nhận đơn'}
             </span>
             {restaurant.address && <p><Icon name="mapPin" size={14} />{restaurant.address}</p>}
           </div>

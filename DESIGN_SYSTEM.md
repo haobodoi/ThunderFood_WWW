@@ -1,6 +1,6 @@
 # ThunderFood Design System
 
-Phiên bản 3.0 · 28/10/2026 · Nguồn chuẩn: frontend/src/styles/global.css
+Phiên bản 3.3 · 29/10/2026 · Nguồn chuẩn: frontend/src/styles/global.css
 
 Tài liệu này là hợp đồng giao diện cho năm phân hệ. Thành phần đang dùng được nêu rõ; các blueprint cho pha tiếp theo chỉ là CSS và quy tắc, chưa đại diện cho chức năng đã hoàn tất.
 
@@ -18,7 +18,7 @@ Tài liệu này là hợp đồng giao diện cho năm phân hệ. Thành phầ
 3. Tên món trong thẻ tối đa hai dòng, mô tả tối đa hai dòng; nội dung chi tiết trong modal không khóa dòng. Giá dài được phép xuống dòng. Footer và thanh thao tác được phép wrap; không ghép giá, switch và nút xóa vào một hàng cứng.
 4. Lưới nhà hàng: repeat(auto-fill, minmax(min(100%, 300px), 1fr)). Lưới món: repeat(auto-fill, minmax(min(100%, 265px), 1fr)). Card dùng chiều cao 100% trong hàng, ảnh món 4:3, ảnh quán cao 176px. Một món duy nhất vẫn lấp đầy cột hợp lệ mà không vượt viewport.
 5. Danh mục nhiều mục cuộn ngang; nút quản lý nhóm nằm ngoài dải tab để bấm chọn không làm thay đổi chiều rộng tab. Section có scroll-margin-top bù navbar và thanh sticky.
-6. Breakpoint hiện hành: 1100px chuyển chỉ số storefront xuống hàng mới; 720px xếp lại storefront, tìm kiếm và lưới; 420px xếp thông tin quán và hành động modal thành một cột. Kiểm tra thêm ở 320px, 390px, 768px, 1280px và 1440px khi sửa bố cục.
+6. Breakpoint hiện hành: 1100px chuyển chỉ số storefront xuống hàng mới; 720px xếp lại storefront, tìm kiếm và lưới; 420px thu gọn navbar, xếp thông tin quán và hành động modal thành một cột. Không được cộng `width: 100%` với margin ngang cố định; mọi breakpoint phải có `scrollWidth === clientWidth`. Kiểm tra thêm ở 320px, 390px, 768px, 1280px và 1440px khi sửa bố cục.
 
 ## 3. Token CSS chuẩn
 
@@ -64,7 +64,7 @@ Bảng dưới được lấy trực tiếp từ :root của global.css. Thay đ
 | --tf-shadow-md | 0 8px 20px -4px rgba(14, 30, 56, 0.07), 0 2px 6px -1px rgba(14, 30, 56, 0.04) |
 | --tf-shadow-lg | 0 16px 32px -6px rgba(14, 30, 56, 0.11), 0 4px 12px -2px rgba(14, 30, 56, 0.05) |
 | --tf-shadow-modal | 0 24px 48px -12px rgba(14, 30, 56, 0.22), 0 8px 16px -4px rgba(14, 30, 56, 0.08) |
-| --tf-ease-spring | cubic-bezier(0.22, 1, 0.36, 1) |
+| --tf-ease-emphasis | cubic-bezier(0.22, 1, 0.36, 1) |
 | --tf-ease-out | cubic-bezier(0.16, 1, 0.3, 1) |
 | --tf-duration-fast | 140ms |
 | --tf-duration-base | 240ms |
@@ -91,29 +91,40 @@ Bảng dưới được lấy trực tiếp từ :root của global.css. Thay đ
 | --radius | 14px |
 | --radius-sm | 8px |
 | --shadow | var(--tf-shadow-md) |
-| --font | 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif |
+| --font | 'Baloo 2', 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif |
+| --tf-font-heading | 'Baloo 2', 'Nunito', cursive, sans-serif |
+| --tf-font-body | 'Nunito', 'Baloo 2', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif |
 
-### Typography và tương phản
+### Typography, tương phản và ngôn ngữ trạng thái theo ngữ cảnh
 
-- Font chính: --font = Be Vietnam Pro, fallback system-ui. Body 15px / 1.55. Tiêu đề dùng line-height 1.25, letter-spacing -0.02em.
-- Hero title dùng clamp(34px, 4.4vw, 54px); tên quán dùng clamp(22px, 2.5vw, 30px); tên món 16px / 1.35; nội dung mô tả món 13px / 1.45; nút 13–14px.
+- Hệ thống Font chuẩn Việt hóa (Combo #4 F&B): `--font` và `--tf-font-heading` dùng `Baloo 2` (kết hợp `Nunito` cho đoạn văn bản mô tả `--tf-font-body`). Body `15.5px / 1.55` (weight `500–600`). Tiêu đề, thanh điều hướng (`Trang chủ`, `Khám phá quán ngon`), nút bấm và tab danh mục dùng `Baloo 2` (weight `700–800`), `line-height: 1.22`, `letter-spacing: -0.01em`.
+- Hero title dùng clamp(34px, 4.4vw, 54px); tên quán dùng clamp(22px, 2.5vw, 30px); tên món 16px / 1.35; nội dung mô tả món 13px / 1.45; nút 14.5px.
 - Chữ chính dùng --tf-text-title và --tf-text-body. Chữ phụ dùng --tf-text-muted. Nền CTA có chữ trắng dùng --tf-orange-600; hover dùng --tf-orange-700. --tf-orange-500 là điểm nhấn đồ họa, không dùng làm nền nút chữ trắng.
-- Trạng thái sáng dùng --tf-success, --tf-warning, --tf-danger trên nền ngữ nghĩa tương ứng. Mọi focus bàn phím có outline 3px. Hiệu ứng chuyển động phải tắt ở prefers-reduced-motion: reduce.
+- **Không có một “badge vạn năng”.** Trạng thái, phân loại, bộ lọc, vai trò và thông báo là năm loại thông tin khác nhau; không được gom tất cả thành pill có chấm tròn, nền tint hoặc viền cùng màu.
+- **Trạng thái duyệt** dùng `.status-label`: icon nét (`checkCircle`, `clock`, `xCircle`, `lock`) + chữ, không nền, không viền, không pill. Màu chỉ hỗ trợ ý nghĩa; icon và chữ phải tự diễn đạt trạng thái.
+- **Trạng thái vận hành** dùng `.service-status` trong bề mặt sáng. Trên ảnh dùng bảng phẳng tối `.tf-rest-card__availability` hoặc `.tf-spotlight__availability`, bo tối đa `4px`, icon rõ nghĩa, không chấm “live”.
+- **Phân loại ẩm thực** là metadata: icon món ăn + chuỗi giá trị ngăn bằng dấu `·`. Không bọc từng giá trị vào chip. Nhãn danh mục trên ảnh món chỉ dùng như caption ảnh, không dùng làm trạng thái.
+- **Bộ lọc** là điều khiển. Dải ẩm thực dùng tab chữ và gạch chỉ thị; lựa chọn nhị phân có thể dùng nút nền đặc Navy. Chip trong form dùng góc `8px`, chỉ nền đặc khi được chọn; pill chỉ dành cho điều khiển rất ngắn cần hình học con nhộng.
+- **Vai trò người dùng** là ngữ cảnh điều hướng. Topbar dùng breadcrumb `.dash__context`; menu tài khoản dùng `.user-menu__role` dạng icon + chữ. Không hiển thị vai trò như badge.
+- **Alert, callout và ghi chú** dùng viền trung tính hoặc nền trung tính, icon mang màu ngữ nghĩa. Cấm viền màu bốn cạnh, cấm thanh màu dọc dày hơn `1px`, cấm icon lặp trong ô pastel.
+- **Card quán đối tác** chỉ hiện `<progress>` ở trạng thái `DRAFT`. Quán đã duyệt dùng `.restaurant-card__open-inline` với icon vận hành và chữ trên dòng metadata.
+- **Danh sách cấm**: nền pastel + viền cùng màu; dot + pill lặp lại; pill cho metadata không tương tác; gradient/glow trang trí; màu semantic là dấu hiệu duy nhất; cùng một anatomy cho mọi loại trạng thái.
+- Mọi focus bàn phím có outline 3px. Hiệu ứng chuyển động phải tắt ở prefers-reduced-motion: reduce.
 
 ## 4. Blueprint theo phân hệ
 
 | Chủ sở hữu | Đang dùng | Quy tắc và class dùng chung |
 | :--- | :--- | :--- |
 | Công — Nhà hàng & thực đơn | HomePage, RestaurantListSection, RestaurantDetailPage, RestaurantMenuPage, FoodCard, MenuItemModal, CategoryModal | .tf-hero, .tf-discovery, .tf-rest-card, .tf-store-hero, .tf-sticky-nav, .tf-food-grid, .food-card, .tf-partner-menu. Ảnh thiếu dùng placeholder; giá/nhóm/trạng thái theo API. |
-| Hảo — Quản trị | AdminHomePage, RestaurantReviewListPage, RestaurantReviewDetailPage | .dash, .tf-admin-table, .review-actions, .status-badge. Bảng dùng th/td, số căn phải bằng data-numeric, hàng thiếu dữ liệu hiển thị dấu hoặc mô tả. Không bịa KPI, biểu đồ hay xu hướng. |
+| Hảo — Quản trị | AdminHomePage, RestaurantReviewListPage, RestaurantReviewDetailPage | .dash, .tf-admin-table, .review-actions, .status-label. Bảng dùng th/td, số căn phải bằng data-numeric, hàng thiếu dữ liệu hiển thị dấu hoặc mô tả. Không bịa KPI, biểu đồ hay xu hướng. |
 | Minh — Giỏ hàng & đánh giá | Danh sách chọn món tạm thời tại RestaurantDetailPage | .tf-floating-cart, .tf-cart-drawer, .tf-rating-input, .tf-review-card. Drawer tương lai phải giữ focus, có đóng/mở bàn phím, danh sách cuộn độc lập, tổng tiền tính từ dòng món. Chỉ hiện đánh giá từ API. |
 | Hoàng — Đặt hàng & thanh toán | Chưa có route đặt hàng/thanh toán | .tf-checkout, .tf-order-stepper, .tf-checkout__summary, .stepper. Bước hiện tại dùng aria-current=step; giá/phí/tổng đối soát từ đơn. Không hiển thị form thanh toán chưa có backend. |
 | QAnh — Tài khoản & hồ sơ | LoginPage, RegisterPage, AccountInfoCard | .auth-page, .auth-card, .field, .field__input, .tf-profile-panel. Lỗi gắn với trường, focus đến lỗi đầu tiên, không in thông tin nhạy cảm vào log. |
 
 ### Cấu trúc và trạng thái của component
 
-- Restaurant card: ảnh hoặc placeholder → trạng thái → tên → đặc trưng/địa chỉ → phí giao và link thực đơn. Loading dùng skeleton cùng tỷ lệ; lỗi API có nút Thử lại; rỗng có nút đặt lại bộ lọc.
-- Food card: ảnh hoặc placeholder → tên/mô tả → giá → hành động. Khi quán đóng hoặc món hết, nút chọn món disabled và có nhãn chữ. Đối tác có hai hàng riêng cho giá/duyệt và trạng thái/sửa/xóa.
+- Restaurant card: ảnh hoặc placeholder → bảng trạng thái vận hành trên ảnh → tên → metadata đặc trưng/địa chỉ → phí giao và link thực đơn. Loading dùng skeleton cùng tỷ lệ; lỗi API có nút Thử lại; rỗng có nút đặt lại bộ lọc.
+- Food card: ảnh hoặc placeholder → tên/mô tả → giá → hành động. Khi quán đóng hoặc món hết, nút chọn món disabled và có nhãn chữ. Đối tác có hai hàng riêng; trạng thái duyệt dùng icon + text, không dùng badge.
 - Modal: tiêu đề, nút đóng, body cuộn độc lập và footer. Escape chỉ đóng khi không bận; Tab ở trong dialog; đóng xong trả focus về điều khiển trước đó.
 - Toast: role=status, không lấy focus, tự biến mất sau phản hồi ngắn; lỗi quan trọng dùng Alert còn hiện để người dùng sửa.
 - Bộ lọc: trạng thái được hiển thị qua aria-pressed. Khi không có kết quả, hành động đặt lại chỉ xóa bộ lọc, không mở modal thêm món.
@@ -123,7 +134,7 @@ Bảng dưới được lấy trực tiếp từ :root của global.css. Thay đ
 - RestaurantPublicDto: id, restaurantName, specialty, address, phone, avatarImage, coverImage, deliveryFee, open, tags. TagDto dùng tagName và tagType; ở storefront chỉ hiển thị tag có tagType=CUISINE và tagName khác rỗng. Nếu thiếu ảnh, phí hoặc mô tả thì hiển thị trạng thái thiếu dữ liệu trung thực.
 - RestaurantMenuResponseDto chứa restaurant và menu; mỗi nhóm có categoryId, categoryName, items. MenuItemResponseDto dùng itemName, description, price, imageUrl, available, approvalStatus. Frontend kiểm tra menu/items là mảng trước khi map.
 - DTO hiện chưa có rating, reviewCount, delivery ETA hoặc vị trí khách hàng. Không hiển thị các chỉ số này cho tới khi backend cung cấp giá trị có nguồn và định nghĩa rõ.
-- Dữ liệu seed trong thunderfood_mariadb_v2.sql là mẫu. URL ảnh trùng hoặc ảnh không đúng món cần được thay bằng ảnh thực từ đối tác trước khi dùng như catalog thương mại.
+- Dữ liệu seed trong thunderfood_mariadb_v3.sql là mẫu. Ảnh sản phẩm thật vẫn cần đối tác xác nhận trước khi dùng như catalog thương mại.
 
 ## 6. Cổng kiểm định
 

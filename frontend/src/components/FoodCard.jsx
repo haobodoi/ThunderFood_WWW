@@ -7,10 +7,10 @@ export function formatVND(amount) {
 }
 
 const APPROVAL_META = {
-  APPROVED: { label: 'Đã duyệt', cls: 'status-badge--green' },
-  PENDING: { label: 'Chờ duyệt', cls: 'status-badge--amber' },
-  REJECTED: { label: 'Từ chối', cls: 'status-badge--red' },
-  HIDDEN: { label: 'Đang ẩn', cls: 'status-badge--gray' },
+  APPROVED: { label: 'Đã duyệt', tone: 'success', icon: 'checkCircle' },
+  PENDING: { label: 'Chờ duyệt', tone: 'warning', icon: 'clock' },
+  REJECTED: { label: 'Từ chối', tone: 'danger', icon: 'xCircle' },
+  HIDDEN: { label: 'Đang ẩn', tone: 'neutral', icon: 'eyeOff' },
 };
 
 export default function FoodCard({
@@ -46,7 +46,10 @@ export default function FoodCard({
           <div className="food-card__partner-footer">
             <div className="food-card__partner-row">
               <span className="food-card__price">{formatVND(item.price)}</span>
-              {approval && <span className={'status-badge ' + approval.cls}>{approval.label}</span>}
+              {approval && <span className={'status-label status-label--' + approval.tone}>
+                <Icon name={approval.icon} size={15} strokeWidth={2.25} />
+                <span>{approval.label}</span>
+              </span>}
             </div>
             <div className="food-card__partner-row">
               <button type="button" className="tf-switch" onClick={() => onToggleAvailability?.(item)}

@@ -147,9 +147,9 @@ export default function RestaurantDetailPage() {
               <div className="tf-store-hero__info">
                 <div className="tf-store-hero__heading">
                   <h1>{restaurant.restaurantName || 'Nhà hàng'}</h1>
-                  <span className={'tf-badge ' + (isOpen ? 'tf-badge--open' : 'tf-badge--closed')}>
-                    <span className={'live-dot' + (isOpen ? '' : ' live-dot--muted')} />
-                    {isOpen ? 'Đang mở cửa' : 'Tạm đóng cửa'}
+                  <span className={'service-status' + (isOpen ? ' is-open' : '')}>
+                    <Icon name={isOpen ? 'checkCircle' : 'pauseCircle'} size={16} />
+                    {isOpen ? 'Đang phục vụ' : 'Tạm đóng cửa'}
                   </span>
                 </div>
                 {restaurant.description && <p className="tf-store-hero__description">{restaurant.description}</p>}
@@ -158,9 +158,13 @@ export default function RestaurantDetailPage() {
                   {restaurant.phone && <a href={'tel:' + restaurant.phone}><Icon name="phone" size={14} />{restaurant.phone}</a>}
                 </div>
                 {(restaurant.specialty || validTags.length > 0) && (
-                  <div className="tf-store-hero__tags">
-                    {restaurant.specialty && <span className="tf-badge tf-badge--brand">Đặc trưng: {restaurant.specialty}</span>}
-                    {validTags.map((tag) => <span key={tag.id} className="tf-store-hero__tag">{tag.tagName.trim()}</span>)}
+                  <div className="tf-store-hero__taxonomy">
+                    <span className="tf-store-hero__taxonomy-label"><Icon name="utensils" size={14} />Ẩm thực</span>
+                    <span className="tf-store-hero__taxonomy-values">
+                      {[restaurant.specialty, ...validTags.map((tag) => tag.tagName.trim())]
+                        .filter((value, index, values) => value && values.indexOf(value) === index)
+                        .join(' · ')}
+                    </span>
                   </div>
                 )}
               </div>
@@ -215,7 +219,7 @@ export default function RestaurantDetailPage() {
                 <section key={key} ref={(element) => { sectionRefs.current[key] = element; }} className="tf-menu-section">
                   <div className="tf-menu-section__head">
                     <h2>{cat.categoryName || 'Món khác'}</h2>
-                    <span className="tf-badge tf-badge--closed">{cat.items.length} món</span>
+                    <span className="tf-menu-section__count">{cat.items.length} món</span>
                   </div>
                   <div className="tf-food-grid">
                     {cat.items.map((item) => (
@@ -252,8 +256,10 @@ export default function RestaurantDetailPage() {
             </div>
             <div className="tf-item-detail__meta">
               <strong>{formatVND(viewingItem.price)}</strong>
-              <span className={'tf-badge ' + (viewingItem.available ? 'tf-badge--open' : 'tf-badge--closed')}>
-                {viewingItem.available ? 'Đang phục vụ' : 'Tạm hết hàng'}</span>
+              <span className={'status-label ' + (viewingItem.available ? 'status-label--success' : 'status-label--neutral')}>
+                <Icon name={viewingItem.available ? 'checkCircle' : 'pauseCircle'} size={15} />
+                <span>{viewingItem.available ? 'Đang phục vụ' : 'Tạm hết hàng'}</span>
+              </span>
             </div>
             {viewingItem.description && <p>{viewingItem.description}</p>}
             <div className="tf-item-detail__actions">

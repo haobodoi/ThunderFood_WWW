@@ -77,6 +77,24 @@ const PATHS = {
     </>
   ),
   check: <path d="M20 6 9 17l-5-5" />,
+  checkCircle: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12 2.6 2.6L16.5 9" />
+    </>
+  ),
+  xCircle: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m9 9 6 6M15 9l-6 6" />
+    </>
+  ),
+  pauseCircle: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 9v6M14 9v6" />
+    </>
+  ),
   alert: (
     <>
       <circle cx="12" cy="12" r="10" />
