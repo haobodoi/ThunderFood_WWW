@@ -65,8 +65,8 @@ Phần trên phản ánh đợt triển khai ban đầu. Sau khi đối chiếu 
    - Cập nhật `frontend/index.html`, `frontend/src/styles/global.css` và `DESIGN_SYSTEM.md` (v3.1) sang bộ Font `#4`: `--font` và `--tf-font-heading` dùng `'Baloo 2', 'Nunito', sans-serif` (weight `700–800` cho tiêu đề, thanh điều hướng `Trang chủ` / `Khám phá quán ngon`, nút bấm, tab danh mục) và `--tf-font-body` dùng `'Nunito', 'Baloo 2', sans-serif` (weight `500–600`).
 2. **Xây dựng & Nạp Script CSDL Phiên Bản 3 (`backend/database/thunderfood_mariadb_v3.sql`)**:
    - Đặt chung thư mục `backend/database/` cùng với `thunderfood_mariadb.sql` (v1) và `thunderfood_mariadb_v2.sql` (v2).
-   - Mở rộng quy mô dữ liệu lên **11 Nhà hàng** (9 quán `APPROVED` đang mở cửa lấp đầy lưới 3×3 trên trang chủ + 1 `PENDING` + 1 `DRAFT`), **27 Nhóm thực đơn** (mỗi quán `APPROVED` có đủ 3 nhóm món) và **109 Món ăn** (mỗi nhóm có đúng **4 món `APPROVED`** để lấp kín 100% hàng ngang 4 cột trên màn hình lớn, không bao giờ còn khoảng trống).
-   - Toàn bộ 12 món ăn trong mỗi nhà hàng đều có URL ảnh ẩm thực riêng biệt 100%, không bị trùng lặp và không còn xuất hiện khung `"Chưa có ảnh món"`.
+   - Mở rộng quy mô dữ liệu lên **11 Nhà hàng** (9 quán `APPROVED` đang mở cửa lấp đầy lưới 3×3 trên trang chủ + 1 `PENDING` + 1 `DRAFT`), **30 Nhóm thực đơn** phân theo đúng tính chất món và **109 Món ăn**. Số món mỗi nhóm được phép khác nhau; không ép món chính, món phụ, canh, tráng miệng và đồ uống vào cùng nhóm chỉ để lấp đủ hàng ngang.
+   - Toàn bộ món ăn trong mỗi nhà hàng đều có URL ảnh ẩm thực riêng biệt 100%, không bị trùng lặp và không còn xuất hiện khung `"Chưa có ảnh món"`.
    - **Đồng bộ 100% Tên món & Hình ảnh thực tế (1-to-1 Dish-to-Image Mapping)**: Khắc phục triệt để tình trạng tên món Việt Nam nhưng ảnh minh họa lại là món Âu/Nhật không liên quan (ví dụ: Bún Đậu lại hiện ảnh cá hồi áp chảo hoặc mì ramen tôm). Toàn bộ **109 món ăn** và **11 ảnh bìa nhà hàng** trong `thunderfood_mariadb_v3.sql` đã được ánh xạ chính xác tuyệt đối với ảnh chụp món ăn thật từ Wikimedia Commons (`vi.wikipedia.org` / `en.wikipedia.org`) và `TheMealDB` (Mẹt Bún Đậu Mắm Tôm chuẩn mẹt tre bún lá - đậu rán - chả cốm - mắm tôm, Bún Chả Hà Nội, Bún Thang, Bún Riêu Cua, Nem Rán, Dồi Sụn, Lòng Non, Bánh Gối, Bún Ốc, Cơm Tấm Sườn Bì Chả, Phở Bò, Bún Bò Huế, Hủ Tiếu Nam Vang, Cao Lầu, Mì Quảng, Bánh Mì Thịt Nướng, Bánh Mì Chảo Bò Né, Gỏi Cuốn, Bánh Xèo, Lẩu Thái Tomyum, Sườn Bò Galbi, Sushi/Sashimi/Unagi/Udon/Takoyaki/Tempura/Tonkatsu...) và nạp thẳng vào MariaDB (`thunderfood`).
 3. **Loại bỏ triệt để mẫu "Viền màu đậm + Nền pastel nhạt" (Anti-AI-Slop Component Overhaul — 29/10/2026)**:
    - Chuẩn hóa toàn bộ `.role-chip`, `.status-badge`, `.tf-badge`, `.tf-store-hero__tag` sang thiết kế **Borderless Soft Pill (`border: 0; border-radius: 999px`)** kèm chấm tròn ngữ nghĩa `6px` (`::before` / `.live-dot`).
@@ -100,3 +100,21 @@ Phần trên phản ánh đợt triển khai ban đầu. Sau khi đối chiếu 
 - `design-taste-frontend lint --app frontend/src`: 0 lỗi; cảnh báo còn lại là shadow/glass có chủ đích.
 - `rg` cho các mẫu cũ `role-chip|status-badge|tf-badge|live-dot|tf-cuisine-pill`: 0 kết quả.
 - `git diff --check` và kiểm tra inline style JSX: đạt.
+
+---
+
+## 6. KIỂM ĐỊNH TAXONOMY THỰC ĐƠN — 29/10/2026
+
+Rà soát đủ `109` món thuộc `30` nhóm của `9` nhà hàng đã duyệt. Các thay đổi chính:
+
+- Chuyển **Bún ốc** về nhóm `Bún Đậu & Các Món Bún Hà Nội`; nhóm `Đồ Uống Giải Khát Phố Cổ` chỉ còn trà chanh, trà tắc và sữa đậu nành.
+- Tách đồ uống khỏi `Canh & Món Nhẹ Nhà Nấu` của Bếp Nhà Bình và khỏi `Quẩy Nóng & Bánh Cuốn` của Phở Thìn.
+- Tách bánh tráng miệng/sinh tố khỏi `Canh Nóng Gọi Thêm` của quán Cơm Tấm.
+- Đổi tên các nhóm cơm, bún/mì, món chiên Nhật và món Hà Nội để tên nhóm bao phủ đúng món bên trong.
+- Bỏ giả định “mỗi nhóm phải đủ 4 món”; taxonomy đúng nghĩa được ưu tiên hơn hình học lưới. Frontend đã hỗ trợ số lượng món linh hoạt.
+
+Kiểm tra xác nhận:
+
+- Parse tĩnh: `30` category, `109` item, không có `category_id` mồ côi và không trùng `item_id`.
+- Nạp toàn bộ seed vào database local tạm: thành công; đúng `30` nhóm, `109` món, `0` liên kết nhóm mồ côi; database tạm đã được xóa sau kiểm tra.
+- Cập nhật database local `thunderfood` bằng transaction và đọc lại API public cho các quán `1`, `4`, `7`, `10`, `11`: tên nhóm và số món đều đúng taxonomy mới.

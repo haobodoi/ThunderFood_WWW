@@ -3,8 +3,8 @@
 -- Kế thừa 100% cấu trúc 14 bảng của v1 (thunderfood_mariadb.sql) và v2 (thunderfood_mariadb_v2.sql)
 -- Nâng cấp toàn diện dữ liệu lên quy mô lớn & chuẩn xác tuyệt đối:
 --   • 11 Nhà hàng (9 quán APPROVED đang mở cửa lấp đầy lưới 3x3 + 1 PENDING + 1 DRAFT)
---   • 27 Nhóm thực đơn (Mỗi quán APPROVED có đủ 3 nhóm món)
---   • 109 Món ăn (Mỗi nhóm có đúng 4 món APPROVED lấp kín 100% hàng ngang 4 cột,
+--   • 30 Nhóm thực đơn (phân loại theo món chính, món phụ, canh, tráng miệng và đồ uống)
+--   • 109 Món ăn (không ép món khác loại vào cùng nhóm chỉ để đủ số lượng,
 --     100% hình ảnh khớp chính xác tuyệt đối với tên món ăn ngoài đời thực)
 -- ============================================================================
 
@@ -567,18 +567,20 @@ INSERT INTO restaurant_tags (restaurant_id, tag_id) VALUES
 (11, 2), (11, 4), (11, 20), (11, 21);
 
 -- ============================================================================
--- 5. SEED MENU CATEGORIES (27 NHÓM THỰC ĐƠN CHO 9 QUÁN APPROVED — MỖI QUÁN 3 NHÓM)
+-- 5. SEED MENU CATEGORIES (30 NHÓM THỰC ĐƠN CHO 9 QUÁN APPROVED)
 -- ============================================================================
 INSERT INTO menu_categories (category_id, restaurant_id, category_name, display_order) VALUES
 -- Quán 1: Bếp Nhà Bình - Cơm gà - Lê Lợi
-(1,  1, 'Cơm Gà & Cơm Thịt Nướng Đặc Sắc', 1),
-(2,  1, 'Bún Thịt Nướng & Món Cơm Chiên', 2),
-(3,  1, 'Canh Nhà Nấu & Đồ Uống Giải Nhiệt', 3),
+(1,  1, 'Cơm Gà, Vịt & Thịt Nướng', 1),
+(2,  1, 'Bún, Mì & Cơm Gọi Món', 2),
+(3,  1, 'Canh & Món Nhẹ Nhà Nấu', 3),
+(28, 1, 'Đồ Uống Giải Nhiệt', 4),
 
 -- Quán 4: Phở Thìn Gia Truyền - Nguyễn Huệ
 (4,  4, 'Phở Bò Gia Truyền Hà Thành', 1),
-(5,  4, 'Bún Bò, Hủ Tiếu & Món Nước Đặc Sắc', 2),
-(6,  4, 'Quẩy Nóng, Bánh Cuốn & Giải Khát', 3),
+(5,  4, 'Bún, Hủ Tiếu & Mì Đặc Sản', 2),
+(6,  4, 'Quẩy Nóng & Bánh Cuốn', 3),
+(29, 4, 'Đồ Uống Giải Khát', 4),
 
 -- Quán 5: Tiệm Trà Đào & Trà Sữa Oolong - Đồng Khởi
 (7,  5, 'Trà Trái Cây Nhiệt Đới Tươi Mát', 1),
@@ -591,9 +593,10 @@ INSERT INTO menu_categories (category_id, restaurant_id, category_name, display_
 (12, 6, 'Cà Phê Phin & Nước Ép Trái Cây Tươi', 3),
 
 -- Quán 7: Cơm Tấm Sườn Nướng Than Hoa - Võ Văn Tần
-(13, 7, 'Cơm Tấm Sườn Nướng & Cơm Thịt Nướng', 1),
+(13, 7, 'Cơm Tấm & Cơm Thịt Nướng', 1),
 (14, 7, 'Món Ăn Kèm Cơm Tấm Gọi Thêm', 2),
-(15, 7, 'Canh Nóng & Thức Uống Tráng Miệng', 3),
+(15, 7, 'Canh Nóng Gọi Thêm', 3),
+(30, 7, 'Tráng Miệng & Thức Uống', 4),
 
 -- Quán 8: Lẩu Thái Tomyum & Bò Nướng Sấm Sét - Bến Thành
 (16, 8, 'Lẩu Thái Tomyum & Lẩu Bò Nhúng', 1),
@@ -608,12 +611,12 @@ INSERT INTO menu_categories (category_id, restaurant_id, category_name, display_
 -- Quán 10: Sushi Cá Hồi & Mì Ramen Nhật Bản Sakura - Thảo Điền
 (22, 10, 'Sushi, Sashimi & Cơm Lươn Nhật Bản', 1),
 (23, 10, 'Mì Ramen, Udon & Cơm Cà Ri Nhật', 2),
-(24, 10, 'Khai Vị Nhật Bản: Takoyaki, Tempura & Tonkatsu', 3),
+(24, 10, 'Món Chiên & Khai Vị Nhật Bản', 3),
 
 -- Quán 11: Bún Đậu Mắm Tôm & Đặc Sản Hà Nội - Võ Thị Sáu
-(25, 11, 'Bún Đậu Mắm Tôm & Đặc Sản Bún Hà Nội', 1),
-(26, 11, 'Món Ăn Kèm & Quà Vặt Hà Nội', 2),
-(27, 11, 'Bún Ốc & Đồ Uống Giải Khát Phố Cổ', 3);
+(25, 11, 'Bún Đậu & Các Món Bún Hà Nội', 1),
+(26, 11, 'Nem Rán, Dồi & Lòng Phố Cổ', 2),
+(27, 11, 'Đồ Uống Giải Khát Phố Cổ', 3);
 
 -- ============================================================================
 -- 6. SEED MENU ITEMS (109 MÓN ĂN — 100% ĐỒNG BỘ TÊN MÓN VÀ HÌNH ẢNH THỰC TẾ)
@@ -634,7 +637,7 @@ VALUES
  'Thịt nạc vai nướng than hoa thơm lừng, chả giò tôm thịt giòn rụm, rau sống tươi và nước mắm chua ngọt.',
  50000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Bun_thit_nuong.jpg/960px-Bun_thit_nuong.jpg',
  1, 'APPROVED', 1, NOW()),
-(3, 1, 3, 'Trà Tắc Cam Sả Đá Lạnh Giải Nhiệt',
+(3, 1, 28, 'Trà Tắc Cam Sả Đá Lạnh Giải Nhiệt',
  'Trà xanh nhài ủ lạnh kết hợp tắc tươi vắt tay, lát cam vàng và mật ong nguyên chất thanh mát.',
  18000, 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=700&q=80',
  1, 'APPROVED', 1, NOW()),
@@ -669,7 +672,7 @@ VALUES
  52000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/M%C3%AC_Qu%E1%BA%A3ng%2C_Da_Nang%2C_Vietnam.jpg/960px-M%C3%AC_Qu%E1%BA%A3ng%2C_Da_Nang%2C_Vietnam.jpg',
  1, 'APPROVED', 1, NOW()),
 
--- Nhóm 3 (category_id = 3): Canh Nhà Nấu & Đồ Uống Giải Nhiệt (thêm 3 món khớp ảnh 100%)
+-- Nhóm 3 (category_id = 3): Canh & Món Nhẹ Nhà Nấu
 (11, 1, 3, 'Canh Rong Biển Thịt Bò Nấu Thanh Ngọt',
  'Canh rong biển nấu cùng thịt bò băm mềm ngọt, bổ dưỡng, dùng nóng kèm các món cơm.',
  22000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Miyeok-guk.jpg/960px-Miyeok-guk.jpg',
@@ -704,7 +707,7 @@ VALUES
  72000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Bo_kho_mien_Bac.jpg/960px-Bo_kho_mien_Bac.jpg',
  1, 'APPROVED', 1, NOW()),
 
--- Nhóm 5: Bún Bò, Hủ Tiếu & Món Nước Đặc Sắc (4 món)
+-- Nhóm 5: Bún, Hủ Tiếu & Mì Đặc Sản (4 món)
 (18, 4, 5, 'Bún Bò Huế Giò Heo Chả Cua Cố Đô',
  'Sợi bún to chuẩn vị Huế, bắp bò, giò heo rút xương và chả cua vàng ươm trong nước dùng sả ruốc.',
  68000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/B%C3%BAn_b%C3%B2_Hu%E1%BA%BF_-_Ch%E1%BB%A3_%C4%90%C3%B4ng_Ba_%282024%29_-_img_02.jpg/960px-B%C3%BAn_b%C3%B2_Hu%E1%BA%BF_-_Ch%E1%BB%A3_%C4%90%C3%B4ng_Ba_%282024%29_-_img_02.jpg',
@@ -722,7 +725,7 @@ VALUES
  60000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Cao_l%E1%BA%A7u_H%E1%BB%99i_An_%282024%29.jpg/960px-Cao_l%E1%BA%A7u_H%E1%BB%99i_An_%282024%29.jpg',
  1, 'APPROVED', 1, NOW()),
 
--- Nhóm 6: Quẩy Nóng, Bánh Cuốn & Giải Khát (4 món)
+-- Nhóm 6: Quẩy Nóng & Bánh Cuốn (2 món)
 (22, 4, 6, 'Quẩy Nóng Giòn Ăn Kèm Phở (Đĩa 5 Chiếc)',
  'Quẩy chiên mới vàng ươm giòn rụm, chấm ngập trong nước phở béo ngậy cực hợp.',
  15000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Youtiao.jpg/960px-Youtiao.jpg',
@@ -731,11 +734,11 @@ VALUES
  'Bánh cuốn tráng mỏng mịn rắc hành phi vàng giòn, ăn kèm chả quế Hà Nội và nước mắm tinh dầu cà cuống.',
  42000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/B%C3%A1nh_cu%E1%BB%91n_Thanh_Tr%C3%AC.jpg/960px-B%C3%A1nh_cu%E1%BB%91n_Thanh_Tr%C3%AC.jpg',
  1, 'APPROVED', 1, NOW()),
-(24, 4, 6, 'Sữa Đậu Nành Nấu Lá Dứa Nguyên Chất',
+(24, 4, 29, 'Sữa Đậu Nành Nấu Lá Dứa Nguyên Chất',
  'Sữa đậu nành quê xay mới mỗi sáng nấu cùng lá dứa thơm dịu, dùng nóng hoặc đá.',
  20000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/001-soymilk.jpg/960px-001-soymilk.jpg',
  1, 'APPROVED', 1, NOW()),
-(25, 4, 6, 'Trà Đá Thảo Mộc Pha Chanh Tươi',
+(25, 4, 29, 'Trà Đá Thảo Mộc Pha Chanh Tươi',
  'Ly trà đá mát lạnh giải nhiệt thanh khiết sau bát phở nóng hổi.',
  12000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Qu%C3%A1n_m%C3%AC_qu%E1%BA%A3ng_Th%E1%BA%A3o_%E1%BB%9F_Q_T%C3%A2n_B%C3%ACnh_ng9th9n2022_%28ly_tr%C3%A0_%C4%91%C3%A1%29.jpg/960px-Qu%C3%A1n_m%C3%AC_qu%E1%BA%A3ng_Th%E1%BA%A3o_%E1%BB%9F_Q_T%C3%A2n_B%C3%ACnh_ng9th9n2022_%28ly_tr%C3%A0_%C4%91%C3%A1%29.jpg',
  1, 'APPROVED', 1, NOW()),
@@ -893,7 +896,7 @@ VALUES
  15000, 'https://upload.wikimedia.org/wikipedia/commons/f/f8/Various_kimchi.jpg',
  1, 'APPROVED', 1, NOW()),
 
--- Nhóm 15: Canh Nóng & Thức Uống Tráng Miệng (4 món)
+-- Nhóm 15: Canh Nóng Gọi Thêm (2 món)
 (58, 7, 15, 'Canh Chua Tôm Cá Nấu Dọc Mùng Thơm Ngọt',
  'Chén canh chua miền Nam nấu me tươi, cà chua, dọc mùng và giá đỗ ngọt thanh.',
  25000, 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Canhchua2.jpg',
@@ -902,11 +905,11 @@ VALUES
  'Canh kim chi hầm xương chua cay dịu nhẹ cùng đậu hũ non mềm mịn.',
  25000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Korean_stew_dish_-_Kimchi-jjigae_Kimchi_Stew_2019_%2801%29.jpg/960px-Korean_stew_dish_-_Kimchi-jjigae_Kimchi_Stew_2019_%2801%29.jpg',
  1, 'APPROVED', 1, NOW()),
-(60, 7, 15, 'Bánh Kem Trứng Nướng Caramel Mềm Mịn',
+(60, 7, 30, 'Bánh Kem Trứng Nướng Caramel Mềm Mịn',
  'Lớp kem trứng sữa béo ngậy phủ đường nướng caramel vàng óng tráng miệng sau bữa ăn.',
  28000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/2014_0531_Cr%C3%A8me_br%C3%BBl%C3%A9e_Doi_Mae_Salong_%28cropped%29.jpg/960px-2014_0531_Cr%C3%A8me_br%C3%BBl%C3%A9e_Doi_Mae_Salong_%28cropped%29.jpg',
  1, 'APPROVED', 1, NOW()),
-(61, 7, 15, 'Sinh Tố Kiwi & Táo Xanh Mát Lạnh',
+(61, 7, 30, 'Sinh Tố Kiwi & Táo Xanh Mát Lạnh',
  'Sinh tố trái cây tươi xay nhuyễn giàu vitamin giúp thanh lọc và tiêu hóa tốt.',
  32000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Kiwi_Smoothie.jpg/960px-Kiwi_Smoothie.jpg',
  1, 'APPROVED', 1, NOW()),
@@ -1064,7 +1067,7 @@ VALUES
  85000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Beef_curry_rice_003.jpg/960px-Beef_curry_rice_003.jpg',
  1, 'APPROVED', 1, NOW()),
 
--- Nhóm 24: Khai Vị Nhật Bản: Takoyaki, Tempura & Tonkatsu (4 món)
+-- Nhóm 24: Món Chiên & Khai Vị Nhật Bản (4 món)
 (94, 10, 24, 'Bánh Bạch Tuộc Nướng Takoyaki Sốt Cá Bào (6 Viên)',
  'Viên bánh nướng nhân bạch tuộc giòn sần sật, phủ sốt Takoyaki, Mayo Nhật và cá bào Katsuobushi.',
  52000, 'https://upload.wikimedia.org/wikipedia/commons/d/d8/Takoyaki_by_yomi955.jpg',
@@ -1085,7 +1088,7 @@ VALUES
 -- ============================================================================
 -- QUÁN 11: BÚN ĐẬU MẮM TÔM & ĐẶC SẢN HÀ NỘI - VÕ THỊ SÁU (item_id 98..109 — 12 MÓN KHỚP ẢNH 100%)
 -- ============================================================================
--- Nhóm 25: Bún Đậu Mắm Tôm & Đặc Sản Bún Hà Nội (4 món khớp ảnh thật 100%)
+-- Nhóm 25: Bún Đậu & Các Món Bún Hà Nội (5 món)
 (98, 11, 25, 'Mẹt Bún Đậu Mắm Tôm Thập Cẩm Phố Cổ',
  'Mẹt lá chuối đầy đủ bún lá, đậu mơ rán giòn, thịt chân giò luộc, chả cốm, nem rán, dồi sụn và mắm tôm tắc ớt.',
  65000, 'https://upload.wikimedia.org/wikipedia/commons/1/11/B%C3%BAn_%C4%91%E1%BA%ADu_m%E1%BA%AFm_t%C3%B4m_%282019%29.jpg',
@@ -1102,8 +1105,12 @@ VALUES
  'Nước riêu cua đồng chưng hành phi thơm nức, đậu hũ rán phồng, cà chua, giò tai và rau sống.',
  58000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/B%C3%BAn_ri%C3%AAu_%C4%91%E1%BA%B7c_bi%E1%BB%87t.jpg/960px-B%C3%BAn_ri%C3%AAu_%C4%91%E1%BA%B7c_bi%E1%BB%87t.jpg',
  1, 'APPROVED', 1, NOW()),
+(106, 11, 25, 'Bún Ốc Nóng Nước Dùng Dấm Bỗng Chua Thanh',
+ 'Ốc nhồi tươi giòn sần sật, đậu phụ rán, cà chua và nước dùng dấm bỗng dậy mùi tía tô hành hoa.',
+ 55000, 'https://upload.wikimedia.org/wikipedia/commons/3/37/B%C3%BAn_%E1%BB%91c.jpg',
+ 1, 'APPROVED', 1, NOW()),
 
--- Nhóm 26: Món Ăn Kèm & Quà Vặt Hà Nội (4 món khớp ảnh thật 100%)
+-- Nhóm 26: Nem Rán, Dồi & Lòng Phố Cổ (4 món)
 (102, 11, 26, 'Nem Rán Hà Nội Nhân Thịt Mộc Nhĩ (Hộp 6 Cuốn)',
  'Nem rán truyền thống vỏ giòn rụm, nhân thịt heo, miến, mộc nhĩ, nấm hương chấm nước mắm chua ngọt.',
  45000, 'https://upload.wikimedia.org/wikipedia/commons/6/6b/Cha_gio.jpg',
@@ -1121,11 +1128,7 @@ VALUES
  40000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Karipap_Chiang_Mai.jpg/960px-Karipap_Chiang_Mai.jpg',
  1, 'APPROVED', 1, NOW()),
 
--- Nhóm 27: Bún Ốc & Đồ Uống Giải Khát Phố Cổ (4 món khớp ảnh thật 100%)
-(106, 11, 27, 'Bún Ốc Nóng Nước Dùng Dấm Bỗng Chua Thanh',
- 'Ốc nhồi tươi giòn sần sật, đậu phụ rán, cà chua và nước dùng dấm bỗng dậy mùi tía tô hành hoa.',
- 55000, 'https://upload.wikimedia.org/wikipedia/commons/3/37/B%C3%BAn_%E1%BB%91c.jpg',
- 1, 'APPROVED', 1, NOW()),
+-- Nhóm 27: Đồ Uống Giải Khát Phố Cổ (3 món)
 (107, 11, 27, 'Trà Chanh Tươi Mật Ong Phố Nhà Thờ',
  'Trà xanh pha chanh tươi và mật ong chua ngọt mát lạnh giải ngấy sau khi ăn bún đậu.',
  22000, 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Lemonade_-_27682817724.jpg/960px-Lemonade_-_27682817724.jpg',
