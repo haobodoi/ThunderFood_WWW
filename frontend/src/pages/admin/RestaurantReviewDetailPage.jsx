@@ -121,14 +121,14 @@ export default function RestaurantReviewDetailPage() {
       {rejecting && (
         <Modal
           title="Từ chối hồ sơ"
-          onClose={() => setRejecting(false)}
+          onClose={busy ? undefined : () => setRejecting(false)}
           footer={
             <>
-              <button type="button" className="btn btn--outline" onClick={() => setRejecting(false)}>
+              <button type="button" className="btn btn--outline" onClick={() => setRejecting(false)} disabled={busy}>
                 Hủy
               </button>
               <button type="button" className="btn btn--danger" onClick={reject} disabled={busy}>
-                Xác nhận từ chối
+                {busy ? 'Đang xử lý...' : 'Xác nhận từ chối'}
               </button>
             </>
           }

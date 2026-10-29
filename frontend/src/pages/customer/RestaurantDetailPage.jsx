@@ -209,7 +209,7 @@ export default function RestaurantDetailPage() {
             <Icon name="utensils" size={36} />
             <strong>{menuSearch ? 'Không tìm thấy món phù hợp' : 'Nhà hàng đang cập nhật thực đơn'}</strong>
             <p>{menuSearch ? 'Hãy thử từ khóa khác.' : 'Vui lòng quay lại sau.'}</p>
-            {menuSearch && <button className="btn btn--outline btn--sm" onClick={() => setMenuSearch('')}>Xem toàn bộ thực đơn</button>}
+            {menuSearch && <button type="button" className="btn btn--outline btn--sm" onClick={() => setMenuSearch('')}>Xem toàn bộ thực đơn</button>}
           </div>
         ) : (
           <div className="tf-menu-sections">

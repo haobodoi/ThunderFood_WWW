@@ -1,6 +1,6 @@
 # ThunderFood Design System
 
-Phiên bản 3.3 · 29/10/2026 · Nguồn chuẩn: frontend/src/styles/global.css
+Phiên bản 3.4 · 29/10/2026 · Nguồn chuẩn: frontend/src/styles/global.css
 
 Tài liệu này là hợp đồng giao diện cho năm phân hệ. Thành phần đang dùng được nêu rõ; các blueprint cho pha tiếp theo chỉ là CSS và quy tắc, chưa đại diện cho chức năng đã hoàn tất.
 
@@ -19,6 +19,7 @@ Tài liệu này là hợp đồng giao diện cho năm phân hệ. Thành phầ
 4. Lưới nhà hàng: repeat(auto-fill, minmax(min(100%, 300px), 1fr)). Lưới món: repeat(auto-fill, minmax(min(100%, 265px), 1fr)). Card dùng chiều cao 100% trong hàng, ảnh món 4:3, ảnh quán cao 176px. Một món duy nhất vẫn lấp đầy cột hợp lệ mà không vượt viewport.
 5. Danh mục nhiều mục cuộn ngang; nút quản lý nhóm nằm ngoài dải tab để bấm chọn không làm thay đổi chiều rộng tab. Section có scroll-margin-top bù navbar và thanh sticky.
 6. Breakpoint hiện hành: 1100px chuyển chỉ số storefront xuống hàng mới; 720px xếp lại storefront, tìm kiếm và lưới; 420px thu gọn navbar, xếp thông tin quán và hành động modal thành một cột. Không được cộng `width: 100%` với margin ngang cố định; mọi breakpoint phải có `scrollWidth === clientWidth`. Kiểm tra thêm ở 320px, 390px, 768px, 1280px và 1440px khi sửa bố cục.
+7. Carousel thay nội dung trong cùng một khung phải giữ nguyên chiều cao giữa các slide. Tiêu đề và mô tả có số dòng dự trữ cố định; điều hướng thủ công phải đặt lại chu kỳ tự chạy; danh sách nổi bật giới hạn ở một tập đủ đa dạng thay vì cắt còn ba mục. Bộ đếm tiến trình dùng số và thanh tuyến tính, không dùng dãy pill trang trí.
 
 ## 3. Token CSS chuẩn
 
@@ -123,7 +124,7 @@ Bảng dưới được lấy trực tiếp từ :root của global.css. Thay đ
 
 ### Cấu trúc và trạng thái của component
 
-- Restaurant card: ảnh hoặc placeholder → bảng trạng thái vận hành trên ảnh → tên → metadata đặc trưng/địa chỉ → phí giao và link thực đơn. Loading dùng skeleton cùng tỷ lệ; lỗi API có nút Thử lại; rỗng có nút đặt lại bộ lọc.
+- Restaurant card: ảnh hoặc placeholder → bảng trạng thái vận hành trên ảnh → tên → metadata đặc trưng/địa chỉ → phí giao và link thực đơn. Loading dùng skeleton cùng tỷ lệ; lỗi API có nút Thử lại; rỗng có nút đặt lại bộ lọc. Carousel trang chủ giữ chiều cao card ổn định ở mọi slide và dừng khi hover/focus.
 - Food card: ảnh hoặc placeholder → tên/mô tả → giá → hành động. Khi quán đóng hoặc món hết, nút chọn món disabled và có nhãn chữ. Đối tác có hai hàng riêng; trạng thái duyệt dùng icon + text, không dùng badge.
 - Modal: tiêu đề, nút đóng, body cuộn độc lập và footer. Escape chỉ đóng khi không bận; Tab ở trong dialog; đóng xong trả focus về điều khiển trước đó.
 - Toast: role=status, không lấy focus, tự biến mất sau phản hồi ngắn; lỗi quan trọng dùng Alert còn hiện để người dùng sửa.

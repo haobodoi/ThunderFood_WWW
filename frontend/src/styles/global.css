@@ -2964,6 +2964,8 @@ select.field__input {
 
 .tf-spotlight__body {
   padding: 20px 22px;
+  display: grid;
+  grid-template-rows: auto minmax(50px, auto) minmax(38px, auto) auto;
 }
 
 .tf-spotlight__meta {
@@ -2989,8 +2991,13 @@ select.field__input {
   font-size: 19px;
   font-weight: 800;
   color: var(--tf-navy-800);
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   line-height: 1.3;
+  min-height: calc(2 * 1.3em);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .tf-spotlight__footer {
@@ -3026,25 +3033,39 @@ select.field__input {
   padding: 0 4px;
 }
 
-.tf-spotlight__dots {
-  display: flex;
+.tf-spotlight__position {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(72px, 120px);
+  align-items: center;
   gap: 6px;
+  color: var(--tf-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.tf-spotlight__dot {
-  width: 22px;
-  height: 5px;
-  border-radius: 3px;
+.tf-spotlight__position > span:first-child {
+  color: var(--tf-orange-700);
+}
+
+.tf-spotlight__progress {
+  appearance: none;
+  width: 100%;
+  height: 3px;
   border: 0;
-  padding: 0;
-  background: rgba(14, 30, 56, 0.18);
-  cursor: pointer;
-  transition: width 220ms var(--tf-ease-emphasis), background-color 220ms ease;
+  background: rgba(14, 30, 56, 0.16);
 }
 
-.tf-spotlight__dot.is-active {
-  width: 36px;
-  background: var(--tf-orange-500);
+.tf-spotlight__progress::-webkit-progress-bar {
+  background: rgba(14, 30, 56, 0.16);
+}
+
+.tf-spotlight__progress::-webkit-progress-value {
+  background: var(--tf-orange-600);
+}
+
+.tf-spotlight__progress::-moz-progress-bar {
+  background: var(--tf-orange-600);
 }
 
 .tf-spotlight__arrows {
@@ -3947,14 +3968,14 @@ select.field__input {
 .tf-store-hero__contact span, .tf-store-hero__contact a { display: inline-flex; align-items: baseline; gap: 6px; overflow-wrap: anywhere; }
 .tf-store-hero__contact a { color: inherit; }
 .tf-store-hero__taxonomy {
-  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; margin-top: 12px;
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; column-gap: 12px; margin-top: 12px;
   color: var(--tf-text-body); font-size: 13px;
 }
 .tf-store-hero__taxonomy-label {
   display: inline-flex; align-items: center; gap: 6px; color: var(--tf-orange-700); font-weight: 800;
 }
 .tf-store-hero__taxonomy-values {
-  min-width: 0; overflow-wrap: anywhere; font-weight: 650;
+  min-width: 0; overflow-wrap: anywhere; font-weight: 650; line-height: 1.55;
 }
 .tf-store-hero__stats { flex: none; grid-template-columns: repeat(2, minmax(120px, 1fr)); }
 .tf-detail-error { max-width: 720px; padding-top: 48px; padding-bottom: 48px; text-align: center; }
@@ -4042,7 +4063,10 @@ select.field__input {
 .tf-rest-card__skeleton-line { height: 20px; margin: 18px; }
 .tf-rest-card__skeleton-line--short { width: 55%; height: 14px; margin-top: 0; }
 .tf-discovery__sort { width: auto; min-width: 165px; height: 42px; font-size: 13px; }
-.tf-spotlight__description { min-height: 20px; margin: -4px 0 14px; color: var(--tf-text-muted); font-size: 13px; }
+.tf-spotlight__description {
+  min-height: calc(2 * 1.45em); margin: 0 0 14px; color: var(--tf-text-muted); font-size: 13px; line-height: 1.45;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
 .tf-spotlight__empty { min-height: 100px; }
 .tf-spotlight__footer { flex-wrap: wrap; gap: 12px; }
 .tf-spotlight__title { overflow-wrap: anywhere; }
@@ -4073,6 +4097,7 @@ select.field__input {
   .tf-floating-cart { bottom: 12px; flex-wrap: wrap; }
   .tf-floating-cart > .btn { width: 100%; }
   .tf-rest-card__footer { flex-wrap: wrap; gap: 8px; }
+  .tf-spotlight__media { height: clamp(210px, 54vw, 260px); }
 }
 @media (max-width: 420px) {
   .tf-store-hero__main { flex-wrap: wrap; }
@@ -4080,6 +4105,9 @@ select.field__input {
   .tf-store-hero__stats { grid-template-columns: 1fr 1fr; }
   .tf-store-stat strong { font-size: 13px; }
   .tf-item-detail__actions > .btn { width: 100%; }
+  .tf-store-hero__taxonomy { grid-template-columns: 1fr; row-gap: 4px; }
+  .tf-spotlight__body { padding: 18px; }
+  .tf-spotlight__position { grid-template-columns: auto auto auto minmax(56px, 88px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .tf-marquee { animation: none; }

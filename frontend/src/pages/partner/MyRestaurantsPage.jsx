@@ -99,6 +99,7 @@ export default function MyRestaurantsPage() {
   const [tab, setTab] = useState(location.state?.tab ?? null);
   const [flash, setFlash] = useState(location.state?.flash ?? '');
   const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
   const load = useCallback(async () => {
@@ -124,7 +125,9 @@ export default function MyRestaurantsPage() {
   const shown = activeTab === 'mine' ? mine : registrations;
 
   const confirmDelete = async () => {
+    if (!deleting || deleteBusy) return;
     setDeleteError('');
+    setDeleteBusy(true);
     try {
       await partnerRestaurantApi.remove(deleting.id);
       setFlash(`Đã xóa hồ sơ nháp "${deleting.restaurantName}".`);
@@ -132,6 +135,8 @@ export default function MyRestaurantsPage() {
       load();
     } catch (err) {
       setDeleteError(getErrorMessage(err, 'Không xóa được hồ sơ.'));
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -192,14 +197,14 @@ export default function MyRestaurantsPage() {
       {deleting && (
         <Modal
           title="Xóa hồ sơ nháp?"
-          onClose={() => setDeleting(null)}
+          onClose={deleteBusy ? undefined : () => setDeleting(null)}
           footer={
             <>
-              <button type="button" className="btn btn--outline" onClick={() => setDeleting(null)}>
+              <button type="button" className="btn btn--outline" onClick={() => setDeleting(null)} disabled={deleteBusy}>
                 Hủy
               </button>
-              <button type="button" className="btn btn--danger" onClick={confirmDelete}>
-                Xóa hồ sơ
+              <button type="button" className="btn btn--danger" onClick={confirmDelete} disabled={deleteBusy}>
+                {deleteBusy ? 'Đang xóa...' : 'Xóa hồ sơ'}
               </button>
             </>
           }

@@ -8,6 +8,8 @@ import { formatVND } from '../components/FoodCard.jsx';
 import Icon from '../components/Icon.jsx';
 import RestaurantListSection from '../components/RestaurantListSection.jsx';
 
+const FEATURED_RESTAURANT_LIMIT = 8;
+
 export default function HomePage() {
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState([]);
@@ -20,16 +22,22 @@ export default function HomePage() {
   useEffect(() => {
     let active = true;
     publicRestaurantApi.search()
-      .then((list) => { if (active) setRestaurants(Array.isArray(list) ? list.slice(0, 3) : []); })
+      .then((list) => {
+        if (active) setRestaurants(Array.isArray(list) ? list.slice(0, FEATURED_RESTAURANT_LIMIT) : []);
+      })
       .catch(() => { if (active) setRestaurants([]); });
     return () => { active = false; };
   }, []);
 
   useEffect(() => {
+    setActiveSlide((index) => (restaurants.length ? Math.min(index, restaurants.length - 1) : 0));
+  }, [restaurants.length]);
+
+  useEffect(() => {
     if (paused || restaurants.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
     const timer = window.setInterval(() => setActiveSlide((index) => (index + 1) % restaurants.length), 5000);
     return () => window.clearInterval(timer);
-  }, [paused, restaurants.length]);
+  }, [activeSlide, paused, restaurants.length]);
 
   const spotlight = restaurants[activeSlide] || restaurants[0];
   const handleSearch = (event) => {
@@ -80,9 +88,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="tf-spotlight" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-            onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-            <div className="tf-spotlight__card">
+          <div className="tf-spotlight" role="region" aria-label="Nhà hàng nổi bật"
+            onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+            onFocus={() => setPaused(true)}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }}>
+            <div className="tf-spotlight__card" aria-atomic="true">
               <div className="tf-spotlight__media">
                 {spotlight && getSmartRestaurantCover(spotlight)
                   ? <img src={getSmartRestaurantCover(spotlight)} alt="" />
@@ -98,8 +108,12 @@ export default function HomePage() {
                 {spotlight ? (
                   <>
                     <div className="tf-spotlight__meta"><span>{spotlight.areaName || spotlight.province || 'Nhà hàng'}</span></div>
-                    <h2 className="tf-spotlight__title">{spotlight.restaurantName || 'Nhà hàng'}</h2>
-                    {spotlight.specialty && <p className="tf-spotlight__description">{spotlight.specialty}</p>}
+                    <h2 className="tf-spotlight__title" title={spotlight.restaurantName || 'Nhà hàng'}>
+                      {spotlight.restaurantName || 'Nhà hàng'}
+                    </h2>
+                    <p className="tf-spotlight__description">
+                      {spotlight.specialty || 'Khám phá các món đang phục vụ tại nhà hàng.'}
+                    </p>
                     <div className="tf-spotlight__footer">
                       <div className="tf-spotlight__price"><small>Phí giao hàng</small><strong>{formatVND(spotlight.deliveryFee)}</strong></div>
                       <Link to={'/restaurants/' + spotlight.id} className="btn btn--primary">Xem thực đơn <Icon name="arrowRight" size={15} /></Link>
@@ -111,12 +125,12 @@ export default function HomePage() {
               </div>
             </div>
             {restaurants.length > 1 && <div className="tf-spotlight__nav">
-              <div className="tf-spotlight__dots" aria-label="Chọn nhà hàng nổi bật">
-                {restaurants.map((restaurant, index) => (
-                  <button key={restaurant.id} type="button" className={'tf-spotlight__dot' + (index === activeSlide ? ' is-active' : '')}
-                    onClick={() => setActiveSlide(index)} aria-label={'Xem ' + restaurant.restaurantName}
-                    aria-current={index === activeSlide ? 'true' : undefined} />
-                ))}
+              <div className="tf-spotlight__position">
+                <span>{activeSlide + 1}</span>
+                <span aria-hidden="true">/</span>
+                <span>{restaurants.length}</span>
+                <progress className="tf-spotlight__progress" value={activeSlide + 1} max={restaurants.length}
+                  aria-label={`Đang xem quán ${activeSlide + 1} trong ${restaurants.length}`} />
               </div>
               <div className="tf-spotlight__arrows">
                 <button type="button" className="tf-spotlight__arrow"
