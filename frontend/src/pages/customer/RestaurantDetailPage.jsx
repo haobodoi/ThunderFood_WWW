@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { publicRestaurantApi } from '../../api/publicRestaurantApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { getSmartRestaurantCover } from '../../utils/mediaUtils.js';
+import { getMotionSafeScrollBehavior } from '../../utils/motionUtils.js';
 import FoodCard, { formatVND } from '../../components/FoodCard.jsx';
 import FullPageLoader from '../../components/FullPageLoader.jsx';
 import Alert from '../../components/Alert.jsx';
@@ -121,7 +122,7 @@ export default function RestaurantDetailPage() {
 
   const selectCategory = (key) => {
     setActiveCategory(key);
-    sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    sectionRefs.current[key]?.scrollIntoView({ behavior: getMotionSafeScrollBehavior(), block: 'start' });
   };
 
   return (

@@ -4110,10 +4110,13 @@ select.field__input {
   .tf-spotlight__position { grid-template-columns: auto auto auto minmax(56px, 88px); }
 }
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   .tf-marquee { animation: none; }
   .skeleton { animation: none; }
+  .spinner { animation: none; }
   .tf-floating-cart { animation: none; }
   .food-card, .tf-rest-card, .tf-spotlight__card { transition: none; }
+  .tf-switch, .tf-switch__track, .tf-switch__thumb { transition: none; }
 }
 
 /* Partner menu workspace */

@@ -1,8 +1,16 @@
 # ThunderFood Design System
 
-Phiên bản 3.4 · 29/10/2026 · Nguồn chuẩn: frontend/src/styles/global.css
+Phiên bản 3.5 · 29/10/2026 · Nguồn chuẩn: `frontend/src/styles/global.css`
 
 Tài liệu này là hợp đồng giao diện cho năm phân hệ. Thành phần đang dùng được nêu rõ; các blueprint cho pha tiếp theo chỉ là CSS và quy tắc, chưa đại diện cho chức năng đã hoàn tất.
+
+## 0. Cách đọc trạng thái
+
+- **CURRENT:** đã tồn tại trong source hiện tại và có thể tái sử dụng theo contract trong tài liệu này.
+- **PROPOSED:** thay đổi có căn cứ nhưng chưa triển khai hoặc chưa đủ kiểm thử; phải được review trước khi áp dụng.
+- **BLUEPRINT:** quy tắc định hướng cho module tương lai, không được mô tả như chức năng đang hoạt động.
+- Source đang chạy là bằng chứng cuối cùng. Nếu tài liệu và code lệch nhau, xác minh code, sửa lỗi rồi cập nhật tài liệu trong cùng thay đổi.
+- V3.5 là refinement của V3.4: giữ brand, font, layout và component hiện hành; không phải một đợt redesign hoặc migration framework.
 
 ## 1. Nguyên tắc sản phẩm
 
@@ -112,31 +120,81 @@ Bảng dưới được lấy trực tiếp từ :root của global.css. Thay đ
 - **Danh sách cấm**: nền pastel + viền cùng màu; dot + pill lặp lại; pill cho metadata không tương tác; gradient/glow trang trí; màu semantic là dấu hiệu duy nhất; cùng một anatomy cho mọi loại trạng thái.
 - Mọi focus bàn phím có outline 3px. Hiệu ứng chuyển động phải tắt ở prefers-reduced-motion: reduce.
 
-## 4. Blueprint theo phân hệ
+### Spacing, kích thước và responsive
+
+- Scale ưu tiên cho code mới: `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64px`. Giá trị trung gian chỉ dùng khi giải quyết một ràng buộc layout cụ thể.
+- Radius hiện hành: `--radius-sm: 8px`, `--radius: 14px`; card dùng 10–14px tùy bề mặt. Không biến metadata hoặc status thành pill mặc định.
+- Chiều cao hiện hành: `.btn` 40px, `.btn--sm` 34px, `.btn--lg` 48px. Trên mobile, hành động chính và icon button đứng độc lập phải hướng tới vùng chạm ít nhất 44×44px; ngoại lệ inline cần đủ khoảng cách với target kế bên.
+- Container có `max-width: 1320px` và padding ngang `clamp(16px, 3vw, 36px)`. Không cộng `width: 100%` với margin ngang cố định làm phát sinh overflow.
+- Breakpoint layout hiện hành là 1100px, 720px và 420px; QA tối thiểu ở 320, 390, 768, 1280 và 1440px.
+
+## 4. Component contracts
+
+| Component | CURRENT trong repo | Contract bắt buộc |
+| :--- | :--- | :--- |
+| Button | `.btn`, `--primary`, `--outline`, `--ghost`, `--danger`, `--sm`, `--lg`, `--block` | Chọn variant theo mức ưu tiên; button không submit phải có `type="button"`; loading/disabled khóa thao tác lặp; icon-only có accessible name; giữ focus-visible. |
+| Input / TextField | `TextField.jsx`, `.field`, `.field__input` | Label thật luôn tồn tại; placeholder không thay label. Lỗi nối bằng `aria-describedby` và `aria-invalid` khi giá trị không hợp lệ; hint có id riêng; không xóa input khi request lỗi. |
+| File / URL image input | `ImageUpload.jsx`, khối ảnh trong `MenuItemModal.jsx` | File và URL có accessible name; định dạng/kích thước được nói trước; lỗi upload dùng live region và được control liên quan tham chiếu; disabled trong lúc upload để tránh request lặp. |
+| Modal / Dialog | `Modal.jsx`, `.modal__panel` | `role="dialog"`, `aria-modal`, tiêu đề qua `aria-labelledby`; trap Tab, trả focus, khóa body scroll. Escape/backdrop chỉ đóng khi callback close được cấp; body cuộn độc lập. |
+| Confirm dialog | `ConfirmModal.jsx` | Nêu đối tượng và hậu quả; hành động destructive có nhãn cụ thể; khi xử lý phải khóa confirm và cancel phù hợp. |
+| Restaurant Card | `RestaurantListSection.jsx`, `.tf-rest-card` | Ảnh/placeholder → trạng thái phục vụ → tên → specialty/địa chỉ → phí giao → link thực đơn. Không bịa rating/ETA; tên dài được wrap; loading/error/empty giữ đúng anatomy và có recovery. |
+| Food Card | `FoodCard.jsx`, `.food-card` | Ảnh/placeholder → tên/mô tả → giá → hành động. Tên/mô tả tối đa hai dòng ở card; giá được wrap cả cụm; footer được wrap; món hết hoặc quán đóng phải disabled bằng logic và có chữ giải thích. |
+| StatusLabel | `StatusLabel.jsx`, `.status-label` | Chỉ dùng cho trạng thái duyệt; icon + chữ, không nền/viền/pill. Màu không phải tín hiệu duy nhất. |
+| Service status | `.service-status`, `.tf-rest-card__availability`, `.tf-spotlight__availability` | Chỉ biểu diễn đang nhận đơn/tạm ngưng. Trên ảnh dùng bảng phẳng tối; trên nền sáng dùng icon + chữ; không dùng dot “live”. |
+| Switch | `.tf-switch` trong `FoodCard.jsx`, `MenuItemModal.jsx` | CURRENT dùng button + `aria-pressed`. Nếu chuyển sang `role="switch"`, phải đổi đồng bộ sang `aria-checked` và regression-test; không trộn hai mô hình. Label trạng thái phải đọc được. |
+| Tabs / Filter | `.tf-cuisine-tab`, `.tf-open-filter`, `.tf-cat-tab`, `.tf-sticky-nav` | Filter/toggle dùng button + `aria-pressed`; nút cuộn tới section không được giả làm ARIA tab. Dải dài cuộn ngang, active vẫn nhìn thấy; nút quản trị nhóm nằm ngoài dải category. |
+| Alert / Empty / Skeleton | `Alert.jsx`, `.empty-state`, `.skeleton` | Error dùng `role="alert"`; trạng thái thông tin dùng `role="status"`. Lỗi có recovery, empty có next action, skeleton cùng kích thước nội dung thật để tránh layout shift. |
+| Stepper | `Stepper.jsx`, `.stepper` | Bước hiện tại dùng `aria-current="step"`; bước chưa tới không giả làm link hoạt động; validation gắn đúng bước. |
+| Table | `.tf-admin-table`, `RestaurantReviewListPage.jsx` | Dùng table/th/td thật; header mô tả cột; số căn phải với `data-numeric`; wrapper cho phép cuộn ngang ở màn nhỏ; dữ liệu thiếu hiển thị trung thực. |
+
+Không tạo component mới trùng contract trên. Thay đổi shared component hoặc token nền tảng phải có ảnh regression và kiểm tra keyboard ở các phân hệ dùng chung.
+
+## 5. Trạng thái theo phân hệ
 
 | Chủ sở hữu | Đang dùng | Quy tắc và class dùng chung |
 | :--- | :--- | :--- |
 | Công — Nhà hàng & thực đơn | HomePage, RestaurantListSection, RestaurantDetailPage, RestaurantMenuPage, FoodCard, MenuItemModal, CategoryModal | .tf-hero, .tf-discovery, .tf-rest-card, .tf-store-hero, .tf-sticky-nav, .tf-food-grid, .food-card, .tf-partner-menu. Ảnh thiếu dùng placeholder; giá/nhóm/trạng thái theo API. |
 | Hảo — Quản trị | AdminHomePage, RestaurantReviewListPage, RestaurantReviewDetailPage | .dash, .tf-admin-table, .review-actions, .status-label. Bảng dùng th/td, số căn phải bằng data-numeric, hàng thiếu dữ liệu hiển thị dấu hoặc mô tả. Không bịa KPI, biểu đồ hay xu hướng. |
-| Minh — Giỏ hàng & đánh giá | Danh sách chọn món tạm thời tại RestaurantDetailPage | .tf-floating-cart, .tf-cart-drawer, .tf-rating-input, .tf-review-card. Drawer tương lai phải giữ focus, có đóng/mở bàn phím, danh sách cuộn độc lập, tổng tiền tính từ dòng món. Chỉ hiện đánh giá từ API. |
-| Hoàng — Đặt hàng & thanh toán | Chưa có route đặt hàng/thanh toán | .tf-checkout, .tf-order-stepper, .tf-checkout__summary, .stepper. Bước hiện tại dùng aria-current=step; giá/phí/tổng đối soát từ đơn. Không hiển thị form thanh toán chưa có backend. |
+| Minh — Giỏ hàng & đánh giá | **CURRENT:** danh sách chọn món tạm thời tại RestaurantDetailPage. **BLUEPRINT:** giỏ/đánh giá tích hợp. | `.tf-floating-cart`, `.tf-cart-drawer`, `.tf-rating-input`, `.tf-review-card`. Drawer tương lai phải giữ focus, có đóng/mở bàn phím, danh sách cuộn độc lập, tổng tiền tính từ dòng món. Chỉ hiện đánh giá từ API. |
+| Hoàng — Đặt hàng & thanh toán | **BLUEPRINT:** chưa có route đặt hàng/thanh toán được xác minh | `.tf-checkout`, `.tf-order-stepper`, `.tf-checkout__summary`, `.stepper`. Bước hiện tại dùng `aria-current=step`; giá/phí/tổng đối soát từ đơn. Không hiển thị form thanh toán chưa có backend. |
 | QAnh — Tài khoản & hồ sơ | LoginPage, RegisterPage, AccountInfoCard | .auth-page, .auth-card, .field, .field__input, .tf-profile-panel. Lỗi gắn với trường, focus đến lỗi đầu tiên, không in thông tin nhạy cảm vào log. |
 
-### Cấu trúc và trạng thái của component
-
-- Restaurant card: ảnh hoặc placeholder → bảng trạng thái vận hành trên ảnh → tên → metadata đặc trưng/địa chỉ → phí giao và link thực đơn. Loading dùng skeleton cùng tỷ lệ; lỗi API có nút Thử lại; rỗng có nút đặt lại bộ lọc. Carousel trang chủ giữ chiều cao card ổn định ở mọi slide và dừng khi hover/focus.
-- Food card: ảnh hoặc placeholder → tên/mô tả → giá → hành động. Khi quán đóng hoặc món hết, nút chọn món disabled và có nhãn chữ. Đối tác có hai hàng riêng; trạng thái duyệt dùng icon + text, không dùng badge.
-- Modal: tiêu đề, nút đóng, body cuộn độc lập và footer. Escape chỉ đóng khi không bận; Tab ở trong dialog; đóng xong trả focus về điều khiển trước đó.
-- Toast: role=status, không lấy focus, tự biến mất sau phản hồi ngắn; lỗi quan trọng dùng Alert còn hiện để người dùng sửa.
-- Bộ lọc: trạng thái được hiển thị qua aria-pressed. Khi không có kết quả, hành động đặt lại chỉ xóa bộ lọc, không mở modal thêm món.
-
-## 5. Hợp đồng dữ liệu
+## 6. Hợp đồng dữ liệu và imagery
 
 - RestaurantPublicDto: id, restaurantName, specialty, address, phone, avatarImage, coverImage, deliveryFee, open, tags. TagDto dùng tagName và tagType; ở storefront chỉ hiển thị tag có tagType=CUISINE và tagName khác rỗng. Nếu thiếu ảnh, phí hoặc mô tả thì hiển thị trạng thái thiếu dữ liệu trung thực.
 - RestaurantMenuResponseDto chứa restaurant và menu; mỗi nhóm có categoryId, categoryName, items. MenuItemResponseDto dùng itemName, description, price, imageUrl, available, approvalStatus. Frontend kiểm tra menu/items là mảng trước khi map.
 - DTO hiện chưa có rating, reviewCount, delivery ETA hoặc vị trí khách hàng. Không hiển thị các chỉ số này cho tới khi backend cung cấp giá trị có nguồn và định nghĩa rõ.
 - Dữ liệu seed trong thunderfood_mariadb_v3.sql là mẫu. Ảnh sản phẩm thật vẫn cần đối tác xác nhận trước khi dùng như catalog thương mại.
+- Sort “Phí giao thấp nhất” phải đặt `null`, chuỗi rỗng, số âm và giá trị không chuyển được thành số sau mọi phí hợp lệ; `0` vẫn là một giá trị hợp lệ. Khi hiển thị dữ liệu thiếu, dùng “Chưa cập nhật”, không ngầm biến thành `0 ₫`.
+- **CURRENT:** trang chi tiết đang ẩn URL ảnh bị lặp trong cùng thực đơn bằng placeholder. **PROPOSED:** không ẩn tự động chỉ vì URL trùng; thay vào đó gắn cờ biên tập hoặc xử lý tại dữ liệu. Chỉ đổi khi có chính sách nội dung và regression test cho ảnh trùng hợp lệ.
+- Ảnh nền hero trong `mediaUtils.js` là trang trí; không được dùng như bằng chứng ảnh thật của món trong menu.
 
-## 6. Cổng kiểm định
+## 7. Motion và khả năng truy cập
 
-Trước khi hợp nhất thay đổi giao diện: chạy npm run build trong frontend, kiểm tra git diff --check, kiểm tra style inline bằng rg -n 'style=\{' frontend/src, và rà token mới với bảng ở trên. Dùng bàn phím qua tìm kiếm, tab bộ lọc, card, modal, thêm/bớt món; thử tên quán một từ và ba dòng, 1 và 15 danh mục, mô tả trống và 300 ký tự, giá từ 0 đến hàng triệu, ảnh thiếu, API lỗi, mobile 320px và laptop 1280px. Khi backend không chạy, ghi rõ kiểm định chỉ là build và static review.
+- Timing CURRENT: fast 140ms, base 240ms, slow 420ms. Motion chỉ hỗ trợ nhận biết thao tác hoặc chuyển ngữ cảnh; ưu tiên transform/opacity và không kéo dài task.
+- CURRENT ở V3.5: `prefers-reduced-motion: reduce` dừng marquee, skeleton, spinner, floating cart entrance, transition card/switch; CSS đổi smooth scroll thành `auto`; các lời gọi `scrollIntoView` dùng `getMotionSafeScrollBehavior()`.
+- Carousel tự chạy phải dừng khi hover/focus và không auto-slide khi reduced-motion. Điều hướng thủ công giữ nội dung trong khung có chiều cao ổn định.
+- Focus bàn phím dùng outline 3px; kiểm tra icon button, category strip, upload, modal, menu tài khoản và stepper.
+- Error form nằm gần trường, có thông điệp cách khắc phục và live announcement khi cần. Với lỗi validation, ưu tiên đưa focus tới trường lỗi đầu tiên; không chỉ đổi màu viền.
+- Modal giữ focus trong dialog và trả focus sau khi đóng. Loading/disabled/error/success phải có chữ đọc được, không chỉ animation hoặc màu.
+
+## 8. Teamwork và quyền sở hữu
+
+1. Trước khi code, tìm component/tokens tương đương. Chỉ thêm variant khi có khác biệt nghiệp vụ, không vì sở thích thị giác.
+2. Thay shared UI (`Navbar`, `Sidebar`, `Modal`, `FoodCard`, token và `global.css`) cần reviewer của module liên quan, ảnh desktop/mobile và kiểm tra keyboard.
+3. Call API phải đối chiếu chữ ký hàm, thứ tự tham số, loading/error và dữ liệu null. Build không chứng minh upload/submit hoạt động.
+4. Không mass-rename alias cũ. **PROPOSED:** hợp nhất `--success`/`--danger` với `--tf-*` trong một thay đổi riêng có screenshot regression.
+5. `--tf-text-muted` trên nền ngà ở sát ngưỡng AA theo tính toán tài liệu audit. **PROPOSED:** đo lại trên browser/font thật rồi mới cân nhắc đổi token; không chỉnh một vài màn hình riêng lẻ.
+6. Báo cáo kiểm thử theo nhóm STATIC / BUILD / BROWSER / API / BACKEND. Không suy diễn “pass” từ log cũ.
+
+## 9. Release gate V3.5
+
+Trước khi hợp nhất thay đổi giao diện:
+
+- Chạy `npm run build` trong `frontend`, `git diff --check`, rà style inline và token mới so với bảng CURRENT.
+- Dùng bàn phím qua tìm kiếm, filter, card, modal, upload và thêm/bớt món; xác minh focus quay lại đúng chỗ.
+- Thử tên quán/món một từ và ba dòng, mô tả trống và 300 ký tự, giá 0 và số dài, ảnh thiếu/lỗi/trùng, 1 và 15 category, 0/nhiều món.
+- Kiểm tra loading, empty, error, disabled và success; không bịa state không có từ API.
+- Kiểm tra 320, 390, 768, 1280 và 1440px; không có horizontal overflow, layout shift hoặc target chồng nhau.
+- Kiểm tra reduced-motion ở CSS và JavaScript. Khi backend chạy, thử upload file hợp lệ, file quá lớn và lỗi API; khi không chạy phải ghi rõ chưa xác minh API/BACKEND.
+- Thay đổi visual cần ảnh trước/sau. Nếu chỉ thay logic/semantics mà không đổi hình học, ghi rõ không có visual redesign.

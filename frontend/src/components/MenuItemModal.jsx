@@ -47,6 +47,7 @@ export default function MenuItemModal({
 
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
     if (file.size > 1024 * 1024) {
@@ -57,7 +58,7 @@ export default function MenuItemModal({
     setUploading(true);
     setUploadError('');
     try {
-      const res = await fileApi.upload(file, 'FOOD_IMAGE');
+      const res = await fileApi.upload('FOOD_IMAGE', file);
       setImageUrl(res.url);
     } catch (err) {
       setUploadError(getErrorMessage(err, 'Tải ảnh thất bại.'));
@@ -78,6 +79,8 @@ export default function MenuItemModal({
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      const firstErrorId = errors.itemName ? 'menu-item-name' : 'menu-item-price';
+      window.requestAnimationFrame(() => document.getElementById(firstErrorId)?.focus());
       return;
     }
 
@@ -101,7 +104,6 @@ export default function MenuItemModal({
     >
       <form onSubmit={handleSubmit} className="tf-menu-item-form">
         {error && <Alert type="error">{error}</Alert>}
-        {uploadError && <Alert type="error">{uploadError}</Alert>}
 
         {/* Tên Món Ăn */}
         <div className={`field ${fieldErrors.itemName ? 'field--error' : ''}`}>
@@ -123,9 +125,12 @@ export default function MenuItemModal({
               placeholder="Ví dụ: Cơm gà nướng sốt cay, Trà đào cam sả..."
               disabled={loading}
               autoFocus
+              aria-required="true"
+              aria-invalid={Boolean(fieldErrors.itemName)}
+              aria-describedby={fieldErrors.itemName ? 'menu-item-name-error' : undefined}
             />
           </div>
-          {fieldErrors.itemName && <p className="field__error">{fieldErrors.itemName}</p>}
+          {fieldErrors.itemName && <p className="field__error" id="menu-item-name-error">{fieldErrors.itemName}</p>}
         </div>
 
         {/* Nhóm Danh Mục & Giá Tiền (2 Cột cân đối) */}
@@ -173,12 +178,15 @@ export default function MenuItemModal({
                 }}
                 placeholder="45000"
                 disabled={loading}
+                aria-required="true"
+                aria-invalid={Boolean(fieldErrors.price)}
+                aria-describedby={fieldErrors.price ? 'menu-item-price-error' : undefined}
               />
               <span className="tf-menu-item-form__currency">
                 ₫
               </span>
             </div>
-            {fieldErrors.price && <p className="field__error">{fieldErrors.price}</p>}
+            {fieldErrors.price && <p className="field__error" id="menu-item-price-error">{fieldErrors.price}</p>}
           </div>
         </div>
 
@@ -202,8 +210,8 @@ export default function MenuItemModal({
         </div>
 
         {/* Hình Ảnh Món Ăn */}
-        <div className="field">
-          <label className="field__label">Hình ảnh món ăn</label>
+        <div className="field" role="group" aria-labelledby="menu-item-image-label">
+          <div className="field__label" id="menu-item-image-label">Hình ảnh món ăn</div>
           <div className="tf-menu-item-form__image-row">
             <div className="tf-menu-item-form__preview">
               {imageUrl ? (
@@ -233,6 +241,7 @@ export default function MenuItemModal({
                     onChange={handleImageFileChange}
                     disabled={uploading || loading}
                     className="tf-visually-hidden"
+                    aria-describedby={`menu-item-image-hint${uploadError ? ' menu-item-image-error' : ''}`}
                   />
                 </label>
 
@@ -240,7 +249,10 @@ export default function MenuItemModal({
                   <button
                     type="button"
                     className="btn btn--ghost btn--sm btn--danger-text"
-                    onClick={() => setImageUrl('')}
+                    onClick={() => {
+                      setImageUrl('');
+                      setUploadError('');
+                    }}
                     disabled={uploading || loading}
                   >
                     Xóa ảnh
@@ -248,19 +260,33 @@ export default function MenuItemModal({
                 )}
               </div>
 
+              <label className="tf-visually-hidden" htmlFor="menu-item-image-url">
+                URL ảnh món ăn
+              </label>
               <input
+                id="menu-item-image-url"
+                name="imageUrl"
                 type="text"
                 value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+                onChange={(e) => {
+                  setImageUrl(e.target.value);
+                  if (uploadError) setUploadError('');
+                }}
                 placeholder="Hoặc dán URL ảnh trực tiếp..."
                 disabled={uploading || loading}
                 className="field__input tf-menu-item-form__url"
+                aria-describedby="menu-item-image-hint"
               />
-              <span className="tf-menu-item-form__hint">
+              <span className="tf-menu-item-form__hint" id="menu-item-image-hint">
                 JPG, PNG, WEBP (tối đa 1MB).
               </span>
             </div>
           </div>
+          {uploadError && (
+            <div id="menu-item-image-error">
+              <Alert type="error">{uploadError}</Alert>
+            </div>
+          )}
         </div>
 
         {/* Trạng Thái Còn Món / Hết Món */}

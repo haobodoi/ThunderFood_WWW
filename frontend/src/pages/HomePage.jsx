@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ROLE_LABEL, homePathFor } from '../utils/roleUtils.js';
 import { HERO_MARQUEE_ROW_1, HERO_MARQUEE_ROW_2, getSmartRestaurantCover } from '../utils/mediaUtils.js';
+import { getMotionSafeScrollBehavior, prefersReducedMotion } from '../utils/motionUtils.js';
 import { publicRestaurantApi } from '../api/publicRestaurantApi.js';
 import { formatVND } from '../components/FoodCard.jsx';
 import Icon from '../components/Icon.jsx';
@@ -34,7 +35,7 @@ export default function HomePage() {
   }, [restaurants.length]);
 
   useEffect(() => {
-    if (paused || restaurants.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    if (paused || restaurants.length < 2 || prefersReducedMotion()) return undefined;
     const timer = window.setInterval(() => setActiveSlide((index) => (index + 1) % restaurants.length), 5000);
     return () => window.clearInterval(timer);
   }, [activeSlide, paused, restaurants.length]);
@@ -43,7 +44,7 @@ export default function HomePage() {
   const handleSearch = (event) => {
     event.preventDefault();
     setPassedKeyword(heroSearch.trim());
-    discoveryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    discoveryRef.current?.scrollIntoView({ behavior: getMotionSafeScrollBehavior(), block: 'start' });
   };
 
   return (
@@ -74,7 +75,10 @@ export default function HomePage() {
             </form>
             <div className="tf-hero__actions">
               <a href="#explore-restaurants" className="btn btn--primary btn--lg"
-                onClick={(event) => { event.preventDefault(); discoveryRef.current?.scrollIntoView({ behavior: 'smooth' }); }}>
+                onClick={(event) => {
+                  event.preventDefault();
+                  discoveryRef.current?.scrollIntoView({ behavior: getMotionSafeScrollBehavior(), block: 'start' });
+                }}>
                 Khám phá nhà hàng <Icon name="arrowRight" size={18} />
               </a>
               {user ? <Link to={homePathFor(user)} className="btn btn--outline btn--lg">

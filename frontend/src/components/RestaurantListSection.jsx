@@ -5,6 +5,12 @@ import { getSmartRestaurantCover } from '../utils/mediaUtils.js';
 import { formatVND } from './FoodCard.jsx';
 import Icon from './Icon.jsx';
 
+const deliveryFeeSortValue = (value) => {
+  if (value == null || (typeof value === 'string' && value.trim() === '')) return Number.POSITIVE_INFINITY;
+  const fee = Number(value);
+  return Number.isFinite(fee) && fee >= 0 ? fee : Number.POSITIVE_INFINITY;
+};
+
 export default function RestaurantListSection({
   title = 'Nhà hàng nổi bật trên ThunderFood', externalKeyword = '',
 }) {
@@ -53,7 +59,7 @@ export default function RestaurantListSection({
     .filter((restaurant) => activeCuisine === 'ALL' ||
       (restaurant.tags || []).some((tag) => tag.tagType === 'CUISINE' && tag.tagName?.trim() === activeCuisine))
     .sort((a, b) => {
-      if (sortBy === 'LOWEST_FEE') return Number(a.deliveryFee || 0) - Number(b.deliveryFee || 0);
+      if (sortBy === 'LOWEST_FEE') return deliveryFeeSortValue(a.deliveryFee) - deliveryFeeSortValue(b.deliveryFee);
       if (sortBy === 'OPEN_FIRST') return Number(Boolean(b.open)) - Number(Boolean(a.open));
       return 0;
     });
