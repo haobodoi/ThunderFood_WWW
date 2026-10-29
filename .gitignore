@@ -1,0 +1,17 @@
+# Local personal folders
+plan/
+log/
+cookie.txt
+
+# IDE & OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Dependencies & Build outputs
+backend/target/
+frontend/node_modules/
+frontend/dist/
+uploads/

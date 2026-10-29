@@ -1,9 +1,9 @@
 export const RESTAURANT_STATUS = {
-  DRAFT: { label: 'Đang soạn', tone: 'gray' },
-  PENDING: { label: 'Chờ duyệt', tone: 'amber' },
-  APPROVED: { label: 'Đang hoạt động', tone: 'green' },
-  REJECTED: { label: 'Bị từ chối', tone: 'red' },
-  LOCKED: { label: 'Đã khóa', tone: 'red' },
+  DRAFT: { label: 'Đang soạn', tone: 'neutral', icon: 'file' },
+  PENDING: { label: 'Chờ duyệt', tone: 'warning', icon: 'clock' },
+  APPROVED: { label: 'Đã duyệt', tone: 'success', icon: 'checkCircle' },
+  REJECTED: { label: 'Bị từ chối', tone: 'danger', icon: 'xCircle' },
+  LOCKED: { label: 'Đã khóa', tone: 'danger', icon: 'lock' },
 };
 
 export const EDITABLE_STATUSES = ['DRAFT', 'REJECTED'];

@@ -3,9 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { partnerRestaurantApi } from '../../api/partnerRestaurantApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { LAST_DATA_STEP, formatDate } from '../../utils/restaurantUtils.js';
+import { getSmartRestaurantCover } from '../../utils/mediaUtils.js';
 import Alert from '../../components/Alert.jsx';
 import FullPageLoader from '../../components/FullPageLoader.jsx';
-import StatusBadge from '../../components/StatusBadge.jsx';
+import StatusLabel from '../../components/StatusLabel.jsx';
 import Modal from '../../components/Modal.jsx';
 import Icon from '../../components/Icon.jsx';
 
@@ -13,66 +14,83 @@ const MINE = ['APPROVED', 'LOCKED'];
 
 function RestaurantCard({ restaurant, onDelete }) {
   const { status } = restaurant;
-  const progress = status === 'DRAFT' ? Math.round((restaurant.registrationStep / LAST_DATA_STEP) * 100) : 100;
+  const progressValue = status === 'DRAFT'
+    ? Math.max(0, Math.min(LAST_DATA_STEP, Number(restaurant.registrationStep) || 0))
+    : LAST_DATA_STEP;
   const date = restaurant.updatedAt || restaurant.submittedAt;
-
-  let message;
-  let action;
+  const imageUrl = restaurant.avatarImage || getSmartRestaurantCover(restaurant);
+  let message = '';
+  let action = 'Xem thông tin';
   if (status === 'DRAFT') {
-    message = `Bạn đã hoàn thành ${restaurant.registrationStep}/${LAST_DATA_STEP} bước. Hoàn tất và gửi duyệt để bắt đầu bán hàng.`;
+    message = 'Đã hoàn thành ' + progressValue + '/' + LAST_DATA_STEP + ' bước. Hoàn tất hồ sơ để gửi duyệt.';
     action = 'Tiếp tục đăng ký';
   } else if (status === 'PENDING') {
-    message = 'Đăng ký của bạn đang trong quá trình duyệt.';
+    message = 'Hồ sơ của bạn đang được xem xét.';
     action = 'Xem hồ sơ';
   } else if (status === 'REJECTED') {
-    message = `Hồ sơ bị từ chối${restaurant.statusReason ? `: ${restaurant.statusReason}` : ''}. Vui lòng chỉnh sửa và gửi lại.`;
+    message = 'Hồ sơ bị từ chối. ' + (restaurant.statusReason || 'Vui lòng kiểm tra và gửi lại.');
     action = 'Chỉnh sửa & gửi lại';
   } else if (status === 'APPROVED') {
-    message = `Quán đang ${restaurant.open ? 'mở cửa nhận đơn' : 'tạm đóng cửa'} trên ThunderFood.`;
-    action = 'Xem thông tin';
-  } else {
-    message = restaurant.statusReason ? `Quán đã bị khóa: ${restaurant.statusReason}` : 'Quán đã bị khóa.';
-    action = 'Xem thông tin';
+    action = 'Hồ sơ quán';
+  } else if (status === 'LOCKED') {
+    message = restaurant.statusReason || 'Quán đã bị khóa.';
   }
 
   return (
-    <article className={`restaurant-card restaurant-card--${status.toLowerCase()}`}>
+    <article className={'restaurant-card restaurant-card--' + String(status || '').toLowerCase()}>
       <div className="restaurant-card__image">
-        {restaurant.avatarImage ? <img src={restaurant.avatarImage} alt="" /> : <Icon name="store" size={30} />}
+        {imageUrl ? <img src={imageUrl} alt="" /> :
+          <span className="restaurant-card__image-fallback"><Icon name="store" size={28} /></span>}
       </div>
       <div className="restaurant-card__body">
-        <h3>{restaurant.restaurantName}</h3>
-        <p className="restaurant-card__address">
-          <Icon name="mapPin" size={14} />
-          {restaurant.address}
-        </p>
+        <div className="restaurant-card__heading">
+          <h3>{restaurant.restaurantName || 'Nhà hàng'}</h3>
+          <StatusLabel status={status} />
+        </div>
+        {restaurant.address && <p className="restaurant-card__address">
+          <Icon name="mapPin" size={14} /><span>{restaurant.address}</span>
+        </p>}
         <div className="restaurant-card__meta">
-          <span className="progress">
-            <span className="progress__bar" style={{ width: `${progress}%` }} />
-          </span>
-          <StatusBadge status={status} />
-          {date && <span className="muted">{formatDate(date)} đã cập nhật</span>}
+          {status === 'DRAFT' && (
+            <progress className="restaurant-card__progress" max={LAST_DATA_STEP} value={progressValue}
+              aria-label={'Tiến độ hồ sơ ' + (restaurant.restaurantName || '')} />
+          )}
+          {status === 'APPROVED' && (
+            <span className={'restaurant-card__open-inline' + (restaurant.open ? ' is-open' : '')}>
+              <Icon name={restaurant.open ? 'checkCircle' : 'pauseCircle'} size={15} />
+              <span>{restaurant.open ? 'Đang mở cửa nhận đơn' : 'Tạm ngưng nhận đơn'}</span>
+            </span>
+          )}
+          {date && <span className="muted">Cập nhật {formatDate(date)}</span>}
         </div>
-        <div className={`restaurant-card__note restaurant-card__note--${status.toLowerCase()}`}>
-          <Icon name={status === 'REJECTED' || status === 'LOCKED' ? 'alert' : status === 'APPROVED' ? 'check' : 'clock'} size={16} />
-          <span>{message}</span>
-        </div>
+        {status !== 'APPROVED' && (
+          <div className={'restaurant-card__note restaurant-card__note--' + String(status || '').toLowerCase()}>
+            <Icon name={status === 'REJECTED' || status === 'LOCKED' ? 'alert' : 'clock'} size={16} />
+            <span>{message}</span>
+          </div>
+        )}
         <div className="restaurant-card__actions">
-          <Link to={`/partner/register/${restaurant.id}`} className="btn btn--primary btn--sm">
+          {status === 'APPROVED' && <>
+            <Link to={'/partner/restaurants/' + restaurant.id + '/menu'} className="btn btn--primary btn--sm">
+              <Icon name="utensils" size={15} />Quản lý thực đơn
+            </Link>
+            <Link to={'/restaurants/' + restaurant.id} className="btn btn--outline btn--sm">
+              <Icon name="externalLink" size={14} />Xem trang quán
+            </Link>
+          </>}
+          <Link to={'/partner/register/' + restaurant.id}
+            className={status === 'APPROVED' ? 'btn btn--ghost btn--sm' : 'btn btn--primary btn--sm'}>
             {action}
           </Link>
-          {status === 'DRAFT' && (
-            <button type="button" className="btn btn--ghost btn--sm btn--danger-text" onClick={() => onDelete(restaurant)}>
-              <Icon name="trash" size={14} />
-              Xóa nháp
-            </button>
-          )}
+          {status === 'DRAFT' && <button type="button" className="btn btn--ghost btn--sm btn--danger-text"
+            onClick={() => onDelete(restaurant)}>
+            <Icon name="trash" size={14} />Xóa nháp
+          </button>}
         </div>
       </div>
     </article>
   );
 }
-
 export default function MyRestaurantsPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -81,6 +99,7 @@ export default function MyRestaurantsPage() {
   const [tab, setTab] = useState(location.state?.tab ?? null);
   const [flash, setFlash] = useState(location.state?.flash ?? '');
   const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
   const load = useCallback(async () => {
@@ -106,7 +125,9 @@ export default function MyRestaurantsPage() {
   const shown = activeTab === 'mine' ? mine : registrations;
 
   const confirmDelete = async () => {
+    if (!deleting || deleteBusy) return;
     setDeleteError('');
+    setDeleteBusy(true);
     try {
       await partnerRestaurantApi.remove(deleting.id);
       setFlash(`Đã xóa hồ sơ nháp "${deleting.restaurantName}".`);
@@ -114,6 +135,8 @@ export default function MyRestaurantsPage() {
       load();
     } catch (err) {
       setDeleteError(getErrorMessage(err, 'Không xóa được hồ sơ.'));
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -121,23 +144,22 @@ export default function MyRestaurantsPage() {
     <div className="page page--wide">
       <div className="page__head page__head--row">
         <div>
-          <h1>Đăng ký quán</h1>
-          <p className="muted">Quản lý các quán của bạn và hồ sơ đăng ký trên ThunderFood.</p>
+          <h1>Quản lý quán & Hồ sơ đối tác</h1>
+          <p className="muted">Quản lý thực đơn các quán đang hoạt động và theo dõi hồ sơ đăng ký trên ThunderFood.</p>
         </div>
         <Link to="/partner/register" className="btn btn--primary">
           <Icon name="plus" size={16} />
-          Đăng ký quán mới
+          <span>Đăng ký quán mới</span>
         </Link>
       </div>
 
       {flash && <Alert type="success">{flash}</Alert>}
       {error && <Alert type="error">{error}</Alert>}
 
-      <div className="tabs" role="tablist">
+      <div className="tabs" aria-label="Lọc quán của đối tác">
         <button
           type="button"
-          role="tab"
-          aria-selected={activeTab === 'mine'}
+          aria-pressed={activeTab === 'mine'}
           className={`tabs__item ${activeTab === 'mine' ? 'is-active' : ''}`}
           onClick={() => setTab('mine')}
         >
@@ -145,19 +167,20 @@ export default function MyRestaurantsPage() {
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={activeTab === 'registrations'}
+          aria-pressed={activeTab === 'registrations'}
           className={`tabs__item ${activeTab === 'registrations' ? 'is-active' : ''}`}
           onClick={() => setTab('registrations')}
         >
-          Đăng ký quán ({registrations.length})
+          Hồ sơ đăng ký ({registrations.length})
         </button>
       </div>
 
       {shown.length === 0 ? (
         <div className="empty-state">
           <Icon name="store" size={34} />
-          <strong>{activeTab === 'mine' ? 'Bạn chưa có quán nào đang hoạt động' : 'Chưa có hồ sơ đăng ký nào'}</strong>
+          <strong>
+            {activeTab === 'mine' ? 'Bạn chưa có quán nào đang hoạt động' : 'Chưa có hồ sơ đăng ký nào'}
+          </strong>
           <p>Đăng ký quán qua 5 bước đơn giản, ThunderFood sẽ duyệt và đưa quán của bạn lên ứng dụng.</p>
           <Link to="/partner/register" className="btn btn--primary">
             Đăng ký quán ngay
@@ -174,14 +197,14 @@ export default function MyRestaurantsPage() {
       {deleting && (
         <Modal
           title="Xóa hồ sơ nháp?"
-          onClose={() => setDeleting(null)}
+          onClose={deleteBusy ? undefined : () => setDeleting(null)}
           footer={
             <>
-              <button type="button" className="btn btn--outline" onClick={() => setDeleting(null)}>
+              <button type="button" className="btn btn--outline" onClick={() => setDeleting(null)} disabled={deleteBusy}>
                 Hủy
               </button>
-              <button type="button" className="btn btn--danger" onClick={confirmDelete}>
-                Xóa hồ sơ
+              <button type="button" className="btn btn--danger" onClick={confirmDelete} disabled={deleteBusy}>
+                {deleteBusy ? 'Đang xóa...' : 'Xóa hồ sơ'}
               </button>
             </>
           }

@@ -6,7 +6,7 @@ import useRegistrationOptions from '../../hooks/useRegistrationOptions.js';
 import { formatDateTime } from '../../utils/restaurantUtils.js';
 import Alert from '../../components/Alert.jsx';
 import FullPageLoader from '../../components/FullPageLoader.jsx';
-import StatusBadge from '../../components/StatusBadge.jsx';
+import StatusLabel from '../../components/StatusLabel.jsx';
 import RestaurantSummary from '../../components/RestaurantSummary.jsx';
 import Modal from '../../components/Modal.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -86,7 +86,7 @@ export default function RestaurantReviewDetailPage() {
               </p>
               <p className="muted">Gửi duyệt lúc {formatDateTime(registration.submittedAt)}</p>
             </div>
-            <StatusBadge status={registration.status} />
+            <StatusLabel status={registration.status} />
           </div>
 
           {notice && <Alert type="success">{notice}</Alert>}
@@ -121,14 +121,14 @@ export default function RestaurantReviewDetailPage() {
       {rejecting && (
         <Modal
           title="Từ chối hồ sơ"
-          onClose={() => setRejecting(false)}
+          onClose={busy ? undefined : () => setRejecting(false)}
           footer={
             <>
-              <button type="button" className="btn btn--outline" onClick={() => setRejecting(false)}>
+              <button type="button" className="btn btn--outline" onClick={() => setRejecting(false)} disabled={busy}>
                 Hủy
               </button>
               <button type="button" className="btn btn--danger" onClick={reject} disabled={busy}>
-                Xác nhận từ chối
+                {busy ? 'Đang xử lý...' : 'Xác nhận từ chối'}
               </button>
             </>
           }

@@ -8,7 +8,7 @@ import { LAST_DATA_STEP, REGISTRATION_STEPS, isEditable } from '../../utils/rest
 import Stepper from '../../components/Stepper.jsx';
 import Alert from '../../components/Alert.jsx';
 import FullPageLoader from '../../components/FullPageLoader.jsx';
-import StatusBadge from '../../components/StatusBadge.jsx';
+import StatusLabel from '../../components/StatusLabel.jsx';
 import RestaurantSummary from '../../components/RestaurantSummary.jsx';
 import Icon from '../../components/Icon.jsx';
 import BasicStep from './steps/BasicStep.jsx';
@@ -103,7 +103,7 @@ export default function RestaurantRegisterPage() {
           </Link>
           <h1>{registration ? registration.restaurantName : 'Đăng ký quán mới'}</h1>
         </div>
-        {registration && <StatusBadge status={registration.status} />}
+        {registration && <StatusLabel status={registration.status} />}
       </div>
 
       {optionsError && <Alert type="error">{optionsError}</Alert>}

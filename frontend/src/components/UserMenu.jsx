@@ -9,6 +9,7 @@ export default function UserMenu() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const roleIcon = user.role === 'ADMIN' ? 'shield' : user.role === 'RESTAURANT_PARTNER' ? 'store' : 'user';
 
   useEffect(() => {
     if (!open) return undefined;
@@ -51,7 +52,7 @@ export default function UserMenu() {
           <div className="user-menu__header">
             <strong>{user.fullName}</strong>
             <span>{user.email}</span>
-            <span className={`role-chip role-chip--${user.role.toLowerCase()}`}>{ROLE_LABEL[user.role]}</span>
+            <span className="user-menu__role"><Icon name={roleIcon} size={14} />{ROLE_LABEL[user.role]}</span>
           </div>
           <Link to={homePathFor(user)} className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
             <Icon name="home" size={18} />

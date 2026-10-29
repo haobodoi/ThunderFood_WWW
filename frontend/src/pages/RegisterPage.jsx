@@ -24,7 +24,7 @@ const ACCOUNT_TYPES = [
     value: ROLES.CUSTOMER,
     icon: 'user',
     title: 'Khách hàng',
-    description: 'Tìm món, đặt hàng và theo dõi đơn',
+    description: 'Khám phá nhà hàng và chọn món',
   },
   {
     value: ROLES.RESTAURANT_PARTNER,

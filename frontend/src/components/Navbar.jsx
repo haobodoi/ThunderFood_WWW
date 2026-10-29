@@ -1,15 +1,14 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { ROLE_LABEL, homePathFor } from '../utils/roleUtils.js';
 import Icon from './Icon.jsx';
 import UserMenu from './UserMenu.jsx';
+import Logo from './Logo.jsx';
 
 export function Brand({ light = false }) {
   return (
     <Link to="/" className={`brand ${light ? 'brand--light' : ''}`}>
-      <span className="brand__logo">
-        <Icon name="bolt" size={18} strokeWidth={2.4} />
-      </span>
-      ThunderFood
+      <Logo size={30} light={light} />
     </Link>
   );
 }
@@ -26,6 +25,14 @@ export default function Navbar() {
           <NavLink to="/" end className="navbar__link">
             Trang chủ
           </NavLink>
+          <a href="/#explore-restaurants" className="navbar__link">
+            Khám phá quán ngon
+          </a>
+          {user && (
+            <NavLink to={homePathFor(user)} className="navbar__link">
+              {ROLE_LABEL[user.role]}
+            </NavLink>
+          )}
         </nav>
 
         <div className="navbar__actions">

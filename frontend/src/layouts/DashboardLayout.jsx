@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ROLE_LABEL, initialsOf } from '../utils/roleUtils.js';
+import { initialsOf } from '../utils/roleUtils.js';
 import { Brand } from '../components/Navbar.jsx';
 import Icon from '../components/Icon.jsx';
 
@@ -28,6 +28,11 @@ export default function DashboardLayout({ area }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const menu = MENUS[area];
+  const currentPage = location.pathname.includes('/menu')
+    ? 'Quản lý thực đơn'
+    : location.pathname.includes('/register')
+      ? 'Đăng ký quán'
+      : menu.items.find((item) => item.end ? location.pathname === item.to : location.pathname.startsWith(item.to))?.label || menu.title;
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -79,7 +84,12 @@ export default function DashboardLayout({ area }) {
           >
             <Icon name="menu" size={20} />
           </button>
-          <span className={`role-chip role-chip--${user.role.toLowerCase()}`}>{ROLE_LABEL[user.role]}</span>
+          <div className="dash__context" aria-label={`Vị trí hiện tại: ${menu.title}, ${currentPage}`}>
+            <Icon name={area === 'partner' ? 'store' : 'shield'} size={16} />
+            <span>{menu.title}</span>
+            <Icon name="chevronRight" size={14} />
+            <strong>{currentPage}</strong>
+          </div>
           <div className="dash__topbar-actions">
             <Link to="/" className="btn btn--ghost btn--sm">
               Về trang chủ
