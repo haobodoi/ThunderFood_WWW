@@ -9,6 +9,7 @@ const MENUS = {
   partner: {
     title: 'Kênh đối tác',
     items: [
+      { label: 'Đánh giá về quán', icon: 'store', to: '/partner/reviews', end: true },
       { label: 'Quán của tôi', icon: 'store', to: '/partner', end: true },
       { label: 'Đăng ký quán mới', icon: 'plus', to: '/partner/register', end: true },
     ],
@@ -17,6 +18,7 @@ const MENUS = {
     title: 'Trang quản trị',
     items: [
       { label: 'Tổng quan', icon: 'home', to: '/admin', end: true },
+      { label: 'Báo cáo đánh giá', icon: 'shield', to: '/admin/review-reports', end: true },
       { label: 'Duyệt quán', icon: 'shield', to: '/admin/restaurants', end: false },
     ],
   },
