@@ -23,6 +23,11 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(vn.edu.iuh.fit.thunderfood.exception.ConcurrentUpdateException.class)
+    public ResponseEntity<ApiErrorDto> concurrentUpdate(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorDto.of("STALE_VERSION", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorDto> invalidBody(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new LinkedHashMap<>();
@@ -68,6 +73,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorDto> conflict(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiErrorDto.of("CONFLICT", "Dữ liệu bị trùng hoặc không hợp lệ (ví dụ email/số điện thoại đã được sử dụng)"));
+                .body(ApiErrorDto.of("CONFLICT", "Dữ liệu đã tồn tại hoặc tham chiếu không hợp lệ. Vui lòng tải lại trước khi thử lại."));
     }
 }

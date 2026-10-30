@@ -47,7 +47,7 @@ ThunderFood/
 
 **Yêu cầu:** JDK 21, Maven (hoặc IntelliJ), Node.js 18+, MariaDB 10.6+.
 
-1. **Tạo CSDL:** chạy `backend/database/thunderfood_mariadb.sql` trong HeidiSQL/DBeaver.
+1. **Tạo CSDL:** chạy `backend/database/thunderfood_mariadb_v4.sql` trong HeidiSQL/DBeaver (bản hiện tại có giỏ hàng và đánh giá).
    ⚠️ File bắt đầu bằng `DROP DATABASE IF EXISTS thunderfood` nên mỗi lần chạy sẽ xóa và tạo lại toàn bộ dữ liệu.
 2. **Backend:** sửa user/mật khẩu MariaDB trong `backend/src/main/resources/application.properties` (mặc định `root` / `123456`), rồi chạy `ThunderFoodApplication`.
    Ảnh tải lên được lưu trong thư mục `uploads/`, nằm trong thư mục làm việc của backend.
@@ -117,3 +117,31 @@ Trạng thái quán: `DRAFT` (đang soạn) → `PENDING` (chờ duyệt) → `A
 | `POST /api/admin/restaurants/{id}/approve` · `/reject` (`{reason}`) | ADMIN | Duyệt · từ chối |
 
 Mã lỗi: `400` khi dữ liệu không hợp lệ (có `errors` theo từng trường) hoặc sai quy trình, `401` khi chưa đăng nhập, `403` khi không đủ quyền hoặc lỗi CSRF, `404` khi không tìm thấy (kể cả khi truy cập hồ sơ của người khác).
+
+## Giỏ hàng và đánh giá (schema v4)
+
+- Khách hàng: trang `/customer/cart` lưu giỏ theo từng quán, thêm/tăng/giảm/xóa, ghi chú riêng từng dòng. Giỏ đồng bộ khi reload, đổi thiết bị hoặc quay lại tab. Không có nút đặt hàng/thanh toán.
+- Giá và tình trạng phục vụ do server quyết định. Quán phải đang được duyệt, bật phục vụ và nằm trong giờ mở cửa; món phải được duyệt, chưa xóa, còn hàng để thêm/tăng. Món không khả dụng vẫn giữ trong giỏ để giảm/xóa và không tính vào tạm tính món khả dụng.
+- Mỗi món tối đa 99 phần cộng tất cả ghi chú, tối đa 50 dòng/giỏ. Ghi chú cùng nội dung sau trim + chuẩn hóa Unicode sẽ gộp dòng; khác ghi chú thì tách dòng.
+- Mỗi giỏ có version. Ghi bằng version cũ trả `409 STALE_VERSION`; frontend tải lại, không tự gửi lại thao tác có thể bị nhân đôi.
+- Trang quán có đánh giá công khai, thống kê, lọc sao/ảnh, sắp xếp và phân trang. Khách chỉ gửi khi sở hữu đơn COMPLETED trong 30 ngày và chưa từng đánh giá đơn đó. Không thể tự khai “đã mua hàng”. Không tạo đơn giả qua API đánh giá.
+- `/customer/reviews`: sửa trong 7 ngày, bổ sung tối đa 5 ảnh JPG/PNG (1MB/ảnh), xóa mềm. Đơn đã có review bị xóa vẫn không được đánh giá lần hai.
+- `/partner/reviews`: chỉ chủ quán được tạo/sửa/xóa phản hồi; có thể báo cáo vi phạm, không được xóa review của khách.
+- `/admin/review-reports`: xem báo cáo, ẩn/khôi phục review có lý do và lịch sử, ghi kết quả xử lý. Báo cáo không tự động ẩn review. Đánh giá ẩn/xóa không tính vào điểm; ảnh cũng bị chặn truy cập công khai và không cache.
+- Tối đa 10 review hoặc 10 báo cáo trong 24 giờ/tài khoản. Backend kiểm tra lại role/trạng thái tài khoản cho mọi thao tác có quyền dù session đã đăng nhập trước đó.
+
+API chính: `/api/customer/carts`, `/api/customer/reviews`, `/api/partner/reviews`, `/api/admin/review-reports`, GET `/api/restaurants/{id}/reviews`. Các thao tác cập nhật cần CSRF như API hiện có. DTO không nhận giá hoặc customerId từ client.
+
+Chi tiết schema và quy tắc: [backend/database/thunderfood_mariadb_v4_NOTES.md](backend/database/thunderfood_mariadb_v4_NOTES.md).
+
+### Kiểm thử tích hợp trên DB riêng
+
+Script `backend/tests/customer_features_smoke.py` dùng Python standard library và MariaDB CLI, chạy qua HTTP API thật. Phải khởi tạo MariaDB riêng tại thư mục `.test-runtime/mariadb`, cổng **13317**, password thử nghiệm `local-test-only`. Không dùng DB làm việc.
+
+Chạy backend với `SPRING_DATASOURCE_URL=jdbc:mariadb://127.0.0.1:13317/thunderfood`, `SPRING_DATASOURCE_PASSWORD=local-test-only`, `APP_UPLOAD_DIR` trỏ vào `.test-runtime/uploads` và `--server.port=18081`. Khởi tạo schema v4 trong instance thử nghiệm trước khi chạy backend lần đầu. Sau đó từ root project:
+
+```bash
+python backend/tests/customer_features_smoke.py --reset-disposable-db
+```
+
+Script kiểm tra datadir và cổng trước khi reset schema thử nghiệm. Bao gồm kiểm tra xung đột ghi đồng thời, ownership, CSRF, giới hạn số lượng, điều kiện đơn hàng, ảnh và kiểm duyệt. `MARIADB_CLIENT` cho phép cấu hình đường dẫn CLI; script mặc định đường dẫn MariaDB 12.2 trên Windows.

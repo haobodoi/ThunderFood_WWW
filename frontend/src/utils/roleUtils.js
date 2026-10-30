@@ -22,6 +22,7 @@ export function homePathFor(user) {
 
 export function canAccessPath(user, path) {
   if (!user || !path) return false;
+  if (user.role === ROLES.CUSTOMER && /^\/restaurants\/\d+$/.test(path)) return true;
   const base = ROLE_HOME[user.role];
   return Boolean(base) && (path === base || path.startsWith(`${base}/`));
 }

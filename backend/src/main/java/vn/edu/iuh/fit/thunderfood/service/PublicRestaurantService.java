@@ -23,13 +23,15 @@ public class PublicRestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final MenuCategoryRepository categoryRepository;
     private final MenuItemRepository menuItemRepository;
+    private final CustomerRules customerRules;
 
     public PublicRestaurantService(RestaurantRepository restaurantRepository,
                                    MenuCategoryRepository categoryRepository,
-                                   MenuItemRepository menuItemRepository) {
+                                   MenuItemRepository menuItemRepository, CustomerRules customerRules) {
         this.restaurantRepository = restaurantRepository;
         this.categoryRepository = categoryRepository;
         this.menuItemRepository = menuItemRepository;
+        this.customerRules = customerRules;
     }
 
     public List<RestaurantPublicDto> search(String keyword, String province) {
@@ -149,7 +151,7 @@ public class PublicRestaurantService {
                 r.getAvatarImage(),
                 r.getCoverImage(),
                 r.getDeliveryFee(),
-                r.getOpen(),
+                customerRules.open(r.getId(), Boolean.TRUE.equals(r.getOpen())),
                 openingHours,
                 tags
         );

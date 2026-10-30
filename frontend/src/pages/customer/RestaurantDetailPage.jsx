@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { publicRestaurantApi } from '../../api/publicRestaurantApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { getSmartRestaurantCover } from '../../utils/mediaUtils.js';
@@ -10,10 +10,18 @@ import Alert from '../../components/Alert.jsx';
 import Modal from '../../components/Modal.jsx';
 import Icon from '../../components/Icon.jsx';
 
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useCart } from '../../context/CartContext.jsx';
+import CartContents from '../../components/CartContents.jsx';
+import CustomerReviews from '../../components/CustomerReviews.jsx';
+
 const categoryKey = (category) => String(category.categoryId ?? 'OTHER');
 
 export default function RestaurantDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const cartState = useCart();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,7 +29,10 @@ export default function RestaurantDetailPage() {
   const [menuSearch, setMenuSearch] = useState('');
   const [viewingItem, setViewingItem] = useState(null);
   const [modalQty, setModalQty] = useState(1);
-  const [selectedItems, setSelectedItems] = useState({});
+  const [modalNote, setModalNote] = useState('');
+  const [cartError, setCartError] = useState('');
+  const currentCart = cartState.find(id);
+  const selectedItems = Object.fromEntries((currentCart?.items || []).map(line => [line.item_id, { qty: (currentCart.items.filter(i => i.item_id === line.item_id).reduce((n, i) => n + i.quantity, 0)) }]));
   const [cartOpen, setCartOpen] = useState(false);
   const [cartToast, setCartToast] = useState('');
   const toastTimer = useRef(null);
@@ -32,7 +43,9 @@ export default function RestaurantDetailPage() {
     setLoading(true);
     setError('');
     setData(null);
-    setSelectedItems({});
+    setCartOpen(false);
+    setViewingItem(null);
+    setCartError('');
     publicRestaurantApi.getMenu(id)
       .then((response) => {
         if (!active) return;
@@ -57,24 +70,15 @@ export default function RestaurantDetailPage() {
     toastTimer.current = window.setTimeout(() => setCartToast(''), 2800);
   };
 
-  const addToCart = (item, quantity = 1) => {
-    setSelectedItems((previous) => ({
-      ...previous,
-      [item.id]: { item, qty: (previous[item.id]?.qty || 0) + quantity },
-    }));
-    showToast('Đã thêm ' + quantity + ' × ' + item.itemName + ' vào danh sách chọn món');
-  };
-
-  const changeQuantity = (itemId, delta) => {
-    setSelectedItems((previous) => {
-      const entry = previous[itemId];
-      if (!entry) return previous;
-      const next = { ...previous };
-      const qty = entry.qty + delta;
-      if (qty < 1) delete next[itemId];
-      else next[itemId] = { ...entry, qty };
-      return next;
-    });
+  const addToCart = async (item, quantity = 1, note = '') => {
+    if (!user) { navigate('/login', { state: { from: `/restaurants/${id}` } }); return; }
+    if (user.role !== 'CUSTOMER') { setCartError('Vui lòng dùng tài khoản khách hàng để thêm giỏ.'); return; }
+    setCartError('');
+    try {
+      await cartState.add(item, quantity, note);
+      showToast('Đã thêm ' + quantity + ' × ' + item.itemName + ' vào giỏ hàng');
+      setViewingItem(null);
+    } catch (err) { setCartError(getErrorMessage(err, err.message)); }
   };
 
   if (loading) return <FullPageLoader text="Đang tải thực đơn..." />;
@@ -115,10 +119,8 @@ export default function RestaurantDetailPage() {
           || String(item.description || '').toLocaleLowerCase('vi-VN').includes(query)),
     }))
     .filter((category) => category.items.length > 0);
-  const cartEntries = Object.values(selectedItems);
-  const totalCount = cartEntries.reduce((sum, entry) => sum + entry.qty, 0);
-  const totalAmount = cartEntries.reduce((sum, entry) =>
-    sum + Number(entry.item.price || 0) * entry.qty, 0);
+  const totalCount = Number(currentCart?.quantity || 0);
+  const totalAmount = Number(currentCart?.subtotal || 0);
 
   const selectCategory = (key) => {
     setActiveCategory(key);
@@ -202,6 +204,7 @@ export default function RestaurantDetailPage() {
       </nav>
 
       <main className="container tf-menu-content">
+        {(cartError || cartState.error) && <Alert type="error">{cartError || cartState.error}<button className="btn btn--ghost btn--sm" disabled={cartState.loading || cartState.busy} onClick={cartState.refresh}>Đồng bộ lại giỏ</button></Alert>}
         {!isOpen && <Alert type="warning" title="Nhà hàng hiện tạm đóng cửa">
           Bạn có thể xem trước thực đơn và quay lại khi quán mở cửa.
         </Alert>}
@@ -224,8 +227,8 @@ export default function RestaurantDetailPage() {
                   </div>
                   <div className="tf-food-grid">
                     {cat.items.map((item) => (
-                      <FoodCard key={item.id} item={item} orderable={isOpen} quantityInCart={selectedItems[item.id]?.qty || 0}
-                        onClick={() => { setViewingItem(item); setModalQty(1); }}
+                      <FoodCard key={item.id} item={item} orderable={isOpen && !cartState.busy && !cartState.loading} quantityInCart={selectedItems[item.id]?.qty || 0}
+                        onClick={() => { setViewingItem(item); setModalQty(1); setModalNote(''); setCartError(''); }}
                         onAddToCart={() => addToCart(item)} />
                     ))}
                   </div>
@@ -236,6 +239,8 @@ export default function RestaurantDetailPage() {
         )}
       </main>
 
+      <CustomerReviews key={id} restaurantId={id} />
+
       {totalCount > 0 && (
         <div className="tf-floating-cart" role="region" aria-label="Danh sách chọn món">
           <div className="tf-floating-cart__summary">
@@ -243,7 +248,7 @@ export default function RestaurantDetailPage() {
             <div><strong>Đã chọn {totalCount} món</strong><small>Tạm tính {formatVND(totalAmount)} · chưa gồm phí giao</small></div>
           </div>
           <button type="button" className="btn btn--primary btn--sm" onClick={() => setCartOpen(true)}>
-            Xem món đã chọn
+            Xem giỏ hàng
           </button>
         </div>
       )}
@@ -263,17 +268,19 @@ export default function RestaurantDetailPage() {
               </span>
             </div>
             {viewingItem.description && <p>{viewingItem.description}</p>}
+            <label className="commerce-field">Ghi chú cho món<textarea maxLength={300} rows={2} value={modalNote} onChange={e => setModalNote(e.target.value)} placeholder="Ví dụ: ít cay, không hành…" /></label>
+            {cartError && <Alert type="error">{cartError}</Alert>}
             <div className="tf-item-detail__actions">
               <div className="tf-quantity" aria-label="Số lượng">
-                <button type="button" className="icon-btn" disabled={modalQty <= 1}
+                <button type="button" className="icon-btn" disabled={modalQty <= 1 || cartState.busy}
                   onClick={() => setModalQty((value) => Math.max(1, value - 1))} aria-label="Giảm số lượng"><Icon name="minus" size={15} /></button>
                 <strong>{modalQty}</strong>
-                <button type="button" className="icon-btn" onClick={() => setModalQty((value) => value + 1)}
+                <button type="button" className="icon-btn" disabled={modalQty >= 99 || cartState.busy} onClick={() => setModalQty((value) => Math.min(99, value + 1))}
                   aria-label="Tăng số lượng"><Icon name="plus" size={15} /></button>
               </div>
-              <button type="button" className="btn btn--primary" disabled={!viewingItem.available || !isOpen}
-                onClick={() => { addToCart(viewingItem, modalQty); setViewingItem(null); }}>
-                Chọn món · {formatVND(Number(viewingItem.price || 0) * modalQty)}
+              <button type="button" className="btn btn--primary" disabled={!viewingItem.available || !isOpen || cartState.busy || cartState.loading}
+                onClick={() => addToCart(viewingItem, modalQty, modalNote)}>
+                Thêm vào giỏ · {formatVND(Number(viewingItem.price || 0) * modalQty)}
               </button>
             </div>
           </div>
@@ -281,24 +288,9 @@ export default function RestaurantDetailPage() {
       )}
 
       {cartOpen && (
-        <Modal title="Món đã chọn" onClose={() => setCartOpen(false)}>
-          <div className="tf-cart-preview">
-            {cartEntries.length === 0 ? <p>Chưa chọn món nào.</p> : cartEntries.map(({ item, qty }) => (
-              <div className="tf-cart-preview__row" key={item.id}>
-                <div><strong>{item.itemName}</strong><small>{formatVND(item.price)} / món</small></div>
-                <div className="tf-quantity">
-                  <button type="button" className="icon-btn" onClick={() => changeQuantity(item.id, -1)}
-                    aria-label={'Giảm số lượng ' + item.itemName}><Icon name="minus" size={14} /></button>
-                  <strong>{qty}</strong>
-                  <button type="button" className="icon-btn" onClick={() => changeQuantity(item.id, 1)}
-                    aria-label={'Tăng số lượng ' + item.itemName}><Icon name="plus" size={14} /></button>
-                </div>
-              </div>
-            ))}
-            <div className="tf-cart-preview__total"><span>Tạm tính</span><strong>{formatVND(totalAmount)}</strong></div>
-            <p className="tf-cart-preview__note">Đây là danh sách chọn món tạm thời. Chức năng đặt hàng sẽ được bổ sung ở giai đoạn tiếp theo.</p>
-            <button type="button" className="btn btn--outline btn--sm" onClick={() => { setSelectedItems({}); setCartOpen(false); }}>Xóa danh sách</button>
-          </div>
+        <Modal title="Giỏ hàng" onClose={() => setCartOpen(false)}>
+          <CartContents cart={currentCart} />
+          <Link className="btn btn--ghost" to="/customer/cart">Xem giỏ của tất cả quán</Link>
         </Modal>
       )}
     </div>
