@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import vn.edu.iuh.fit.thunderfood.dto.ApiErrorDto;
 import vn.edu.iuh.fit.thunderfood.exception.BusinessException;
+import vn.edu.iuh.fit.thunderfood.exception.ConcurrentUpdateException;
 import vn.edu.iuh.fit.thunderfood.exception.FieldValidationException;
 import vn.edu.iuh.fit.thunderfood.exception.ResourceNotFoundException;
 
@@ -23,7 +24,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(vn.edu.iuh.fit.thunderfood.exception.ConcurrentUpdateException.class)
+    @ExceptionHandler(ConcurrentUpdateException.class)
     public ResponseEntity<ApiErrorDto> concurrentUpdate(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorDto.of("STALE_VERSION", ex.getMessage()));
     }

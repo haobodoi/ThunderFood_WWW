@@ -29,12 +29,61 @@
 .commerce-compose .btn, .commerce-review > .btn { margin: 5px 8px 5px 0; }
 .commerce-review details { margin-top: 16px; }
 .commerce-review summary { cursor: pointer; }
+.tf-order-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.tf-order-status--neutral { color: var(--tf-text-body); }
+.tf-order-status--warning { color: #92400e; }
+.tf-order-status--success { color: #065f46; }
+.tf-order-status--danger { color: #991b1b; }
+.tf-order-stepper { margin: 0 0 20px; }
+.tf-order-stepper li.is-done { border-color: var(--tf-navy-800); }
+.tf-order-card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; margin: 20px 0; background: #fff; overflow-wrap: anywhere; }
+.tf-order-card h2 { margin-bottom: 0; }
+.tf-order-card--fresh { border-color: var(--tf-navy-800); }
+.tf-order-lines { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 10px; }
+.tf-order-lines small { display: block; color: #596273; }
+.tf-order-lines strong { white-space: nowrap; }
+.tf-checkout__form .field { margin-bottom: 16px; }
+.commerce-filters label { white-space: nowrap; }
+.tf-order-totals { margin: 16px 0; padding-top: 12px; border-top: 1px solid #e5e7eb; display: grid; gap: 6px; }
+.tf-order-totals > div { display: flex; justify-content: space-between; gap: 16px; }
+.tf-order-totals dd { margin: 0; }
+.tf-order-totals__grand { font-size: 1.1rem; font-weight: 800; }
+.tf-order-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tf-order-actions:empty { display: none; }
+.tf-order-cancel { margin-top: 16px; }
+.tf-order-cancel summary { cursor: pointer; font-weight: 700; }
+.tf-order-review { margin-top: 12px; }
+.tf-checkout__form { margin: 0; min-width: 0; }
+.tf-checkout__summary { min-width: 0; overflow-wrap: anywhere; }
+.tf-checkout__summary .btn--block + .btn--block { margin-top: 8px; }
+.tf-pay-methods { border: 0; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+.tf-pay-methods legend { font-weight: 500; margin-bottom: 8px; padding: 0; }
+.tf-pay-method { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; }
+.tf-pay-method:has(input:checked) { border-color: var(--tf-navy-800); }
+.tf-pay-method:has(input:disabled) { color: #7a8493; cursor: not-allowed; }
+.tf-qr { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; margin: 20px 0; background: #fff; }
+.tf-qr__layout { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; margin: 16px 0; }
+.tf-qr__code { flex: none; line-height: 0; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; background: #fff; }
+.tf-qr__code svg { max-width: 100%; height: auto; }
+.tf-qr__details { flex: 1 1 280px; min-width: 0; margin: 0; display: grid; gap: 4px; }
+.tf-qr__row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: center; min-height: 40px; }
+.tf-qr__row dt { color: #596273; }
+.tf-qr__row dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; overflow-wrap: anywhere; min-width: 0; }
+.tf-qr__row strong { min-width: 0; }
 @media (max-width: 640px) {
+  .tf-qr__code { margin: 0 auto; }
+  .tf-qr, .tf-order-card { padding: 14px; }
   .commerce-page { padding-top: 20px; }
   .commerce-cart, .commerce-review, .commerce-compose { padding: 14px; }
   .commerce-cart-line__layout { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; }
   .commerce-cart-line__image { width: 80px; height: 80px; }
   .commerce-row { gap: 10px; flex-wrap: wrap; }
   .commerce-filters > label { width: 100%; }
-  .navbar__actions { flex-wrap: wrap; justify-content: flex-end; }
+}
+/* Navbar cao cố định 64px (.tf-sticky-nav bám theo): màn hẹp chuyển hai link này vào menu tài khoản. */
+@media (max-width: 960px) {
+  .navbar__actions .navbar__customer-link { display: none; }
+}
+@media (max-width: 360px) {
+  .navbar__cart-link > span:first-child { display: none; }
 }

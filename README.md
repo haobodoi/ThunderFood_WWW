@@ -45,6 +45,33 @@ ThunderFood/
 
 ## Chạy project
 
+### Bằng Docker (nhanh nhất)
+
+Chỉ cần Docker, không cần cài JDK, Node hay MariaDB:
+
+```bash
+docker compose up -d --build     # mở http://localhost:5173
+docker compose logs -f backend   # xem log
+docker compose down              # dừng, giữ dữ liệu
+docker compose down -v           # dừng và xóa dữ liệu; lần up sau nạp lại dữ liệu mẫu từ schema v4
+```
+
+MariaDB mở ở `127.0.0.1:3307` (`root` / `123456`) để xem bằng HeidiSQL/DBeaver. Đổi cổng hoặc mật khẩu bằng biến `WEB_PORT`, `DB_PORT`, `DB_PASSWORD`. Sau khi sửa code, chạy lại lệnh `up -d --build`.
+
+Giỏ hàng và đặt hàng tuân theo giờ mở cửa thật của quán (giờ Việt Nam). Nếu test ngoài giờ, mở cửa cả ngày cho mọi quán:
+
+```bash
+docker compose exec db mariadb -uroot -p123456 thunderfood -e "UPDATE restaurant_opening_hours SET open_time='00:00:00', close_time='23:59:59'"
+```
+
+### Bằng IntelliJ IDEA
+
+Mở **thư mục gốc của repo**, không mở riêng `backend/`. IntelliJ tự nhận backend là module Maven, dùng JDK 21 (cần có sẵn JDK 21 trên máy) và bỏ qua `_old_v1/`, `node_modules/`, `target/`. Nếu chưa thấy module `thunderfood-backend`, bấm **Sync** trong cửa sổ Maven.
+
+Thanh Run có sẵn: **Backend** (dùng DB trong `application.properties`), **Backend (DB Docker)** (dùng DB của `docker compose up -d db` ở cổng 3307) và **Frontend** (Vite ở cổng 5173, cần `npm install` trong `frontend/` trước). Backend cần cổng 8080 còn trống. Nếu stack Docker đang chạy thì container `frontend` đang giữ cổng 5173, nên dừng nó trước khi chạy Frontend: `docker compose stop frontend backend`.
+
+### Chạy thủ công
+
 **Yêu cầu:** JDK 21, Maven (hoặc IntelliJ), Node.js 18+, MariaDB 10.6+.
 
 1. **Tạo CSDL:** chạy `backend/database/thunderfood_mariadb_v4.sql` trong HeidiSQL/DBeaver (bản hiện tại có giỏ hàng và đánh giá).
@@ -120,7 +147,7 @@ Mã lỗi: `400` khi dữ liệu không hợp lệ (có `errors` theo từng tr�
 
 ## Giỏ hàng và đánh giá (schema v4)
 
-- Khách hàng: trang `/customer/cart` lưu giỏ theo từng quán, thêm/tăng/giảm/xóa, ghi chú riêng từng dòng. Giỏ đồng bộ khi reload, đổi thiết bị hoặc quay lại tab. Không có nút đặt hàng/thanh toán.
+- Khách hàng: trang `/customer/cart` lưu giỏ theo từng quán, thêm/tăng/giảm/xóa, ghi chú riêng từng dòng. Giỏ đồng bộ khi reload, đổi thiết bị hoặc quay lại tab.
 - Giá và tình trạng phục vụ do server quyết định. Quán phải đang được duyệt, bật phục vụ và nằm trong giờ mở cửa; món phải được duyệt, chưa xóa, còn hàng để thêm/tăng. Món không khả dụng vẫn giữ trong giỏ để giảm/xóa và không tính vào tạm tính món khả dụng.
 - Mỗi món tối đa 99 phần cộng tất cả ghi chú, tối đa 50 dòng/giỏ. Ghi chú cùng nội dung sau trim + chuẩn hóa Unicode sẽ gộp dòng; khác ghi chú thì tách dòng.
 - Mỗi giỏ có version. Ghi bằng version cũ trả `409 STALE_VERSION`; frontend tải lại, không tự gửi lại thao tác có thể bị nhân đôi.
@@ -134,6 +161,29 @@ API chính: `/api/customer/carts`, `/api/customer/reviews`, `/api/partner/review
 
 Chi tiết schema và quy tắc: [backend/database/thunderfood_mariadb_v4_NOTES.md](backend/database/thunderfood_mariadb_v4_NOTES.md).
 
+## Đặt hàng và thanh toán VietQR
+
+Dùng các bảng `orders`, `order_items`, `payments` đã có trong schema v4, không cần import lại DB.
+
+- Khách bấm **Đặt hàng** ở giỏ (`/customer/checkout/:cartId`), nhập thông tin giao hàng, chọn VietQR hoặc thanh toán khi nhận hàng. Theo dõi đơn ở `/customer/orders`.
+- Giá, phí giao và tổng tiền do server tính. Client gửi `version` của giỏ để bấm hai lần chỉ tạo một đơn, và `expectedTotal` để chặn đặt hàng khi giá vừa đổi so với màn hình đang xem. Món không khả dụng không vào đơn và được giữ lại trong giỏ.
+- Mã VietQR (chuẩn EMVCo của NAPAS, `VietQrUtil`) có sẵn số tiền và nội dung là mã đơn bỏ dấu gạch. Tiền chuyển thẳng vào tài khoản ngân hàng quán khai lúc đăng ký. Quán dùng ngân hàng nằm ngoài danh sách `BANK_BINS` thì khách chỉ chọn được thanh toán khi nhận hàng.
+- **Hệ thống không tự biết tiền đã về**, vì không kết nối với ngân hàng. Quán đối soát trong tài khoản của mình rồi bấm **Đã nhận tiền** ở `/partner/orders`; đơn chuyển sang đã thanh toán và đã xác nhận.
+- Luồng đơn: `PENDING → CONFIRMED → PREPARING → DELIVERING → COMPLETED`. Khách tự hủy được khi đơn còn `PENDING` và chưa thanh toán. Quán từ chối được khi `PENDING` hoặc `CONFIRMED`; đơn đã trả tiền mà bị từ chối thì quán hoàn tiền ngoài hệ thống rồi bấm **Đã hoàn tiền**. Đơn COD được tính đã thanh toán lúc hoàn tất.
+- Đơn `COMPLETED` mở quyền đánh giá theo đúng quy tắc của phần đánh giá.
+- Trang đơn của khách và của quán tự cập nhật qua Server-Sent Events (`OrderEvents`). Sự kiện chỉ mang mã đơn, phát sau khi transaction commit; trình duyệt nhận được thì tải lại qua API thường. Danh sách kết nối nằm trong bộ nhớ nên chỉ đúng khi chạy một instance backend. Proxy phía trước phải không đệm phản hồi, backend đã gửi sẵn header `X-Accel-Buffering: no` cho Nginx.
+
+| API | Quyền | Mô tả |
+|---|---|---|
+| `GET /api/customer/orders/checkout?cartId=` | CUSTOMER | Xem trước tổng tiền, quán có hỗ trợ VietQR không |
+| `POST /api/customer/orders` | CUSTOMER | Đặt hàng từ giỏ |
+| `GET /api/customer/orders` · `GET /api/customer/orders/{id}` | CUSTOMER | Danh sách · chi tiết, kèm `qr` khi còn chờ chuyển khoản |
+| `POST /api/customer/orders/{id}/cancel` (`{reason}`) | CUSTOMER | Hủy đơn |
+| `GET /api/customer/orders/events` · `GET /api/partner/orders/events` | CUSTOMER · RESTAURANT_PARTNER | Luồng SSE báo đơn của mình vừa đổi |
+| `GET /api/partner/orders?status=&page=` | RESTAURANT_PARTNER | Đơn của các quán mình sở hữu |
+| `PATCH /api/partner/orders/{id}/status` (`{status, reason}`) | RESTAURANT_PARTNER | Chuyển bước, từ chối kèm lý do |
+| `POST /api/partner/orders/{id}/confirm-payment` · `/refund` | RESTAURANT_PARTNER | Xác nhận đã nhận tiền · đã hoàn tiền |
+
 ### Kiểm thử tích hợp trên DB riêng
 
 Script `backend/tests/customer_features_smoke.py` dùng Python standard library và MariaDB CLI, chạy qua HTTP API thật. Phải khởi tạo MariaDB riêng tại thư mục `.test-runtime/mariadb`, cổng **13317**, password thử nghiệm `local-test-only`. Không dùng DB làm việc.
@@ -145,3 +195,5 @@ python backend/tests/customer_features_smoke.py --reset-disposable-db
 ```
 
 Script kiểm tra datadir và cổng trước khi reset schema thử nghiệm. Bao gồm kiểm tra xung đột ghi đồng thời, ownership, CSRF, giới hạn số lượng, điều kiện đơn hàng, ảnh và kiểm duyệt. `MARIADB_CLIENT` cho phép cấu hình đường dẫn CLI; script mặc định đường dẫn MariaDB 12.2 trên Windows.
+
+Đặt hàng và thanh toán có script riêng, cùng cách chuẩn bị: `python backend/tests/order_payment_smoke.py --reset-disposable-db`. Unit test của chuỗi VietQR chạy bằng `mvn test` trong `backend/`.

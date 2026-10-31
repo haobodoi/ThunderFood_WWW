@@ -2,128 +2,143 @@ package vn.edu.iuh.fit.thunderfood.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.iuh.fit.thunderfood.dto.CartResponses.CartResponse;
 import vn.edu.iuh.fit.thunderfood.dto.CustomerRequests.*;
+import vn.edu.iuh.fit.thunderfood.entity.CartEntity;
+import vn.edu.iuh.fit.thunderfood.entity.CartItemEntity;
+import vn.edu.iuh.fit.thunderfood.entity.MenuItemEntity;
+import vn.edu.iuh.fit.thunderfood.entity.RestaurantEntity;
+import vn.edu.iuh.fit.thunderfood.enums.ApprovalStatusEnum;
+import vn.edu.iuh.fit.thunderfood.enums.RestaurantStatusEnum;
 import vn.edu.iuh.fit.thunderfood.exception.BusinessException;
-import vn.edu.iuh.fit.thunderfood.repository.CustomerDataRepository;
+import vn.edu.iuh.fit.thunderfood.exception.ResourceNotFoundException;
+import vn.edu.iuh.fit.thunderfood.repository.CartRepository;
+import vn.edu.iuh.fit.thunderfood.repository.MenuItemRepository;
 
-import java.math.BigDecimal;
-import java.util.*;
-import static vn.edu.iuh.fit.thunderfood.repository.CustomerDataRepository.number;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.*;
 
+/**
+ * Mọi thao tác ghi khóa dòng user của khách trước (rules.actor), nên các ghi của một khách chạy tuần tự:
+ * đọc thường giỏ và dòng món sau khóa đó luôn thấy bản mới nhất. Món và quán đọc bằng FOR UPDATE để giá,
+ * tình trạng dùng cho kiểm tra là giá trị thật; không nạp chúng trước khóa vì Hibernate sẽ không đọc lại entity đã có.
+ */
 @Service
 @Transactional
 public class CartService {
-    private final CustomerDataRepository db;
+    private static final String CUSTOMER_ROLE = "CUSTOMER";
+    private static final int MAX_DISH_QUANTITY = 99, MAX_LINES = 50, MAX_NOTE_LENGTH = 300;
+
+    private final CartRepository carts;
+    private final MenuItemRepository menuItems;
     private final CustomerRules rules;
-    public CartService(CustomerDataRepository db, CustomerRules rules) { this.db = db; this.rules = rules; }
+    public CartService(CartRepository carts, MenuItemRepository menuItems, CustomerRules rules) { this.carts = carts; this.menuItems = menuItems; this.rules = rules; }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> list(long customer) {
-        rules.actor(customer, "CUSTOMER", false);
-        return db.rows("SELECT cart_id FROM carts WHERE customer_id=? ORDER BY updated_at DESC, cart_id DESC", customer)
-                .stream().map(c -> view(customer, number(c, "cart_id"))).toList();
+    public List<CartResponse> list(long customer) {
+        rules.actor(customer, CUSTOMER_ROLE, false);
+        var found = carts.findDetailedByCustomerIdOrderByUpdatedAtDescIdDesc(customer);
+        var open = rules.openRestaurants(found.stream().map(CartEntity::getRestaurant).toList());
+        return found.stream().map(cart -> response(cart, open)).toList();
     }
     @Transactional(readOnly = true)
-    public Map<String, Object> get(long customer, long cart) {
-        rules.actor(customer, "CUSTOMER", false);
+    public CartResponse get(long customer, long cart) {
+        rules.actor(customer, CUSTOMER_ROLE, false);
         return view(customer, cart);
     }
-    private Map<String, Object> cart(long customer, long id, boolean lock) {
-        return db.one("SELECT * FROM carts WHERE cart_id=? AND customer_id=?" + (lock ? " FOR UPDATE" : ""), id, customer);
+
+    public CartResponse add(long customer, AddItem request) {
+        rules.actor(customer, CUSTOMER_ROLE, true);
+        long restaurantId = menuItems.findRestaurantIdById(request.itemId()).orElseThrow(CartService::notFound);
+        var cart = carts.findIdByCustomerIdAndRestaurantId(customer, restaurantId).map(id -> lockedCart(customer, id)).orElse(null);
+        version(cart == null ? 0 : cart.getVersion(), request.version());
+        var dish = lockedItem(request.itemId());
+        requireAvailable(dish);
+        String note = text(request.note(), 0, MAX_NOTE_LENGTH);
+        List<CartItemEntity> lines = cart == null ? List.of() : cart.getItems();
+        quantityLimit(lines, request.itemId(), request.quantity(), null);
+        var existing = sameNote(lines, request.itemId(), note, null);
+        if (existing.isEmpty() && lines.size() >= MAX_LINES) throw new BusinessException("Một giỏ tối đa 50 dòng món");
+        var now = rules.now();
+        // Tạo giỏ sau khi đã khóa quán: khóa dùng chung do khóa ngoại của INSERT rồi mới xin FOR UPDATE sẽ deadlock với khách khác cùng quán.
+        if (cart == null) cart = carts.save(new CartEntity(customer, dish.getRestaurant(), now));
+        if (existing.isPresent()) existing.get().merge(request.quantity(), dish.getPrice());
+        else cart.addItem(dish, request.quantity(), note);
+        cart.touch(now);
+        carts.flush();
+        return view(customer, cart.getId());
     }
-    private Map<String, Object> item(long id) {
-        return db.one("SELECT m.*, r.status AS restaurant_status, r.is_open FROM menu_items m JOIN restaurants r ON r.restaurant_id=m.restaurant_id WHERE m.item_id=? FOR UPDATE", id);
+
+    public CartResponse change(long customer, long cartId, long lineId, ChangeItem request) {
+        rules.actor(customer, CUSTOMER_ROLE, true);
+        var cart = lockedCart(customer, cartId);
+        version(cart.getVersion(), request.version());
+        var line = line(cart, lineId);
+        var dish = lockedItem(line.getItemId());
+        if (request.quantity() > line.getQuantity()) requireAvailable(dish);
+        String note = text(request.note(), 0, MAX_NOTE_LENGTH);
+        quantityLimit(cart.getItems(), line.getItemId(), request.quantity(), lineId);
+        var duplicate = sameNote(cart.getItems(), line.getItemId(), note, lineId);
+        if (duplicate.isPresent()) {
+            cart.getItems().remove(line);
+            // Hibernate mặc định ghi UPDATE trước DELETE; xóa dòng cũ trước để giữ đúng thứ tự với UNIQUE (cart_id, item_id, note).
+            carts.flush();
+            duplicate.get().merge(request.quantity(), dish.getPrice());
+        } else line.change(request.quantity(), note, dish.getPrice());
+        cart.touch(rules.now());
+        carts.flush();
+        return view(customer, cartId);
     }
-    private String unavailable(Map<String, Object> item) {
-        if (!"APPROVED".equals(item.get("restaurant_status"))) return "Quán hiện không hoạt động";
-        if (flag(item.get("is_deleted")) || !"APPROVED".equals(item.get("approval_status"))) return "Món không còn phục vụ";
-        if (!flag(item.get("is_available"))) return "Món tạm hết hàng";
-        if (!rules.open(number(item, "restaurant_id"), flag(item.get("is_open")))) return "Quán đang đóng cửa";
+
+    public CartResponse remove(long customer, long cartId, Long lineId, long expected) {
+        rules.actor(customer, CUSTOMER_ROLE, true);
+        var cart = lockedCart(customer, cartId);
+        version(cart.getVersion(), expected);
+        var removed = lineId == null ? cart.getItems().stream().map(CartItemEntity::getId).toList() : List.of(line(cart, lineId).getId());
+        cart.removeItems(removed, rules.now());
+        carts.flush();
+        return view(customer, cartId);
+    }
+
+    public CartResponse view(long customer, long id) {
+        var cart = carts.findDetailedByIdAndCustomerId(id, customer).orElseThrow(CartService::notFound);
+        return response(cart, rules.openRestaurants(List.of(cart.getRestaurant())));
+    }
+
+    private CartEntity lockedCart(long customer, long id) {
+        return carts.findWithLockByIdAndCustomerId(id, customer).orElseThrow(CartService::notFound);
+    }
+    private MenuItemEntity lockedItem(long id) {
+        return menuItems.findWithLockById(id).orElseThrow(CartService::notFound);
+    }
+    private CartResponse response(CartEntity cart, Set<Long> open) {
+        boolean restaurantOpen = open.contains(cart.getRestaurantId());
+        return CartResponse.from(cart, line -> unavailable(line.getItem(), cart.getRestaurant(), restaurantOpen));
+    }
+    private static CartItemEntity line(CartEntity cart, long lineId) {
+        return cart.getItems().stream().filter(line -> line.getId() == lineId).findFirst().orElseThrow(CartService::notFound);
+    }
+    private static String unavailable(MenuItemEntity item, RestaurantEntity restaurant, boolean open) {
+        if (restaurant.getStatus() != RestaurantStatusEnum.APPROVED) return "Quán hiện không hoạt động";
+        if (item.getDeleted() || item.getApprovalStatus() != ApprovalStatusEnum.APPROVED) return "Món không còn phục vụ";
+        if (!item.getAvailable()) return "Món tạm hết hàng";
+        if (!open) return "Quán đang đóng cửa";
         return "";
     }
-    private void requireAvailable(Map<String, Object> item) {
-        String reason = unavailable(item);
+    private void requireAvailable(MenuItemEntity item) {
+        var restaurant = item.getRestaurant();
+        String reason = unavailable(item, restaurant, rules.open(restaurant.getId(), restaurant.getOpen()));
         if (!reason.isEmpty()) throw new BusinessException(reason);
     }
-    private void quantityLimit(long cart, long item, int target, long excludedLine) {
-        var row = db.one("SELECT COALESCE(SUM(quantity),0) AS total FROM cart_items WHERE cart_id=? AND item_id=? AND cart_item_id<>?", cart, item, excludedLine);
-        if (target + number(row, "total") > 99) throw new BusinessException("Mỗi món tối đa 99 phần trong một giỏ, tính cả các ghi chú khác nhau");
+    private static void quantityLimit(List<CartItemEntity> lines, long itemId, int target, Long excludedLine) {
+        int others = lines.stream().filter(line -> line.getItemId() == itemId && !line.getId().equals(excludedLine)).mapToInt(CartItemEntity::getQuantity).sum();
+        if (target + others > MAX_DISH_QUANTITY) throw new BusinessException("Mỗi món tối đa 99 phần trong một giỏ, tính cả các ghi chú khác nhau");
     }
-    private void touch(long cart) { db.update("UPDATE carts SET version=version+1, updated_at=? WHERE cart_id=?", rules.now(), cart); }
-
-    public Map<String, Object> add(long customer, AddItem request) {
-        rules.actor(customer, "CUSTOMER", true);
-        // Lock the customer before creating the first cart; other cart operations use the same order.
-        var menu = db.one("SELECT restaurant_id FROM menu_items WHERE item_id=?", request.itemId());
-        long restaurant = number(menu, "restaurant_id");
-        db.update("INSERT INTO carts(customer_id,restaurant_id) VALUES (?,?) ON DUPLICATE KEY UPDATE cart_id=cart_id", customer, restaurant);
-        var cart = db.one("SELECT * FROM carts WHERE customer_id=? AND restaurant_id=? FOR UPDATE", customer, restaurant);
-        version(cart, request.version());
-        long cartId = number(cart, "cart_id");
-        var dish = item(request.itemId());
-        requireAvailable(dish);
-        String note = text(request.note(), 0, 300);
-        quantityLimit(cartId, request.itemId(), request.quantity(), 0);
-        var existing = db.rows("SELECT cart_item_id FROM cart_items WHERE cart_id=? AND item_id=? AND note=?", cartId, request.itemId(), note);
-        if (existing.isEmpty()) {
-            if (number(db.one("SELECT COUNT(*) AS total FROM cart_items WHERE cart_id=?", cartId), "total") >= 50)
-                throw new BusinessException("Một giỏ tối đa 50 dòng món");
-            db.update("INSERT INTO cart_items(cart_id,restaurant_id,item_id,quantity,note,last_seen_unit_price) VALUES (?,?,?,?,?,?)",
-                    cartId, restaurant, request.itemId(), request.quantity(), note, dish.get("price"));
-        } else db.update("UPDATE cart_items SET quantity=quantity+?, last_seen_unit_price=? WHERE cart_item_id=?", request.quantity(), dish.get("price"), existing.getFirst().get("cart_item_id"));
-        touch(cartId);
-        return view(customer, cartId);
+    /** So sánh chính xác từng ký tự, khớp collation utf8mb4_bin của cột note; note đã qua text() nên không có khoảng trắng cuối. */
+    private static Optional<CartItemEntity> sameNote(List<CartItemEntity> lines, long itemId, String note, Long excludedLine) {
+        return lines.stream().filter(line -> line.getItemId() == itemId && line.getNote().equals(note) && !line.getId().equals(excludedLine)).findFirst();
     }
-
-    public Map<String, Object> change(long customer, long cartId, long lineId, ChangeItem request) {
-        rules.actor(customer, "CUSTOMER", true);
-        var cart = cart(customer, cartId, true); version(cart, request.version());
-        var line = db.one("SELECT * FROM cart_items WHERE cart_id=? AND cart_item_id=?", cartId, lineId);
-        var dish = item(number(line, "item_id"));
-        if (request.quantity() > number(line, "quantity")) requireAvailable(dish);
-        String note = text(request.note(), 0, 300);
-        quantityLimit(cartId, number(line, "item_id"), request.quantity(), lineId);
-        var duplicate = db.rows("SELECT * FROM cart_items WHERE cart_id=? AND item_id=? AND note=? AND cart_item_id<>?", cartId, line.get("item_id"), note, lineId);
-        if (!duplicate.isEmpty()) {
-            var target = duplicate.getFirst();
-            db.update("DELETE FROM cart_items WHERE cart_item_id=?", lineId);
-            db.update("UPDATE cart_items SET quantity=quantity+?, last_seen_unit_price=? WHERE cart_item_id=?", request.quantity(), dish.get("price"), target.get("cart_item_id"));
-        } else db.update("UPDATE cart_items SET quantity=?, note=?, last_seen_unit_price=? WHERE cart_item_id=?", request.quantity(), note, dish.get("price"), lineId);
-        touch(cartId);
-        return view(customer, cartId);
-    }
-
-    public Map<String, Object> remove(long customer, long cartId, Long lineId, long expected) {
-        rules.actor(customer, "CUSTOMER", true);
-        var cart = cart(customer, cartId, true); version(cart, expected);
-        if (lineId == null) db.update("DELETE FROM cart_items WHERE cart_id=?", cartId);
-        else {
-            db.one("SELECT cart_item_id FROM cart_items WHERE cart_id=? AND cart_item_id=?", cartId, lineId);
-            db.update("DELETE FROM cart_items WHERE cart_id=? AND cart_item_id=?", cartId, lineId);
-        }
-        touch(cartId); // Keep the empty aggregate/version to reject delayed requests from another tab.
-        return view(customer, cartId);
-    }
-
-    private Map<String, Object> view(long customer, long id) {
-        var result = new LinkedHashMap<>(cart(customer, id, false));
-        var restaurant = db.one("SELECT restaurant_name FROM restaurants WHERE restaurant_id=?", result.get("restaurant_id"));
-        result.putAll(restaurant);
-        var lines = db.rows("SELECT c.*, m.item_name, m.image_url, m.price AS unit_price, m.is_available, m.is_deleted, m.approval_status, r.status AS restaurant_status, r.is_open FROM cart_items c JOIN menu_items m ON m.item_id=c.item_id JOIN restaurants r ON r.restaurant_id=c.restaurant_id WHERE c.cart_id=? ORDER BY c.cart_item_id", id);
-        BigDecimal subtotal = BigDecimal.ZERO;
-        long count = 0;
-        for (var line : lines) {
-            String reason = unavailable(line);
-            BigDecimal price = (BigDecimal) line.get("unit_price");
-            BigDecimal amount = price.multiply(BigDecimal.valueOf(number(line, "quantity")));
-            line.put("available", reason.isEmpty()); line.put("unavailable_reason", reason);
-            line.put("price_changed", price.compareTo((BigDecimal) line.get("last_seen_unit_price")) != 0);
-            line.put("line_total", amount);
-            if (reason.isEmpty()) subtotal = subtotal.add(amount);
-            count += number(line, "quantity");
-        }
-        result.put("items", lines); result.put("subtotal", subtotal); result.put("quantity", count);
-        return result;
-    }
+    private static ResourceNotFoundException notFound() { return new ResourceNotFoundException("Không tìm thấy dữ liệu"); }
 }

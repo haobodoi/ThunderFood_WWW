@@ -32,7 +32,7 @@ export default function RestaurantDetailPage() {
   const [modalNote, setModalNote] = useState('');
   const [cartError, setCartError] = useState('');
   const currentCart = cartState.find(id);
-  const selectedItems = Object.fromEntries((currentCart?.items || []).map(line => [line.item_id, { qty: (currentCart.items.filter(i => i.item_id === line.item_id).reduce((n, i) => n + i.quantity, 0)) }]));
+  const selectedItems = Object.fromEntries((currentCart?.items || []).map(line => [line.itemId, { qty: (currentCart.items.filter(i => i.itemId === line.itemId).reduce((n, i) => n + i.quantity, 0)) }]));
   const [cartOpen, setCartOpen] = useState(false);
   const [cartToast, setCartToast] = useState('');
   const toastTimer = useRef(null);

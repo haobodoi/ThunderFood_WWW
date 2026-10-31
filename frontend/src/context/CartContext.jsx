@@ -48,7 +48,7 @@ export function CartProvider({ children }) {
     lock.current = true; setBusy(true); setError(''); ++sequence.current;
     try {
       const cart = await operation();
-      if (actor.current === owner) setSnapshot(previous => ({ owner, carts: [...previous.carts.filter(c => c.cart_id !== cart.cart_id), cart] }));
+      if (actor.current === owner) setSnapshot(previous => ({ owner, carts: [...previous.carts.filter(c => c.cartId !== cart.cartId), cart] }));
       channel.current?.postMessage('changed');
       return cart;
     } catch (err) {
@@ -56,13 +56,13 @@ export function CartProvider({ children }) {
       throw err;
     } finally { lock.current = false; setBusy(false); }
   };
-  const find = restaurant => carts.find(c => String(c.restaurant_id) === String(restaurant));
+  const find = restaurant => carts.find(c => String(c.restaurantId) === String(restaurant));
   return <CartContext.Provider value={{ carts, loading: loading || (Boolean(identity) && snapshot.owner !== identity), busy, error, refresh,
     count: carts.reduce((n, c) => n + Number(c.quantity), 0), find,
     add: (item, quantity, note = '') => mutate(() => cartApi.add({ itemId: item.id, quantity, note, version: find(item.restaurantId)?.version ?? 0 })),
-    change: (cart, line, quantity, note) => mutate(() => cartApi.change(cart.cart_id, line.cart_item_id, { quantity, note, version: cart.version })),
-    remove: (cart, line) => mutate(() => cartApi.remove(cart.cart_id, line.cart_item_id, cart.version)),
-    clear: cart => mutate(() => cartApi.clear(cart.cart_id, cart.version)),
+    change: (cart, line, quantity, note) => mutate(() => cartApi.change(cart.cartId, line.cartItemId, { quantity, note, version: cart.version })),
+    remove: (cart, line) => mutate(() => cartApi.remove(cart.cartId, line.cartItemId, cart.version)),
+    clear: cart => mutate(() => cartApi.clear(cart.cartId, cart.version)),
   }}>{children}</CartContext.Provider>;
 }
 export function useCart() { return useContext(CartContext); }

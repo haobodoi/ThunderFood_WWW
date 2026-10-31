@@ -1,0 +1,54 @@
+# Chạy toàn bộ ThunderFood để test: docker compose up -d --build, rồi mở http://localhost:5173
+# Dữ liệu mẫu chỉ được nạp khi volume db-data còn trống; tạo lại từ đầu: docker compose down -v
+name: thunderfood
+
+services:
+  db:
+    image: mariadb:11.4
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:-123456}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./backend/database/thunderfood_mariadb_v4.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "127.0.0.1:${DB_PORT:-3307}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/thunderfood
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-123456}
+      APP_UPLOAD_DIR: /app/uploads
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/localhost/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  uploads:
