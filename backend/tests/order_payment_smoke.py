@@ -243,6 +243,11 @@ def run():
     check(extra[-1].wait(cancelled_live['orderId'], created=True) and not customer_stream.wait(cancelled_live['orderId'], created=True, seconds=1), 'oldest stream is closed past the per-user limit')
 
     preview = fill(customer, ITEM)
+    cart = customer.call('POST', '/customer/carts/items', {'itemId': ITEM, 'quantity': 1, 'note': 'Ít cơm', 'version': preview['version']})
+    noted = next(i for i in cart['items'] if i['note'])
+    merged = customer.call('PUT', f"/customer/carts/{cart['cartId']}/items/{noted['cartItemId']}", {'quantity': noted['quantity'], 'note': '', 'version': cart['version']})
+    check(len(merged['items']) == 1 and merged['items'][0]['quantity'] == 3 and merged['version'] == cart['version'] + 1, 'changing a note to match another line merges them')
+    preview = fill(customer, ITEM)
     before = sql('USE thunderfood; SELECT COUNT(*) FROM orders;'), sql('USE thunderfood; SELECT COUNT(*) FROM payments;')
     sql("USE thunderfood; CREATE TRIGGER fail_cart_bump BEFORE UPDATE ON carts FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='forced failure';")
     customer.call('POST', '/customer/orders', body(preview), expected=500)

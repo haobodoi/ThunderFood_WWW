@@ -36,7 +36,7 @@ SQL chưa tự thực thi các quy tắc nghiệp vụ sau. Không xem việc im
 2. Thêm/tăng: quán APPROVED và đang phục vụ theo cờ vận hành cùng giờ mở cửa; món APPROVED, chưa xóa, available. Quán đóng/món hết vẫn cho xem, giảm, xóa.
 3. Chuẩn hóa note bằng trim và Unicode NFC trước khi tìm/gộp dòng. Không render HTML từ note.
 4. Trong một transaction, khóa dòng carts rồi kiểm tra version; tổng quantity của cùng item qua mọi ghi chú không quá 99, tối đa 50 dòng/giỏ. CHECK quantity hiện chỉ bảo vệ từng dòng.
-5. Mỗi thay đổi cart_items phải tăng carts.version và cập nhật carts.updated_at. Gắn @Version ở entity cart và bảo đảm thay đổi collection cũng cập nhật parent; SQL không tự tăng version. Version cũ trả 409.
+5. Mỗi thay đổi cart_items phải tăng carts.version và cập nhật carts.updated_at. CartEntity tự tăng version trong code và so với version client gửi lên dưới khóa dòng (không dùng @Version); SQL không tự tăng version. Version cũ trả 409.
 6. Khi thêm/gộp dòng, lấy giá thật và lưu last_seen_unit_price. Khi GET giỏ, so sánh giá này với giá hiện tại, trả priceChanged; GET không tự ghi đè giá tham chiếu. Có thể cập nhật mốc giá khi khách chủ động sửa dòng hoặc xác nhận giá mới.
 7. Tính tiền bằng BigDecimal theo giá hiện tại. Trả trạng thái và lý do không khả dụng từng dòng; chỉ tính món khả dụng vào tạm tính tương ứng, hiển thị rõ các dòng bị loại. Không giữ/trừ tồn kho, không tạo đơn.
 8. Phiên đăng xuất chỉ xóa state frontend; giữ giỏ DB. Backend chưa có cơ chế số lượng tồn kho.

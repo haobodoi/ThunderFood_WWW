@@ -7,7 +7,6 @@ import vn.edu.iuh.fit.thunderfood.enums.AccountStatusEnum;
 import vn.edu.iuh.fit.thunderfood.exception.BusinessException;
 import vn.edu.iuh.fit.thunderfood.exception.ConcurrentUpdateException;
 import vn.edu.iuh.fit.thunderfood.exception.ResourceNotFoundException;
-import vn.edu.iuh.fit.thunderfood.repository.CustomerDataRepository;
 import vn.edu.iuh.fit.thunderfood.repository.OpeningHourRepository;
 import vn.edu.iuh.fit.thunderfood.repository.UserRepository;
 
@@ -15,7 +14,6 @@ import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -41,7 +39,6 @@ public class CustomerRules {
     public static void version(long current, long expected) {
         if (current != expected) throw new ConcurrentUpdateException();
     }
-    public static void version(Map<String, Object> row, long expected) { version(CustomerDataRepository.number(row, "version"), expected); }
     public boolean open(long restaurantId, boolean manualOpen) {
         if (!manualOpen) return false;
         var now = now();
@@ -58,5 +55,4 @@ public class CustomerRules {
     private static boolean within(OpeningHourEntity hour, LocalDateTime now) {
         return !now.toLocalTime().isBefore(hour.getOpenTime()) && now.toLocalTime().isBefore(hour.getCloseTime());
     }
-    public static boolean flag(Object value) { return Boolean.TRUE.equals(value) || value instanceof Number n && n.intValue() != 0; }
 }
