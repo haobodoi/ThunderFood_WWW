@@ -1,6 +1,6 @@
 """Integration tests against a disposable MariaDB + running Spring API.
 
-Fixed ports: DB 13317, API 18081. Refuses any DB outside .test-runtime.
+Default ports: DB 13317, API 18081 (TEST_DB_PORT, TEST_API_PORT). Refuses any DB outside .test-runtime.
 Resets the disposable thunderfood schema. Never point the API at a real DB.
 Run: python backend/tests/customer_features_smoke.py --reset-disposable-db
 Requires MariaDB CLI in MARIADB_CLIENT or the Windows default below.
@@ -18,9 +18,11 @@ import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
+DB_PORT = os.environ.get('TEST_DB_PORT', '13317')
+API_PORT = os.environ.get('TEST_API_PORT', '18081')
 CLIENT = os.environ.get('MARIADB_CLIENT', 'C:/Program Files/MariaDB 12.2/bin/mariadb.exe')
 ENV = {**os.environ, 'MYSQL_PWD': os.environ.get('TEST_DB_PASSWORD', 'local-test-only')}
-ARGS = [CLIENT, '--host=127.0.0.1', '--port=13317', '--user=root', '--default-character-set=utf8mb4', '--batch', '--skip-column-names']
+ARGS = [CLIENT, '--host=127.0.0.1', f'--port={DB_PORT}', '--user=root', '--default-character-set=utf8mb4', '--batch', '--skip-column-names']
 checks = 0
 
 def sql(statement, success=True):
@@ -51,7 +53,7 @@ class Session:
         if csrf:
             token = next((c.value for c in self.jar if c.name == 'XSRF-TOKEN'), None)
             if token: headers['X-XSRF-TOKEN'] = urllib.parse.unquote(token)
-        request = urllib.request.Request('http://127.0.0.1:18081/api' + path, body, headers, method=method)
+        request = urllib.request.Request(f'http://127.0.0.1:{API_PORT}/api' + path, body, headers, method=method)
         try:
             response = self.opener.open(request, timeout=15)
         except urllib.error.HTTPError as error:
@@ -65,7 +67,7 @@ class Session:
 def run():
     assert '--reset-disposable-db' in sys.argv, 'Explicit reset flag required'
     guard = sql('SELECT @@port, @@datadir;')
-    assert '13317' in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
+    assert DB_PORT in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
     # Full-day fixture makes service-hour tests independent of execution time.
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")

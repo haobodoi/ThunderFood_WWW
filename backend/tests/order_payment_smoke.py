@@ -13,7 +13,7 @@ import time
 import urllib.error
 import urllib.request
 
-from customer_features_smoke import ROOT, Session, check, sql
+from customer_features_smoke import API_PORT, DB_PORT, ROOT, Session, check, sql
 
 ORDER = {'recipientName': 'Nguyễn An', 'recipientPhone': '0900000004', 'deliveryAddress': '12 Nguyễn Huệ, TP. Hồ Chí Minh', 'note': 'Gọi trước khi giao'}
 RESTAURANT = 1
@@ -48,7 +48,7 @@ class Stream:
     """Reads an SSE stream in the background; `events` collects the named order events."""
     def __init__(self, session, path):
         self.events = []
-        request = urllib.request.Request('http://127.0.0.1:18081/api' + path, headers={'Accept': 'text/event-stream'})
+        request = urllib.request.Request(f'http://127.0.0.1:{API_PORT}/api' + path, headers={'Accept': 'text/event-stream'})
         self.response = session.opener.open(request, timeout=15)
         threading.Thread(target=self.read, daemon=True).start()
         time.sleep(0.3)
@@ -71,7 +71,7 @@ class Stream:
         return False
 
 def stream_status(session, path):
-    request = urllib.request.Request('http://127.0.0.1:18081/api' + path)
+    request = urllib.request.Request(f'http://127.0.0.1:{API_PORT}/api' + path)
     try:
         return session.opener.open(request, timeout=5).status
     except urllib.error.HTTPError as error:
@@ -80,7 +80,7 @@ def stream_status(session, path):
 def run():
     assert '--reset-disposable-db' in sys.argv, 'Explicit reset flag required'
     guard = sql('SELECT @@port, @@datadir;')
-    assert '13317' in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
+    assert DB_PORT in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")
     anon = Session()
