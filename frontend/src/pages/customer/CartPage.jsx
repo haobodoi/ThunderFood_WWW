@@ -12,6 +12,6 @@ export default function CartPage() {
     {error && <Alert type="error">{error}</Alert>}
     {loading && <p role="status">Đang đồng bộ giỏ hàng…</p>}
     {!loading && !error && !nonempty.length && <div className="empty-state"><h2>Giỏ hàng đang trống</h2><Link className="btn btn--primary" to="/">Khám phá món ngon</Link></div>}
-    {nonempty.map(cart => <CartContents key={cart.cart_id} cart={cart} />)}
+    {nonempty.map(cart => <CartContents key={cart.cartId} cart={cart} />)}
   </main>;
 }

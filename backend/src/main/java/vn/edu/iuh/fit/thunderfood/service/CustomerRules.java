@@ -1,6 +1,8 @@
 package vn.edu.iuh.fit.thunderfood.service;
 
 import org.springframework.stereotype.Component;
+import vn.edu.iuh.fit.thunderfood.entity.OpeningHourEntity;
+import vn.edu.iuh.fit.thunderfood.entity.RestaurantEntity;
 import vn.edu.iuh.fit.thunderfood.enums.AccountStatusEnum;
 import vn.edu.iuh.fit.thunderfood.exception.BusinessException;
 import vn.edu.iuh.fit.thunderfood.exception.ConcurrentUpdateException;
@@ -12,7 +14,10 @@ import vn.edu.iuh.fit.thunderfood.repository.UserRepository;
 import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class CustomerRules {
@@ -40,8 +45,18 @@ public class CustomerRules {
     public boolean open(long restaurantId, boolean manualOpen) {
         if (!manualOpen) return false;
         var now = now();
-        return openingHours.findByRestaurantIdAndDayOfWeek(restaurantId, now.getDayOfWeek().getValue()).stream().anyMatch(h ->
-                !now.toLocalTime().isBefore(h.getOpenTime()) && now.toLocalTime().isBefore(h.getCloseTime()));
+        return openingHours.findByRestaurantIdAndDayOfWeek(restaurantId, now.getDayOfWeek().getValue()).stream().anyMatch(h -> within(h, now));
+    }
+    /** Như open() nhưng cho nhiều quán một lúc, để liệt kê giỏ không tốn một truy vấn giờ mở cửa cho mỗi quán. */
+    public Set<Long> openRestaurants(Collection<RestaurantEntity> restaurants) {
+        var manualOpen = restaurants.stream().filter(RestaurantEntity::getOpen).map(RestaurantEntity::getId).toList();
+        if (manualOpen.isEmpty()) return Set.of();
+        var now = now();
+        return openingHours.findByRestaurantIdInAndDayOfWeek(manualOpen, now.getDayOfWeek().getValue()).stream()
+                .filter(h -> within(h, now)).map(h -> h.getRestaurant().getId()).collect(Collectors.toSet());
+    }
+    private static boolean within(OpeningHourEntity hour, LocalDateTime now) {
+        return !now.toLocalTime().isBefore(hour.getOpenTime()) && now.toLocalTime().isBefore(hour.getCloseTime());
     }
     public static boolean flag(Object value) { return Boolean.TRUE.equals(value) || value instanceof Number n && n.intValue() != 0; }
 }

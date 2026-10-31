@@ -29,11 +29,11 @@ def tlv(value):
 
 def fill(session, *items):
     """Empties the customer's cart for the restaurant, then adds items; returns the checkout preview."""
-    cart = next(c for c in session.call('GET', '/customer/carts') if c['restaurant_id'] == RESTAURANT)
-    cart = session.call('DELETE', f"/customer/carts/{cart['cart_id']}?version={cart['version']}")
+    cart = next(c for c in session.call('GET', '/customer/carts') if c['restaurantId'] == RESTAURANT)
+    cart = session.call('DELETE', f"/customer/carts/{cart['cartId']}?version={cart['version']}")
     for item in items:
         cart = session.call('POST', '/customer/carts/items', {'itemId': item, 'quantity': 2, 'version': cart['version']})
-    return session.call('GET', f"/customer/orders/checkout?cartId={cart['cart_id']}")
+    return session.call('GET', f"/customer/orders/checkout?cartId={cart['cartId']}")
 
 def body(preview, method='ONLINE', **changes):
     return {**ORDER, 'cartId': preview['cartId'], 'version': preview['version'], 'expectedTotal': preview['totalAmount'], 'paymentMethod': method, **changes}
@@ -198,7 +198,7 @@ def run():
     preview = customer.call('GET', f"/customer/orders/checkout?cartId={preview['cartId']}")
     partial = customer.call('POST', '/customer/orders', body(preview, 'COD'), expected=201)
     remaining = customer.call('GET', f"/customer/carts/{preview['cartId']}")['items']
-    check([i['itemId'] for i in partial['items']] == [OTHER_ITEM] and [i['item_id'] for i in remaining] == [ITEM], 'unavailable lines stay in the cart and are not ordered')
+    check([i['itemId'] for i in partial['items']] == [OTHER_ITEM] and [i['itemId'] for i in remaining] == [ITEM], 'unavailable lines stay in the cart and are not ordered')
     preview = customer.call('GET', f"/customer/orders/checkout?cartId={preview['cartId']}")
     customer.call('POST', '/customer/orders', body(preview, 'COD'), expected=400)
     check(True, 'cart with nothing orderable cannot be checked out')

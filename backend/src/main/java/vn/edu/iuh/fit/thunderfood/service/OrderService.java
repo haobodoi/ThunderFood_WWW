@@ -7,6 +7,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import vn.edu.iuh.fit.thunderfood.dto.CartResponses.CartLine;
 import vn.edu.iuh.fit.thunderfood.dto.CustomerRequests.*;
 import vn.edu.iuh.fit.thunderfood.dto.OrderResponses.*;
 import vn.edu.iuh.fit.thunderfood.entity.OrderEntity;
@@ -30,7 +31,6 @@ import java.security.SecureRandom;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import static vn.edu.iuh.fit.thunderfood.enums.OrderStatusEnum.*;
-import static vn.edu.iuh.fit.thunderfood.repository.CustomerDataRepository.number;
 import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.*;
 
 /**
@@ -68,12 +68,11 @@ public class OrderService {
     public CheckoutPreview preview(long customer, long cartId) {
         rules.actor(customer, CUSTOMER_ROLE, false);
         var cart = carts.view(customer, cartId);
-        var restaurant = restaurant(number(cart, "restaurant_id"));
-        BigDecimal subtotal = (BigDecimal) cart.get("subtotal");
+        var restaurant = restaurant(cart.restaurantId());
+        BigDecimal subtotal = cart.subtotal();
         BigDecimal total = subtotal.add(restaurant.getDeliveryFee());
-        var lines = lines(cart).stream().map(line -> new CheckoutLine(number(line, "cart_item_id"), (String) line.get("item_name"),
-                (int) number(line, "quantity"), (BigDecimal) line.get("line_total"), (String) line.get("note"), Boolean.TRUE.equals(line.get("available")))).toList();
-        return new CheckoutPreview(cartId, number(cart, "version"), restaurant.getRestaurantName(), lines, subtotal, restaurant.getDeliveryFee(), total, qrBin(restaurant, total).isPresent());
+        var lines = cart.items().stream().map(line -> new CheckoutLine(line.cartItemId(), line.itemName(), line.quantity(), line.lineTotal(), line.note(), line.available())).toList();
+        return new CheckoutPreview(cartId, cart.version(), restaurant.getRestaurantName(), lines, subtotal, restaurant.getDeliveryFee(), total, qrBin(restaurant, total).isPresent());
     }
 
     public CustomerOrder checkout(long customer, Checkout request) {
@@ -91,10 +90,10 @@ public class OrderService {
         String note = text(request.note(), 0, 1000);
 
         var cart = carts.view(customer, request.cartId());
-        var lines = lines(cart).stream().filter(line -> Boolean.TRUE.equals(line.get("available"))).toList();
+        var lines = cart.items().stream().filter(CartLine::available).toList();
         if (lines.isEmpty()) throw new BusinessException("Giỏ không có món nào đặt được lúc này");
-        var restaurant = restaurant(number(cart, "restaurant_id"));
-        BigDecimal subtotal = (BigDecimal) cart.get("subtotal");
+        var restaurant = restaurant(cart.restaurantId());
+        BigDecimal subtotal = cart.subtotal();
         BigDecimal total = subtotal.add(restaurant.getDeliveryFee());
         if (total.compareTo(request.expectedTotal()) != 0)
             throw new BusinessException("Giá món hoặc phí giao hàng vừa thay đổi. Vui lòng kiểm tra lại tổng tiền rồi đặt lại.");
@@ -104,13 +103,11 @@ public class OrderService {
         var now = rules.now();
         String code = "TF-" + now.format(DateTimeFormatter.BASIC_ISO_DATE) + "-" + randomCode();
         var order = new OrderEntity(code, customer, restaurant, name, phone, address, note.isEmpty() ? null : note, method, subtotal, restaurant.getDeliveryFee(), total, now);
-        for (var line : lines) {
-            String lineNote = (String) line.get("note");
-            order.addItem(number(line, "item_id"), (String) line.get("item_name"), (BigDecimal) line.get("unit_price"), (int) number(line, "quantity"), (BigDecimal) line.get("line_total"), lineNote.isEmpty() ? null : lineNote);
-        }
+        for (var line : lines)
+            order.addItem(line.itemId(), line.itemName(), line.unitPrice(), line.quantity(), line.lineTotal(), line.note().isEmpty() ? null : line.note());
         order.addPayment(method == PaymentMethodEnum.ONLINE ? "VIETQR" : "COD", transferContent(code), now);
         orders.save(order);
-        lockedCart.removeItems(lines.stream().map(line -> number(line, "cart_item_id")).toList(), now);
+        lockedCart.removeItems(lines.stream().map(CartLine::cartItemId).toList(), now);
         // Ghi ngay để lỗi DB trả về trong request này, trước khi phát sự kiện.
         cartRepository.flush();
         changed(order, true);
@@ -206,9 +203,6 @@ public class OrderService {
         return restaurants.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy quán"));
     }
     private static ResourceNotFoundException notFound() { return new ResourceNotFoundException("Không tìm thấy đơn hàng"); }
-    /** Giỏ hàng chưa có kiểu riêng nên đây là chỗ duy nhất đọc dạng Map của CartService. */
-    @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> lines(Map<String, Object> cart) { return (List<Map<String, Object>>) cart.get("items"); }
     /** Mã QR chỉ tồn tại khi khách còn phải trả tiền; quán đổi sang tài khoản không hỗ trợ thì không có mã, đơn vẫn xem được. */
     private static PaymentQr qr(OrderEntity order) {
         if (order.getPaymentMethod() != PaymentMethodEnum.ONLINE || order.getOrderStatus() != PENDING || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID) return null;
