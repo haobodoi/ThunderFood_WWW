@@ -43,7 +43,8 @@ export default function Navbar() {
               <span>Giỏ hàng</span>
               <span className="navbar__cart-count" aria-hidden="true">{count > 99 ? '99+' : count}</span>
             </Link>
-            <Link className="btn btn--ghost btn--sm" to="/customer/reviews">Đánh giá</Link>
+            <Link className="btn btn--ghost btn--sm navbar__customer-link" to="/customer/orders">Đơn hàng</Link>
+            <Link className="btn btn--ghost btn--sm navbar__customer-link" to="/customer/reviews">Đánh giá</Link>
           </>}
           {initializing ? (
             <span className="navbar__placeholder" aria-hidden="true" />

@@ -6,7 +6,7 @@
 - **Script có `DROP DATABASE IF EXISTS thunderfood`: chạy sẽ xóa toàn bộ database thunderfood hiện tại.** Sao lưu trước khi import nếu cần giữ dữ liệu.
 - Không phải script migration. Không chạy cùng v3; chỉ import v4 cho lần tạo lại DB.
 - Giữ tên database `thunderfood` để phù hợp application.properties. Không đổi entity/API hiện có.
-- Các bảng orders, order_items, payments, complaints và đơn hoàn tất mẫu được giữ từ v3 để tích hợp về sau. Không triển khai nghiệp vụ tạo đơn/thanh toán trong thay đổi này.
+- Các bảng orders, order_items, payments, complaints và đơn hoàn tất mẫu được giữ từ v3. Nghiệp vụ đặt hàng và thanh toán VietQR nay nằm ở OrderService, dùng nguyên các bảng này mà không đổi schema; complaints vẫn chưa có nghiệp vụ.
 - Bảng reviews cũ được thay bằng customer_reviews. RestaurantReviewService hiện tại vẫn là duyệt hồ sơ quán, không liên quan bảng này.
 
 ## Thay đổi và ràng buộc database
@@ -74,4 +74,4 @@ Các ca cần thử khi có MariaDB: thêm món khác quán phải lỗi FK; tr�
 
 Đã import thành công trên MariaDB 12.2.2 thử nghiệm riêng ở cổng 13317, không thay đổi DB hiện tại. Đã chạy kiểm thử tích hợp qua API Spring Boot cho quyền truy cập, CSRF, cập nhật giỏ đồng thời, giới hạn số lượng, giá thay đổi, giờ mở cửa, quyền đánh giá theo đơn hoàn tất, ảnh, phản hồi, báo cáo và kiểm duyệt. Script tái chạy nằm ở `backend/tests/customer_features_smoke.py`; chỉ chấp nhận DB có datadir chứa `.test-runtime` và cổng 13317.
 
-Các quy tắc service ở trên đã được triển khai trong CartService, CustomerRules, CustomerReviewService và ReviewImageService. Khi chưa có module đơn hàng, khách không có đơn COMPLETED hợp lệ sẽ không được gửi đánh giá; đơn hoàn tất mẫu trong v4 vẫn đủ điều kiện theo cùng một bộ kiểm tra. Ảnh hiện hỗ trợ JPG/PNG tối đa 1MB, được giải mã và mã hóa lại thành PNG, lưu riêng ngoài public uploads.
+Các quy tắc service ở trên đã được triển khai trong CartService, CustomerRules, CustomerReviewService và ReviewImageService. Khách không có đơn COMPLETED hợp lệ sẽ không được gửi đánh giá; đơn hoàn tất mẫu trong v4 vẫn đủ điều kiện theo cùng một bộ kiểm tra. Ảnh hiện hỗ trợ JPG/PNG tối đa 1MB, được giải mã và mã hóa lại thành PNG, lưu riêng ngoài public uploads.

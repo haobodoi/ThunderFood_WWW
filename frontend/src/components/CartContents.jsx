@@ -66,7 +66,10 @@ export default function CartContents({ cart }) {
     {cart.items.map(line => <CartLine key={`${line.cart_item_id}:${line.note}`} cart={cart} line={line} />)}
     <div className="commerce-row commerce-total"><strong>Tạm tính món khả dụng</strong><strong>{formatVND(cart.subtotal)}</strong></div>
     <p>Chưa gồm phí giao hàng. Giỏ hàng không giữ món; giá và tình trạng phục vụ có thể thay đổi.</p>
-    <button className="btn btn--outline" disabled={state.busy || state.loading} onClick={clear}>Xóa giỏ quán này</button>
+    <div className="tf-order-actions">
+      {cart.items.some(line => line.available) && <Link className="btn btn--primary" to={`/customer/checkout/${cart.cart_id}`}>Đặt hàng</Link>}
+      <button className="btn btn--outline" disabled={state.busy || state.loading} onClick={clear}>Xóa giỏ quán này</button>
+    </div>
     {error && <Alert type="error">{error}</Alert>}
   </section>;
 }

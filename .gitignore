@@ -4,9 +4,19 @@ log/
 cookie.txt
 
 # IDE & OS
-.idea/
 .vscode/
 *.iml
+# Chia sẻ cấu hình dự án để IntelliJ nhận đúng; cấu hình cá nhân vẫn bỏ qua.
+.idea/*
+!.idea/.gitignore
+!.idea/ThunderFood.iml
+!.idea/compiler.xml
+!.idea/dataSources.xml
+!.idea/encodings.xml
+!.idea/jarRepositories.xml
+!.idea/misc.xml
+!.idea/modules.xml
+!.idea/vcs.xml
 .DS_Store
 Thumbs.db
 

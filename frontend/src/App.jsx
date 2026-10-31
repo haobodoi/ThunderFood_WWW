@@ -19,6 +19,10 @@ import RestaurantReviewListPage from './pages/admin/RestaurantReviewListPage.jsx
 import RestaurantReviewDetailPage from './pages/admin/RestaurantReviewDetailPage.jsx';
 import CartPage from './pages/customer/CartPage.jsx';
 import ReviewManagementPage from './pages/ReviewManagementPage.jsx';
+import CheckoutPage from './pages/customer/CheckoutPage.jsx';
+import OrdersPage from './pages/customer/OrdersPage.jsx';
+import OrderDetailPage from './pages/customer/OrderDetailPage.jsx';
+import PartnerOrdersPage from './pages/partner/PartnerOrdersPage.jsx';
 import { ROLES } from './utils/roleUtils.js';
 
 export default function App() {
@@ -38,6 +42,9 @@ export default function App() {
           <Route element={<ProtectedRoute roles={[ROLES.CUSTOMER]} />}>
             <Route path="/customer" element={<CustomerHomePage />} />
             <Route path="/customer/cart" element={<CartPage />} />
+            <Route path="/customer/checkout/:cartId" element={<CheckoutPage />} />
+            <Route path="/customer/orders" element={<OrdersPage />} />
+            <Route path="/customer/orders/:id" element={<OrderDetailPage />} />
             <Route path="/customer/reviews" element={<ReviewManagementPage />} />
           </Route>
 
@@ -48,6 +55,7 @@ export default function App() {
         <Route element={<ProtectedRoute roles={[ROLES.RESTAURANT_PARTNER]} />}>
           <Route element={<DashboardLayout area="partner" />}>
             <Route path="/partner" element={<MyRestaurantsPage />} />
+            <Route path="/partner/orders" element={<PartnerOrdersPage />} />
             <Route path="/partner/reviews" element={<ReviewManagementPage area="partner" />} />
             <Route path="/partner/restaurants/:restaurantId/menu" element={<RestaurantMenuPage />} />
             <Route path="/partner/register" element={<RestaurantRegisterPage />} />

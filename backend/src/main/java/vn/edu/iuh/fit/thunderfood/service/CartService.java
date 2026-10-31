@@ -106,7 +106,7 @@ public class CartService {
         return view(customer, cartId);
     }
 
-    private Map<String, Object> view(long customer, long id) {
+    public Map<String, Object> view(long customer, long id) {
         var result = new LinkedHashMap<>(cart(customer, id, false));
         var restaurant = db.one("SELECT restaurant_name FROM restaurants WHERE restaurant_id=?", result.get("restaurant_id"));
         result.putAll(restaurant);
