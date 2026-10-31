@@ -7,17 +7,18 @@ import Alert from './Alert.jsx';
 import Modal from './Modal.jsx';
 
 export function reviewTime(value) {
-  const date = new Date(value);
+  // Giờ từ server là LocalDateTime theo giờ nghiệp vụ, không kèm múi giờ; gắn +07:00 để không đọc nhầm theo giờ máy người xem.
+  const date = new Date(typeof value === 'string' && /T[\d:.]+$/.test(value) ? `${value}+07:00` : value);
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
 export function ReviewCard({ review, children }) {
   return <article className="commerce-review">
-    <div className="commerce-row commerce-wrap"><strong>{review.author_name || 'Đánh giá của bạn'}</strong><span className="commerce-stars" aria-label={`${review.rating} trên 5 sao`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
-    <small>Đã mua hàng · {reviewTime(review.created_at)}{review.edited_at ? ' · Đã chỉnh sửa' : ''}</small>
+    <div className="commerce-row commerce-wrap"><strong>{review.authorName || 'Đánh giá của bạn'}</strong><span className="commerce-stars" aria-label={`${review.rating} trên 5 sao`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
+    <small>Đã mua hàng · {reviewTime(review.createdAt)}{review.editedAt ? ' · Đã chỉnh sửa' : ''}</small>
     <p className="commerce-text">{review.content}</p>
-    <div className="commerce-images">{review.images?.map(i => <a key={i.image_id} href={i.url} target="_blank" rel="noreferrer"><img src={i.url} alt="Ảnh khách hàng đính kèm đánh giá" loading="lazy" /></a>)}</div>
-    {review.replies?.map(reply => <blockquote key={reply.reply_id}><strong>Phản hồi từ quán</strong><p className="commerce-text">{reply.content}</p></blockquote>)}
+    <div className="commerce-images">{review.images?.map(i => <a key={i.imageId} href={i.url} target="_blank" rel="noreferrer"><img src={i.url} alt="Ảnh khách hàng đính kèm đánh giá" loading="lazy" /></a>)}</div>
+    {review.replies?.map(reply => <blockquote key={reply.replyId}><strong>Phản hồi từ quán</strong><p className="commerce-text">{reply.content}</p></blockquote>)}
     {children}
   </article>;
 }
@@ -84,7 +85,7 @@ export default function CustomerReviews({ restaurantId }) {
   }, [restaurantId, page, stars, photos, sort, reload]);
   useEffect(() => {
     let active = true; setEligibility(null); setOrder('');
-    if (user?.role === 'CUSTOMER') reviewApi.eligibility(restaurantId).then(result => { if (active) { setEligibility(result); setOrder(String(result.orders[0]?.order_id || '')); } }).catch(err => { if (active) setEligibility({ orders: [], reason: getErrorMessage(err, 'Không kiểm tra được quyền đánh giá.') }); });
+    if (user?.role === 'CUSTOMER') reviewApi.eligibility(restaurantId).then(result => { if (active) { setEligibility(result); setOrder(String(result.orders[0]?.orderId || '')); } }).catch(err => { if (active) setEligibility({ orders: [], reason: getErrorMessage(err, 'Không kiểm tra được quyền đánh giá.') }); });
     return () => { active = false; };
   }, [restaurantId, user?.id, user?.role, reload]);
   const submit = async e => {
@@ -98,7 +99,7 @@ export default function CustomerReviews({ restaurantId }) {
   const summary = data?.summary;
   return <section className="container commerce-page" aria-label="Đánh giá nhà hàng">
     <h2>Đánh giá từ khách hàng</h2>
-    {summary && <div className="commerce-summary"><strong>{Number(summary.review_count) ? `${Number(summary.average_rating).toFixed(1)} / 5` : 'Chưa có đánh giá'}</strong><span>{summary.review_count} lượt đánh giá đã mua hàng</span><div>{[5, 4, 3, 2, 1].map(n => <span key={n}>{n}★: {summary[`stars_${n}`]}　</span>)}</div></div>}
+    {summary && <div className="commerce-summary"><strong>{Number(summary.reviewCount) ? `${Number(summary.averageRating).toFixed(1)} / 5` : 'Chưa có đánh giá'}</strong><span>{summary.reviewCount} lượt đánh giá đã mua hàng</span><div>{[5, 4, 3, 2, 1].map(n => <span key={n}>{n}★: {summary[`stars${n}`]}　</span>)}</div></div>}
     <div className="commerce-filters">
       <label>Số sao <select value={stars} onChange={e => { setStars(e.target.value); setPage(0); }}><option value="">Tất cả</option>{[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} sao</option>)}</select></label>
       <label>Sắp xếp <select value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}><option value="newest">Mới nhất</option><option value="highest">Điểm cao</option><option value="lowest">Điểm thấp</option></select></label>
@@ -108,14 +109,14 @@ export default function CustomerReviews({ restaurantId }) {
     {error && <Alert type="error">{error}</Alert>}
     {loading ? <p role="status">Đang tải đánh giá…</p> : !error && <>
       {!data?.items.length && <p>Chưa có đánh giá phù hợp.</p>}
-      {data?.items.map(review => <ReviewCard key={review.review_id} review={review}>{user?.role === 'CUSTOMER' && !review.is_own && <ReportButton reviewId={review.review_id} />}</ReviewCard>)}
+      {data?.items.map(review => <ReviewCard key={review.reviewId} review={review}>{user?.role === 'CUSTOMER' && !review.own && <ReportButton reviewId={review.reviewId} />}</ReviewCard>)}
       <Pagination page={page} total={data?.total || 0} setPage={setPage} />
     </>}
     {user?.role === 'CUSTOMER' ? <div className="commerce-compose"><h3>Chia sẻ trải nghiệm sau khi mua</h3>
       <p>Mỗi đơn hoàn tất được đánh giá một lần trong 30 ngày. Bạn có 7 ngày để chỉnh sửa.</p>
       <Link to="/customer/reviews">Đánh giá của tôi · sửa, xóa và thêm ảnh</Link>
       {eligibility ? eligibility.orders.length ? <form className="form" onSubmit={submit}>
-        <label className="commerce-field">Đơn đã hoàn tất<select required value={order} onChange={e => setOrder(e.target.value)}>{eligibility.orders.map(o => <option key={o.order_id} value={o.order_id}>{o.order_code}</option>)}</select></label>
+        <label className="commerce-field">Đơn đã hoàn tất<select required value={order} onChange={e => setOrder(e.target.value)}>{eligibility.orders.map(o => <option key={o.orderId} value={o.orderId}>{o.orderCode}</option>)}</select></label>
         <RatingFields {...{ rating, setRating, content, setContent }} />
         <button className="btn btn--primary" disabled={busy || !order}>Gửi đánh giá</button>
       </form> : <p>{eligibility.reason}</p> : <p>Đang kiểm tra điều kiện đánh giá…</p>}

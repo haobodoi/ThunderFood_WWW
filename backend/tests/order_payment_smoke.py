@@ -161,7 +161,7 @@ def run():
     partner.call('PATCH', f'/partner/orders/{oid}/status', {'status': 'REJECTED', 'reason': 'Too late to reject'}, expected=400)
     check(customer.call('GET', f'/customer/orders/{oid}')['completedAt'] is not None, 'status moves one step at a time up to completed')
     eligible = customer.call('GET', f'/customer/reviews/eligibility?restaurantId={RESTAURANT}')['orders']
-    check(any(o['order_id'] == oid for o in eligible), 'completed order unlocks the review flow')
+    check(any(o['orderId'] == oid for o in eligible), 'completed order unlocks the review flow')
 
     cod = customer.call('POST', '/customer/orders', body(fill(customer, ITEM), 'COD'), expected=201)
     check(cod['qr'] is None and payment(cod['orderId'])[:2] == ['COD', 'PENDING'], 'COD order has no QR')

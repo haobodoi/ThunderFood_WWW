@@ -9,36 +9,40 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.iuh.fit.thunderfood.dto.UserDetailsDto;
+import vn.edu.iuh.fit.thunderfood.entity.ReviewImageEntity;
+import vn.edu.iuh.fit.thunderfood.enums.RestaurantStatusEnum;
+import vn.edu.iuh.fit.thunderfood.enums.ReviewStatusEnum;
 import vn.edu.iuh.fit.thunderfood.exception.BusinessException;
 import vn.edu.iuh.fit.thunderfood.exception.ResourceNotFoundException;
-import vn.edu.iuh.fit.thunderfood.repository.CustomerDataRepository;
+import vn.edu.iuh.fit.thunderfood.repository.ReviewImageRepository;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.file.*;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.version;
 
 /** Images are never exposed by the public uploads resource handler. */
 @Service
 public class ReviewImageService {
     private final Path root;
-    private final CustomerDataRepository db;
+    private final ReviewImageRepository images;
     private final CustomerReviewService reviews;
     private final CustomerRules rules;
-    public ReviewImageService(@Value("${app.upload-dir:uploads}") String directory, CustomerDataRepository db, CustomerReviewService reviews, CustomerRules rules) {
-        root=Path.of(directory).toAbsolutePath().normalize().resolve("reviews"); this.db=db; this.reviews=reviews; this.rules=rules;
+    public ReviewImageService(@Value("${app.upload-dir:uploads}") String directory, ReviewImageRepository images, CustomerReviewService reviews, CustomerRules rules) {
+        root=Path.of(directory).toAbsolutePath().normalize().resolve("reviews"); this.images=images; this.reviews=reviews; this.rules=rules;
     }
     @Transactional
     public void upload(long customer,long reviewId,long expected,MultipartFile file) {
         rules.actor(customer,"CUSTOMER",true);
-        var review=db.one("SELECT * FROM customer_reviews WHERE review_id=? FOR UPDATE",reviewId);
-        reviews.editable(customer,review); version(review,expected);
+        var review=reviews.locked(reviewId);
+        reviews.editable(customer,review); version(review.getVersion(),expected);
         if(file.isEmpty() || file.getSize()>1024*1024) throw new BusinessException("Ảnh JPG/PNG tối đa 1MB");
-        var slots=db.rows("SELECT display_order FROM review_images WHERE review_id=?",reviewId);
+        var slots=review.getImages().stream().map(ReviewImageEntity::getDisplayOrder).collect(Collectors.toSet());
         int slot=1;
-        while(slot<=5) { final int n=slot; if(slots.stream().noneMatch(s -> ((Number)s.get("display_order")).intValue()==n)) break; slot++; }
+        while(slot<=5 && slots.contains(slot)) slot++;
         if(slot>5) throw new BusinessException("Mỗi đánh giá tối đa 5 ảnh");
         Path target=root.resolve(UUID.randomUUID()+".png");
         try {
@@ -62,32 +66,33 @@ public class ReviewImageService {
             });
             if(!ImageIO.write(image,"png",target.toFile())) throw new IOException("PNG writer unavailable");
         } catch(IOException e) { throw new UncheckedIOException("Không lưu được ảnh đánh giá",e); }
-        db.update("INSERT INTO review_images(review_id,file_key,display_order) VALUES (?,?,?)",reviewId,target.getFileName().toString(),slot);
-        db.update("UPDATE customer_reviews SET version=version+1,edited_at=?,updated_at=? WHERE review_id=?",rules.now(),rules.now(),reviewId);
+        images.save(new ReviewImageEntity(review,target.getFileName().toString(),slot));
+        review.imagesChanged(rules.now());
     }
     @Transactional
     public void remove(long customer,long reviewId,long imageId,long expected) {
         rules.actor(customer,"CUSTOMER",true);
-        var review=db.one("SELECT * FROM customer_reviews WHERE review_id=? FOR UPDATE",reviewId);
-        reviews.editable(customer,review); version(review,expected);
-        var image=db.one("SELECT file_key FROM review_images WHERE review_id=? AND image_id=?",reviewId,imageId);
-        Path file=path(image.get("file_key").toString());
-        db.update("DELETE FROM review_images WHERE image_id=?",imageId);
-        db.update("UPDATE customer_reviews SET version=version+1,edited_at=?,updated_at=? WHERE review_id=?",rules.now(),rules.now(),reviewId);
+        var review=reviews.locked(reviewId);
+        reviews.editable(customer,review); version(review.getVersion(),expected);
+        var image=images.findByIdAndReviewId(imageId,reviewId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dữ liệu"));
+        Path file=path(image.getFileKey());
+        images.delete(image);
+        review.imagesChanged(rules.now());
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCommit() { cleanup(file); }
         });
     }
     @Transactional(readOnly=true)
     public Resource load(long imageId,UserDetailsDto principal) {
-        var image=db.one("SELECT i.file_key,v.customer_id,v.status,v.deleted_at,r.status AS restaurant_status FROM review_images i JOIN customer_reviews v ON v.review_id=i.review_id JOIN restaurants r ON r.restaurant_id=v.restaurant_id WHERE i.image_id=?",imageId);
-        boolean visible="PUBLISHED".equals(image.get("status")) && image.get("deleted_at")==null && "APPROVED".equals(image.get("restaurant_status"));
+        var image=images.findWithReviewById(imageId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dữ liệu"));
+        var review=image.getReview();
+        boolean visible=review.getStatus()==ReviewStatusEnum.PUBLISHED && review.getDeletedAt()==null && review.getRestaurant().getStatus()==RestaurantStatusEnum.APPROVED;
         if(!visible) {
             if(principal==null) throw new ResourceNotFoundException("Không tìm thấy ảnh");
             rules.actor(principal.getId(),principal.getRoleCode(),false);
-            if(!"ADMIN".equals(principal.getRoleCode()) && principal.getId()!=CustomerDataRepository.number(image,"customer_id")) throw new ResourceNotFoundException("Không tìm thấy ảnh");
+            if(!"ADMIN".equals(principal.getRoleCode()) && !principal.getId().equals(review.getCustomerId())) throw new ResourceNotFoundException("Không tìm thấy ảnh");
         }
-        Path file=path(image.get("file_key").toString());
+        Path file=path(image.getFileKey());
         if(!Files.isRegularFile(file)) throw new ResourceNotFoundException("Không tìm thấy ảnh");
         return new FileSystemResource(file);
     }
