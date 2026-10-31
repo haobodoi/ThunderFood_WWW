@@ -35,15 +35,15 @@ export default function CheckoutPage() {
 
   const available = preview.items.filter(line => line.available);
   const skipped = preview.items.filter(line => !line.available);
-  const chosen = preview.online_available ? method : 'COD';
+  const chosen = preview.onlineAvailable ? method : 'COD';
   const update = event => setForm(previous => ({ ...previous, [event.target.name]: event.target.value }));
   const submit = async event => {
     event.preventDefault();
     setSubmitting(true); setError(''); setFieldErrors({});
     try {
-      const order = await orderApi.checkout({ ...form, cartId: preview.cart_id, version: preview.version, expectedTotal: preview.total_amount, paymentMethod: chosen });
+      const order = await orderApi.checkout({ ...form, cartId: preview.cartId, version: preview.version, expectedTotal: preview.totalAmount, paymentMethod: chosen });
       await refresh();
-      navigate(`/customer/orders/${order.order_id}`, { replace: true });
+      navigate(`/customer/orders/${order.orderId}`, { replace: true });
     } catch (e) {
       setError(getErrorMessage(e));
       setFieldErrors(getFieldErrors(e));
@@ -55,7 +55,7 @@ export default function CheckoutPage() {
 
   if (!available.length) return <main className="container commerce-page">
     <h1>Đặt hàng</h1>
-    <Alert type="warning">Giỏ của {preview.restaurant_name} chưa có món nào đặt được lúc này.</Alert>
+    <Alert type="warning">Giỏ của {preview.restaurantName} chưa có món nào đặt được lúc này.</Alert>
     <Link className="btn btn--outline" to="/customer/cart">Về giỏ hàng</Link>
   </main>;
 
@@ -73,17 +73,17 @@ export default function CheckoutPage() {
         <fieldset className="tf-pay-methods" disabled={submitting}>
           <legend>Phương thức thanh toán</legend>
           {['ONLINE', 'COD'].map(value => <label key={value} className="tf-pay-method">
-            <input type="radio" name="paymentMethod" value={value} checked={chosen === value} disabled={value === 'ONLINE' && !preview.online_available} onChange={() => setMethod(value)} />
+            <input type="radio" name="paymentMethod" value={value} checked={chosen === value} disabled={value === 'ONLINE' && !preview.onlineAvailable} onChange={() => setMethod(value)} />
             <span>{PAYMENT_METHOD[value]}</span>
           </label>)}
-          {!preview.online_available && <small>Quán chưa hỗ trợ VietQR cho đơn này.</small>}
+          {!preview.onlineAvailable && <small>Quán chưa hỗ trợ VietQR cho đơn này.</small>}
         </fieldset>
       </div>
       <aside className="tf-checkout__summary">
-        <h2>{preview.restaurant_name}</h2>
+        <h2>{preview.restaurantName}</h2>
         <OrderLines items={available} />
         {skipped.length > 0 && <Alert type="warning">{skipped.length} dòng món không đặt được lúc này sẽ được giữ lại trong giỏ.</Alert>}
-        <OrderTotals subtotal={preview.subtotal} fee={preview.delivery_fee} total={preview.total_amount} />
+        <OrderTotals subtotal={preview.subtotal} fee={preview.deliveryFee} total={preview.totalAmount} />
         {error && <Alert type="error">{error}</Alert>}
         <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>{submitting ? 'Đang đặt hàng…' : chosen === 'ONLINE' ? 'Đặt hàng và lấy mã QR' : 'Đặt hàng'}</button>
         <Link className="btn btn--ghost btn--block" to="/customer/cart">Quay lại giỏ hàng</Link>

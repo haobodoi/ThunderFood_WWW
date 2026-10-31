@@ -16,12 +16,12 @@ function CancelOrder({ order, onDone }) {
   const submit = async event => {
     event.preventDefault();
     setBusy(true); setError('');
-    try { onDone(await orderApi.cancel(order.order_id, reason)); }
+    try { onDone(await orderApi.cancel(order.orderId, reason)); }
     catch (e) { setError(getErrorMessage(e)); setBusy(false); }
   };
   return <details className="tf-order-cancel">
     <summary>Hủy đơn hàng</summary>
-    {order.payment_method === 'ONLINE' && <Alert type="warning">Nếu bạn đã chuyển khoản, đừng hủy đơn. Hãy liên hệ quán để được xác nhận.</Alert>}
+    {order.paymentMethod === 'ONLINE' && <Alert type="warning">Nếu bạn đã chuyển khoản, đừng hủy đơn. Hãy liên hệ quán để được xác nhận.</Alert>}
     <form onSubmit={submit}>
       <label className="commerce-field">Lý do hủy (ít nhất 5 ký tự)
         <textarea required minLength={5} maxLength={500} rows={2} value={reason} onChange={e => setReason(e.target.value)} disabled={busy} />
@@ -54,29 +54,29 @@ export default function OrderDetailPage() {
 
   return <main className="container commerce-page">
     <div className="commerce-row commerce-wrap"><Link to="/customer/orders">← Đơn hàng của tôi</Link><LiveStatus live={live} /></div>
-    <div className="commerce-row commerce-wrap"><h1>Đơn {order.order_code}</h1><OrderStatus status={order.order_status} /></div>
-    <OrderProgress status={order.order_status} />
+    <div className="commerce-row commerce-wrap"><h1>Đơn {order.orderCode}</h1><OrderStatus status={order.orderStatus} /></div>
+    <OrderProgress status={order.orderStatus} />
     {error && <Alert type="error">{error}</Alert>}
-    {order.cancel_reason && <Alert type="warning" title={order.order_status === 'REJECTED' ? 'Lý do quán từ chối' : 'Lý do hủy'}><span className="commerce-text">{order.cancel_reason}</span></Alert>}
+    {order.cancelReason && <Alert type="warning" title={order.orderStatus === 'REJECTED' ? 'Lý do quán từ chối' : 'Lý do hủy'}><span className="commerce-text">{order.cancelReason}</span></Alert>}
     {order.qr && <VietQrPayment qr={order.qr} />}
-    {waiting && !order.qr && <Alert type="warning">Quán hiện chưa nhận được thanh toán VietQR. Vui lòng gọi {order.restaurant_phone} hoặc hủy đơn rồi đặt lại với thanh toán khi nhận hàng.</Alert>}
-    {order.order_status === 'REJECTED' && order.payment_status === 'PAID' && <Alert type="warning">Đơn đã thanh toán nên quán cần hoàn tiền cho bạn. Liên hệ quán qua {order.restaurant_phone}.</Alert>}
+    {waiting && !order.qr && <Alert type="warning">Quán hiện chưa nhận được thanh toán VietQR. Vui lòng gọi {order.restaurantPhone} hoặc hủy đơn rồi đặt lại với thanh toán khi nhận hàng.</Alert>}
+    {order.orderStatus === 'REJECTED' && order.paymentStatus === 'PAID' && <Alert type="warning">Đơn đã thanh toán nên quán cần hoàn tiền cho bạn. Liên hệ quán qua {order.restaurantPhone}.</Alert>}
     <div className="tf-checkout">
       <section className="commerce-cart tf-checkout__form">
         <h2>Giao đến</h2>
-        <p><strong>{order.recipient_name}</strong> · {order.recipient_phone}</p>
-        <p className="commerce-text">{order.delivery_address}</p>
+        <p><strong>{order.recipientName}</strong> · {order.recipientPhone}</p>
+        <p className="commerce-text">{order.deliveryAddress}</p>
         {order.note && <p className="commerce-text">Ghi chú: {order.note}</p>}
-        <p className="muted">Đặt lúc {reviewTime(order.created_at)}</p>
-        {order.order_status === 'PENDING' && order.payment_status === 'UNPAID' && <CancelOrder order={order} onDone={setOrder} />}
+        <p className="muted">Đặt lúc {reviewTime(order.createdAt)}</p>
+        {order.orderStatus === 'PENDING' && order.paymentStatus === 'UNPAID' && <CancelOrder order={order} onDone={setOrder} />}
       </section>
       <aside className="tf-checkout__summary">
-        <h2>{order.restaurant_name}</h2>
+        <h2>{order.restaurantName}</h2>
         <OrderLines items={order.items} />
-        <OrderTotals subtotal={order.subtotal} fee={order.delivery_fee} total={order.total_amount} />
-        <p>{PAYMENT_METHOD[order.payment_method]}</p>
-        <PaymentStatus status={order.payment_status} />
-        {order.order_status === 'COMPLETED' && <Link className="btn btn--outline btn--block tf-order-review" to={`/restaurants/${order.restaurant_id}`}>Đánh giá quán</Link>}
+        <OrderTotals subtotal={order.subtotal} fee={order.deliveryFee} total={order.totalAmount} />
+        <p>{PAYMENT_METHOD[order.paymentMethod]}</p>
+        <PaymentStatus status={order.paymentStatus} />
+        {order.orderStatus === 'COMPLETED' && <Link className="btn btn--outline btn--block tf-order-review" to={`/restaurants/${order.restaurantId}`}>Đánh giá quán</Link>}
       </aside>
     </div>
   </main>;

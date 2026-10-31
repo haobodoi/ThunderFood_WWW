@@ -27,8 +27,8 @@ export function OrderProgress({ status }) {
 
 export function OrderLines({ items }) {
   return <ul className="tf-order-lines">
-    {items.map(line => <li key={line.order_item_id ?? line.cart_item_id}>
-      <div className="commerce-row"><span className="commerce-text">{line.quantity} × {line.item_name}</span><strong>{formatVND(line.line_total)}</strong></div>
+    {items.map(line => <li key={line.id}>
+      <div className="commerce-row"><span className="commerce-text">{line.quantity} × {line.itemName}</span><strong>{formatVND(line.lineTotal)}</strong></div>
       {line.note && <small className="commerce-text">Ghi chú: {line.note}</small>}
     </li>)}
   </ul>;

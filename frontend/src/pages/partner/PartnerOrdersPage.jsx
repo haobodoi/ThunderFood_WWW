@@ -19,17 +19,17 @@ function OrderActions({ order, reload }) {
     try { await operation(); setModal(null); reload(); }
     catch (e) { setError(getErrorMessage(e)); setModal(null); setBusy(false); }
   };
-  const id = order.order_id;
+  const id = order.orderId;
   const transfer = awaitingTransfer(order);
-  const next = NEXT_ACTION[order.order_status];
-  const refundable = order.order_status === 'REJECTED' && order.payment_status === 'PAID';
-  const rejectable = ['PENDING', 'CONFIRMED'].includes(order.order_status);
+  const next = NEXT_ACTION[order.orderStatus];
+  const refundable = order.orderStatus === 'REJECTED' && order.paymentStatus === 'PAID';
+  const rejectable = ['PENDING', 'CONFIRMED'].includes(order.orderStatus);
   return <>
-    {transfer && <Alert type="warning" title="Chờ khách chuyển khoản">Kiểm tra tài khoản ngân hàng của quán: số tiền <strong>{formatVND(order.total_amount)}</strong>, nội dung <strong>{order.transfer_content}</strong>.</Alert>}
-    {refundable && <Alert type="warning" title="Cần hoàn tiền cho khách">Đơn đã thanh toán {formatVND(order.total_amount)} nhưng bị từ chối. Liên hệ khách qua {order.recipient_phone} để hoàn tiền.</Alert>}
+    {transfer && <Alert type="warning" title="Chờ khách chuyển khoản">Kiểm tra tài khoản ngân hàng của quán: số tiền <strong>{formatVND(order.totalAmount)}</strong>, nội dung <strong>{order.transferContent}</strong>.</Alert>}
+    {refundable && <Alert type="warning" title="Cần hoàn tiền cho khách">Đơn đã thanh toán {formatVND(order.totalAmount)} nhưng bị từ chối. Liên hệ khách qua {order.recipientPhone} để hoàn tiền.</Alert>}
     <div className="tf-order-actions">
       {transfer && <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={() => setModal('payment')}>Đã nhận tiền</button>}
-      {order.order_status === 'PENDING' && order.payment_method === 'COD' && <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={() => run(() => partnerOrderApi.updateStatus(id, 'CONFIRMED'))}>Nhận đơn</button>}
+      {order.orderStatus === 'PENDING' && order.paymentMethod === 'COD' && <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={() => run(() => partnerOrderApi.updateStatus(id, 'CONFIRMED'))}>Nhận đơn</button>}
       {next && <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={() => run(() => partnerOrderApi.updateStatus(id, next.status))}>{next.label}</button>}
       {refundable && <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={() => setModal('refund')}>Đã hoàn tiền</button>}
     </div>
@@ -44,10 +44,10 @@ function OrderActions({ order, reload }) {
     </details>}
     {error && <Alert type="error">{error}</Alert>}
     <ConfirmModal open={modal === 'payment'} title="Xác nhận đã nhận tiền" isDanger={false} loading={busy} confirmText="Đã nhận tiền" cancelText="Chưa nhận"
-      message={`Bạn đã thấy ${formatVND(order.total_amount)} với nội dung ${order.transfer_content} trong tài khoản của quán? Đơn ${order.order_code} sẽ chuyển sang đã thanh toán và không thể hoàn tác.`}
+      message={`Bạn đã thấy ${formatVND(order.totalAmount)} với nội dung ${order.transferContent} trong tài khoản của quán? Đơn ${order.orderCode} sẽ chuyển sang đã thanh toán và không thể hoàn tác.`}
       onConfirm={() => run(() => partnerOrderApi.confirmPayment(id))} onCancel={() => setModal(null)} />
     <ConfirmModal open={modal === 'refund'} title="Xác nhận đã hoàn tiền" isDanger={false} loading={busy} confirmText="Đã hoàn tiền" cancelText="Chưa hoàn"
-      message={`Bạn đã chuyển trả ${formatVND(order.total_amount)} cho khách của đơn ${order.order_code}? Thao tác này không thể hoàn tác.`}
+      message={`Bạn đã chuyển trả ${formatVND(order.totalAmount)} cho khách của đơn ${order.orderCode}? Thao tác này không thể hoàn tác.`}
       onConfirm={() => run(() => partnerOrderApi.refund(id))} onCancel={() => setModal(null)} />
   </>;
 }
@@ -93,19 +93,19 @@ export default function PartnerOrdersPage() {
     {error && <Alert type="error">{error}</Alert>}
     {loading && <p role="status">Đang tải…</p>}
     {!loading && !error && !data?.items.length && <p>Chưa có đơn hàng nào.</p>}
-    {!loading && data?.items.map(order => <article key={`${order.order_id}:${order.order_status}:${order.payment_status}`} className={`tf-order-card ${fresh === order.order_id ? 'tf-order-card--fresh' : ''}`}>
+    {!loading && data?.items.map(order => <article key={`${order.orderId}:${order.orderStatus}:${order.paymentStatus}`} className={`tf-order-card ${fresh === order.orderId ? 'tf-order-card--fresh' : ''}`}>
       <div className="commerce-row commerce-wrap">
-        <h2>{order.order_code}</h2>
-        <OrderStatus status={order.order_status} />
+        <h2>{order.orderCode}</h2>
+        <OrderStatus status={order.orderStatus} />
       </div>
-      <p className="muted">{order.restaurant_name} · {reviewTime(order.created_at)}</p>
-      <p><strong>{order.recipient_name}</strong> · {order.recipient_phone}</p>
-      <p className="commerce-text">{order.delivery_address}</p>
+      <p className="muted">{order.restaurantName} · {reviewTime(order.createdAt)}</p>
+      <p><strong>{order.recipientName}</strong> · {order.recipientPhone}</p>
+      <p className="commerce-text">{order.deliveryAddress}</p>
       {order.note && <p className="commerce-text">Ghi chú: {order.note}</p>}
-      {order.cancel_reason && <p className="commerce-text">Lý do: {order.cancel_reason}</p>}
+      {order.cancelReason && <p className="commerce-text">Lý do: {order.cancelReason}</p>}
       <OrderLines items={order.items} />
-      <OrderTotals subtotal={order.subtotal} fee={order.delivery_fee} total={order.total_amount} />
-      <div className="commerce-row commerce-wrap"><span>{PAYMENT_METHOD[order.payment_method]}</span><PaymentStatus status={order.payment_status} /></div>
+      <OrderTotals subtotal={order.subtotal} fee={order.deliveryFee} total={order.totalAmount} />
+      <div className="commerce-row commerce-wrap"><span>{PAYMENT_METHOD[order.paymentMethod]}</span><PaymentStatus status={order.paymentStatus} /></div>
       <OrderActions order={order} reload={load} />
     </article>)}
     {!loading && <Pagination page={page} total={data?.total || 0} setPage={setPage} />}

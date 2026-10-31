@@ -31,18 +31,18 @@ export default function OrdersPage() {
     {error && <Alert type="error">{error}</Alert>}
     {loading && <p role="status">Đang tải…</p>}
     {!loading && !error && !data?.items.length && <div className="empty-state"><h2>Bạn chưa có đơn hàng nào</h2><Link className="btn btn--primary" to="/">Khám phá món ngon</Link></div>}
-    {!loading && data?.items.map(order => <article key={order.order_id} className="tf-order-card">
+    {!loading && data?.items.map(order => <article key={order.orderId} className="tf-order-card">
       <div className="commerce-row commerce-wrap">
-        <h2><Link to={`/customer/orders/${order.order_id}`}>{order.restaurant_name}</Link></h2>
-        <OrderStatus status={order.order_status} />
+        <h2><Link to={`/customer/orders/${order.orderId}`}>{order.restaurantName}</Link></h2>
+        <OrderStatus status={order.orderStatus} />
       </div>
-      <p className="muted">{order.order_code} · {reviewTime(order.created_at)}</p>
-      <p className="commerce-text">{order.items.map(line => `${line.quantity} × ${line.item_name}`).join(', ')}</p>
+      <p className="muted">{order.orderCode} · {reviewTime(order.createdAt)}</p>
+      <p className="commerce-text">{order.items.map(line => `${line.quantity} × ${line.itemName}`).join(', ')}</p>
       <div className="commerce-row commerce-wrap">
-        <strong>{formatVND(order.total_amount)}</strong>
-        <PaymentStatus status={order.payment_status} />
+        <strong>{formatVND(order.totalAmount)}</strong>
+        <PaymentStatus status={order.paymentStatus} />
       </div>
-      <Link className={`btn btn--sm ${awaitingTransfer(order) ? 'btn--primary' : 'btn--outline'}`} to={`/customer/orders/${order.order_id}`}>{awaitingTransfer(order) ? 'Thanh toán' : 'Xem chi tiết'}</Link>
+      <Link className={`btn btn--sm ${awaitingTransfer(order) ? 'btn--primary' : 'btn--outline'}`} to={`/customer/orders/${order.orderId}`}>{awaitingTransfer(order) ? 'Thanh toán' : 'Xem chi tiết'}</Link>
     </article>)}
     {!loading && <Pagination page={page} total={data?.total || 0} setPage={setPage} />}
   </main>;

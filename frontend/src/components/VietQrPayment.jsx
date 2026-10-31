@@ -31,9 +31,9 @@ export default function VietQrPayment({ qr }) {
         <QRCodeSVG value={qr.payload} size={232} level="M" marginSize={2} title={`Mã VietQR, số tiền ${formatVND(qr.amount)}`} />
       </div>
       <dl className="tf-qr__details">
-        <div className="tf-qr__row"><dt>Ngân hàng</dt><dd><strong>{qr.bank_name}</strong></dd></div>
-        <CopyRow label="Số tài khoản" value={qr.account_number} />
-        <div className="tf-qr__row"><dt>Chủ tài khoản</dt><dd><strong>{qr.account_holder}</strong></dd></div>
+        <div className="tf-qr__row"><dt>Ngân hàng</dt><dd><strong>{qr.bankName}</strong></dd></div>
+        <CopyRow label="Số tài khoản" value={qr.accountNumber} />
+        <div className="tf-qr__row"><dt>Chủ tài khoản</dt><dd><strong>{qr.accountHolder}</strong></dd></div>
         <CopyRow label="Số tiền" value={String(Math.round(Number(qr.amount)))} shown={formatVND(qr.amount)} />
         <CopyRow label="Nội dung" value={qr.content} />
       </dl>

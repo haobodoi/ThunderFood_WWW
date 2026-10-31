@@ -27,4 +27,4 @@ export const NEXT_ACTION = {
 };
 
 export const awaitingTransfer = order =>
-  order.payment_method === 'ONLINE' && order.order_status === 'PENDING' && order.payment_status === 'UNPAID';
+  order.paymentMethod === 'ONLINE' && order.orderStatus === 'PENDING' && order.paymentStatus === 'UNPAID';

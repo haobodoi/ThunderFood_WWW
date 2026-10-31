@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import vn.edu.iuh.fit.thunderfood.dto.CustomerRequests.*;
+import vn.edu.iuh.fit.thunderfood.dto.OrderResponses.*;
 import vn.edu.iuh.fit.thunderfood.exception.BusinessException;
 import vn.edu.iuh.fit.thunderfood.exception.FieldValidationException;
 import vn.edu.iuh.fit.thunderfood.repository.CustomerDataRepository;
@@ -31,6 +32,9 @@ public class OrderService {
     private static final Map<String, String> NEXT_STATUS = Map.of("CONFIRMED", "PREPARING", "PREPARING", "DELIVERING", "DELIVERING", "COMPLETED");
     private static final Set<String> STATUSES = Set.of("PENDING", "CONFIRMED", "PREPARING", "DELIVERING", "COMPLETED", "CANCELLED", "REJECTED");
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String ORDER_COLUMNS = "o.order_id,o.order_code,o.restaurant_id,r.restaurant_name,r.phone AS restaurant_phone,o.recipient_name,o.recipient_phone,o.delivery_address,o.note,o.order_status,o.payment_method,o.payment_status,o.subtotal,o.delivery_fee,o.total_amount,o.cancel_reason,o.created_at,o.completed_at";
+    private static final String ORDER_SOURCE = " FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id";
+    private static final String STATE_COLUMNS = "o.order_id,o.order_status,o.payment_method,o.payment_status";
 
     private final CustomerDataRepository db;
     private final CustomerRules rules;
@@ -47,22 +51,22 @@ public class OrderService {
     public SseEmitter partnerStream(long partner) { rules.actor(partner, PARTNER, false); return events.subscribe(partner); }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> preview(long customer, long cartId) {
+    public CheckoutPreview preview(long customer, long cartId) {
         rules.actor(customer, CUSTOMER, false);
-        var cart = new LinkedHashMap<>(carts.view(customer, cartId));
+        var cart = carts.view(customer, cartId);
         var restaurant = restaurant(number(cart, "restaurant_id"));
+        BigDecimal subtotal = (BigDecimal) cart.get("subtotal");
         BigDecimal fee = (BigDecimal) restaurant.get("delivery_fee");
-        BigDecimal total = ((BigDecimal) cart.get("subtotal")).add(fee);
-        cart.put("delivery_fee", fee);
-        cart.put("total_amount", total);
-        cart.put("online_available", qrBin(restaurant, total).isPresent());
-        return cart;
+        BigDecimal total = subtotal.add(fee);
+        var lines = cartLines(cart).stream().map(line -> new CheckoutLine(number(line, "cart_item_id"), (String) line.get("item_name"),
+                (int) number(line, "quantity"), (BigDecimal) line.get("line_total"), (String) line.get("note"), Boolean.TRUE.equals(line.get("available")))).toList();
+        return new CheckoutPreview(cartId, number(cart, "version"), (String) cart.get("restaurant_name"), lines, subtotal, fee, total, qrBin(restaurant, total).isPresent());
     }
 
-    public Map<String, Object> checkout(long customer, Checkout request) {
+    public CustomerOrder checkout(long customer, Checkout request) {
         rules.actor(customer, CUSTOMER, true);
         // Khóa giỏ và kiểm tra version để bấm đặt hai lần hoặc hai tab chỉ tạo được một đơn.
-        var locked = db.one("SELECT * FROM carts WHERE cart_id=? AND customer_id=? FOR UPDATE", request.cartId(), customer);
+        var locked = db.one("SELECT version FROM carts WHERE cart_id=? AND customer_id=? FOR UPDATE", request.cartId(), customer);
         version(locked, request.version());
         String method = request.paymentMethod();
         if (!Set.of(COD, ONLINE).contains(method)) throw new BusinessException("Phương thức thanh toán không hợp lệ");
@@ -75,8 +79,7 @@ public class OrderService {
 
         var cart = carts.view(customer, request.cartId());
         long restaurantId = number(cart, "restaurant_id");
-        @SuppressWarnings("unchecked")
-        var lines = ((List<Map<String, Object>>) cart.get("items")).stream().filter(line -> Boolean.TRUE.equals(line.get("available"))).toList();
+        var lines = cartLines(cart).stream().filter(line -> Boolean.TRUE.equals(line.get("available"))).toList();
         if (lines.isEmpty()) throw new BusinessException("Giỏ không có món nào đặt được lúc này");
         var restaurant = restaurant(restaurantId);
         BigDecimal subtotal = (BigDecimal) cart.get("subtotal");
@@ -105,25 +108,29 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> mine(long customer, int page) {
+    public PageResponse<OrderSummary> mine(long customer, int page) {
         rules.actor(customer, CUSTOMER, false); page(page);
-        var rows = db.rows("SELECT o.*,r.restaurant_name FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE o.customer_id=? ORDER BY o.created_at DESC,o.order_id DESC LIMIT 10 OFFSET ?", customer, page * 10);
-        rows.forEach(this::attachItems);
-        return Map.of("items", rows, "page", page, "total", number(db.one("SELECT COUNT(*) AS total FROM orders WHERE customer_id=?", customer), "total"));
+        var rows = db.rows("SELECT " + ORDER_COLUMNS + ORDER_SOURCE + " WHERE o.customer_id=? ORDER BY o.created_at DESC,o.order_id DESC LIMIT 10 OFFSET ?", customer, page * 10);
+        var items = rows.stream().map(row -> new OrderSummary(number(row, "order_id"), (String) row.get("order_code"), (String) row.get("restaurant_name"),
+                (String) row.get("order_status"), (String) row.get("payment_method"), (String) row.get("payment_status"),
+                (BigDecimal) row.get("total_amount"), CustomerReviewService.date(row.get("created_at")), lines(row))).toList();
+        return new PageResponse<>(items, page, number(db.one("SELECT COUNT(*) AS total FROM orders WHERE customer_id=?", customer), "total"));
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> get(long customer, long id) {
+    public CustomerOrder get(long customer, long id) {
         rules.actor(customer, CUSTOMER, false);
-        var order = db.one("SELECT o.*,r.restaurant_name,r.phone AS restaurant_phone FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE o.order_id=? AND o.customer_id=?", id, customer);
-        attachItems(order);
-        order.put("qr", qr(order));
-        return order;
+        var row = db.one("SELECT " + ORDER_COLUMNS + ORDER_SOURCE + " WHERE o.order_id=? AND o.customer_id=?", id, customer);
+        return new CustomerOrder(number(row, "order_id"), (String) row.get("order_code"), number(row, "restaurant_id"), (String) row.get("restaurant_name"), (String) row.get("restaurant_phone"),
+                (String) row.get("recipient_name"), (String) row.get("recipient_phone"), (String) row.get("delivery_address"), (String) row.get("note"),
+                (String) row.get("order_status"), (String) row.get("payment_method"), (String) row.get("payment_status"),
+                (BigDecimal) row.get("subtotal"), (BigDecimal) row.get("delivery_fee"), (BigDecimal) row.get("total_amount"), (String) row.get("cancel_reason"),
+                CustomerReviewService.date(row.get("created_at")), CustomerReviewService.date(row.get("completed_at")), lines(row), qr(row));
     }
 
-    public Map<String, Object> cancel(long customer, long id, OrderReason request) {
+    public CustomerOrder cancel(long customer, long id, OrderReason request) {
         rules.actor(customer, CUSTOMER, true);
-        var order = db.one("SELECT * FROM orders WHERE order_id=? AND customer_id=? FOR UPDATE", id, customer);
+        var order = db.one("SELECT " + STATE_COLUMNS + " FROM orders o WHERE o.order_id=? AND o.customer_id=? FOR UPDATE", id, customer);
         if (!"PENDING".equals(order.get("order_status")) || !"UNPAID".equals(order.get("payment_status")))
             throw new BusinessException("Đơn đã được quán tiếp nhận nên không thể tự hủy. Vui lòng liên hệ quán.");
         close(order, "CANCELLED", text(request.reason(), 5, 500));
@@ -132,16 +139,20 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> partnerOrders(long partner, String status, int page) {
+    public PageResponse<PartnerOrder> partnerOrders(long partner, String status, int page) {
         rules.actor(partner, PARTNER, false); page(page);
         if (status != null && !STATUSES.contains(status)) throw new BusinessException("Trạng thái đơn không hợp lệ");
-        String where = "r.owner_user_id=?" + (status == null ? "" : " AND o.order_status=?");
+        String where = " WHERE r.owner_user_id=?" + (status == null ? "" : " AND o.order_status=?");
         List<Object> args = new ArrayList<>(status == null ? List.of(partner) : List.of(partner, status));
-        long total = number(db.one("SELECT COUNT(*) AS total FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE " + where, args.toArray()), "total");
+        long total = number(db.one("SELECT COUNT(*) AS total" + ORDER_SOURCE + where, args.toArray()), "total");
         args.add(page * 10);
-        var rows = db.rows("SELECT o.*,r.restaurant_name,p.transaction_code AS transfer_content FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id LEFT JOIN payments p ON p.order_id=o.order_id WHERE " + where + " ORDER BY o.created_at DESC,o.order_id DESC LIMIT 10 OFFSET ?", args.toArray());
-        rows.forEach(this::attachItems);
-        return Map.of("items", rows, "page", page, "total", total);
+        var rows = db.rows("SELECT " + ORDER_COLUMNS + ",p.transaction_code AS transfer_content" + ORDER_SOURCE + " LEFT JOIN payments p ON p.order_id=o.order_id" + where + " ORDER BY o.created_at DESC,o.order_id DESC LIMIT 10 OFFSET ?", args.toArray());
+        var items = rows.stream().map(row -> new PartnerOrder(number(row, "order_id"), (String) row.get("order_code"), (String) row.get("restaurant_name"),
+                (String) row.get("recipient_name"), (String) row.get("recipient_phone"), (String) row.get("delivery_address"), (String) row.get("note"),
+                (String) row.get("order_status"), (String) row.get("payment_method"), (String) row.get("payment_status"),
+                (BigDecimal) row.get("subtotal"), (BigDecimal) row.get("delivery_fee"), (BigDecimal) row.get("total_amount"), (String) row.get("cancel_reason"),
+                CustomerReviewService.date(row.get("created_at")), (String) row.get("transfer_content"), lines(row))).toList();
+        return new PageResponse<>(items, page, total);
     }
 
     public void updateStatus(long partner, long id, OrderStatus request) {
@@ -205,16 +216,21 @@ public class OrderService {
         db.update("UPDATE payments SET payment_status=?,response_code=?,paid_at=COALESCE(?,paid_at) WHERE order_id=?", paymentRow, responseCode, "SUCCESS".equals(paymentRow) ? now : null, orderId);
     }
     private Map<String, Object> owned(long partner, long id) {
-        return db.one("SELECT o.* FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE o.order_id=? AND r.owner_user_id=? FOR UPDATE", id, partner);
+        return db.one("SELECT " + STATE_COLUMNS + ORDER_SOURCE + " WHERE o.order_id=? AND r.owner_user_id=? FOR UPDATE", id, partner);
     }
     private Map<String, Object> restaurant(long id) {
         return db.one("SELECT delivery_fee,bank_name,bank_account_number,bank_account_holder FROM restaurants WHERE restaurant_id=?", id);
     }
-    private void attachItems(Map<String, Object> order) {
-        order.put("items", db.rows("SELECT order_item_id,item_id,item_name,unit_price,quantity,line_total,note FROM order_items WHERE order_id=? ORDER BY order_item_id", order.get("order_id")));
+    private List<OrderLine> lines(Map<String, Object> order) {
+        return db.rows("SELECT order_item_id,item_id,item_name,unit_price,quantity,line_total,note FROM order_items WHERE order_id=? ORDER BY order_item_id", order.get("order_id")).stream()
+                .map(line -> new OrderLine(number(line, "order_item_id"), line.get("item_id") == null ? null : number(line, "item_id"), (String) line.get("item_name"),
+                        (BigDecimal) line.get("unit_price"), (int) number(line, "quantity"), (BigDecimal) line.get("line_total"), (String) line.get("note"))).toList();
     }
+    /** Giỏ hàng chưa có kiểu riêng nên đây là chỗ duy nhất đọc dạng Map của CartService. */
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> cartLines(Map<String, Object> cart) { return (List<Map<String, Object>>) cart.get("items"); }
     /** Mã QR chỉ tồn tại khi khách còn phải trả tiền; quán đổi sang tài khoản không hỗ trợ thì không có mã, đơn vẫn xem được. */
-    private Map<String, Object> qr(Map<String, Object> order) {
+    private PaymentQr qr(Map<String, Object> order) {
         if (!ONLINE.equals(order.get("payment_method")) || !"PENDING".equals(order.get("order_status")) || !"UNPAID".equals(order.get("payment_status"))) return null;
         var restaurant = restaurant(number(order, "restaurant_id"));
         BigDecimal amount = (BigDecimal) order.get("total_amount");
@@ -222,14 +238,7 @@ public class OrderService {
         if (bin.isEmpty()) return null;
         String account = (String) restaurant.get("bank_account_number");
         String content = transferContent((String) order.get("order_code"));
-        var result = new LinkedHashMap<String, Object>();
-        result.put("payload", VietQrUtil.payload(bin.get(), account, amount, content));
-        result.put("bank_name", restaurant.get("bank_name"));
-        result.put("account_number", account);
-        result.put("account_holder", restaurant.get("bank_account_holder"));
-        result.put("amount", amount);
-        result.put("content", content);
-        return result;
+        return new PaymentQr(VietQrUtil.payload(bin.get(), account, amount, content), (String) restaurant.get("bank_name"), account, (String) restaurant.get("bank_account_holder"), amount, content);
     }
     private static Optional<String> qrBin(Map<String, Object> restaurant, BigDecimal amount) {
         String account = (String) restaurant.get("bank_account_number");
