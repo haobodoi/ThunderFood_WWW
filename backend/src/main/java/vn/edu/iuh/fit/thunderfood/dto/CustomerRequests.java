@@ -1,6 +1,10 @@
 package vn.edu.iuh.fit.thunderfood.dto;
 
 import jakarta.validation.constraints.*;
+import vn.edu.iuh.fit.thunderfood.enums.OrderStatusEnum;
+import vn.edu.iuh.fit.thunderfood.enums.PaymentMethodEnum;
+
+import java.math.BigDecimal;
 
 public final class CustomerRequests {
     private CustomerRequests() {}
@@ -23,7 +27,7 @@ public final class CustomerRequests {
                            @NotBlank(message = "Vui lòng nhập số điện thoại") @Size(max = 20, message = "Số điện thoại không hợp lệ") String recipientPhone,
                            @NotBlank(message = "Vui lòng nhập địa chỉ giao hàng") @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự") String deliveryAddress,
                            @Size(max = 1000, message = "Ghi chú tối đa 1000 ký tự") String note,
-                           @NotBlank String paymentMethod, @NotNull @PositiveOrZero java.math.BigDecimal expectedTotal) {}
+                           @NotNull PaymentMethodEnum paymentMethod, @NotNull @PositiveOrZero BigDecimal expectedTotal) {}
     public record OrderReason(@NotBlank @Size(min = 5, max = 500) String reason) {}
-    public record OrderStatus(@NotBlank String status, @Size(max = 500) String reason) {}
+    public record OrderStatus(@NotNull OrderStatusEnum status, @Size(max = 500) String reason) {}
 }

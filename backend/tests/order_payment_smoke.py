@@ -242,6 +242,25 @@ def run():
     cancelled_live = customer.call('POST', '/customer/orders', body(fill(customer, ITEM)), expected=201)
     check(extra[-1].wait(cancelled_live['orderId'], created=True) and not customer_stream.wait(cancelled_live['orderId'], created=True, seconds=1), 'oldest stream is closed past the per-user limit')
 
+    preview = fill(customer, ITEM)
+    before = sql('USE thunderfood; SELECT COUNT(*) FROM orders;'), sql('USE thunderfood; SELECT COUNT(*) FROM payments;')
+    sql("USE thunderfood; CREATE TRIGGER fail_cart_bump BEFORE UPDATE ON carts FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='forced failure';")
+    customer.call('POST', '/customer/orders', body(preview), expected=500)
+    sql('USE thunderfood; DROP TRIGGER fail_cart_bump;')
+    after = sql('USE thunderfood; SELECT COUNT(*) FROM orders;'), sql('USE thunderfood; SELECT COUNT(*) FROM payments;')
+    lines = customer.call('GET', f"/customer/carts/{preview['cartId']}")['items']
+    check(before == after and len(lines) == len(preview['items']), 'failure while updating the cart rolls back the order and the cart changes together')
+    locked_order = customer.call('POST', '/customer/orders', body(preview), expected=201)
+    def confirm(_):
+        try:
+            partner.call('POST', f"/partner/orders/{locked_order['orderId']}/confirm-payment")
+            return 200
+        except AssertionError as error:
+            assert error.args[0][2] == 400, error
+            return 400
+    with concurrent.futures.ThreadPoolExecutor(3) as pool:
+        check(sorted(pool.map(confirm, range(3))) == [200, 400, 400], 'row lock lets only one concurrent payment confirmation through')
+
     sql("USE thunderfood; UPDATE users SET account_status='LOCKED' WHERE email='orders.test@example.com';")
     outsider.call('GET', '/customer/orders', expected=400)
     check(True, 'fresh account status checked after session login')
