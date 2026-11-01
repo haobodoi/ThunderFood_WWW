@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { reviewApi } from '../api/customerApi.js';
 import { getErrorMessage } from '../api/baseApi.js';
 import { Pagination, RatingFields, ReportButton, ReviewCard, reviewTime } from '../components/CustomerReviews.jsx';
@@ -59,6 +59,7 @@ function ReportActions({ report, reload }) {
   </article>;
 }
 export default function ReviewManagementPage({ area = 'customer' }) {
+  const location = useLocation();
   const [page, setPage] = useState(0);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -73,6 +74,7 @@ export default function ReviewManagementPage({ area = 'customer' }) {
   }, [area, page, revision]);
   return <main className={area === 'customer' ? 'container commerce-page' : 'commerce-page'}>
     <div className="commerce-row"><h1>{area === 'admin' ? 'Báo cáo đánh giá' : area === 'partner' ? 'Đánh giá về quán' : 'Đánh giá của tôi'}</h1><button className="btn btn--outline" disabled={loading} onClick={reload}>Tải lại</button></div>
+    {area === 'customer' && location.state?.notice && <Alert type="success">{location.state.notice}</Alert>}
     {error && <Alert type="error">{error}</Alert>}
     {loading ? <p role="status">Đang tải…</p> : !error && <>
       {!data?.items.length && <p>Chưa có dữ liệu.</p>}

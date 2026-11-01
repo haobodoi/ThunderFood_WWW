@@ -35,6 +35,9 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReviewEn
     // Đếm cả đánh giá đã xóa mềm: mỗi đơn chỉ được đánh giá một lần.
     boolean existsByOrderId(Long orderId);
 
+    @EntityGraph(attributePaths = {"customer", "restaurant"})
+    Optional<CustomerReviewEntity> findByOrderIdAndCustomerId(Long orderId, Long customerId);
+
     long countByCustomerIdAndCreatedAtGreaterThanEqual(Long customerId, LocalDateTime from);
 
     @EntityGraph(attributePaths = "customer")

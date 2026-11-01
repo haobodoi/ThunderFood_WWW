@@ -52,9 +52,15 @@ export function ReportButton({ reviewId, partner = false, onSuccess }) {
   </>;
 }
 export function RatingFields({ rating, setRating, content, setContent }) {
+  const [dragging, setDragging] = useState(false);
+  const choose = value => setRating(Math.max(1, Math.min(5, value)));
   return <>
-    <label className="commerce-field">Số sao<select value={rating} onChange={e => setRating(Number(e.target.value))}>{[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} sao</option>)}</select></label>
-    <label className="commerce-field">Trải nghiệm của bạn<textarea required minLength={10} maxLength={1000} rows={4} value={content} onChange={e => setContent(e.target.value)} placeholder="Chia sẻ về món ăn và trải nghiệm với quán…" /></label>
+    <div className="commerce-field tf-rating-input tf-rating-input--review"><span id="review-rating-label">Bạn chấm mấy sao?</span>
+      <div className="tf-rating-input__stars" role="radiogroup" aria-labelledby="review-rating-label" onPointerLeave={() => setDragging(false)}>
+        {[1, 2, 3, 4, 5].map(value => <button type="button" key={value} role="radio" aria-checked={rating === value} aria-label={`${value} sao`} className={value <= rating ? 'is-selected' : ''} onClick={() => choose(value)} onPointerDown={() => { setDragging(true); choose(value); }} onPointerEnter={() => dragging && choose(value)} onPointerUp={() => setDragging(false)}>★</button>)}
+      </div><small>{rating} / 5 sao · Có thể bấm hoặc rê chuột qua các ngôi sao</small>
+    </div>
+    <label className="commerce-field">Cảm nhận về đồ ăn<textarea required minLength={10} maxLength={1000} rows={4} value={content} onChange={e => setContent(e.target.value)} placeholder="Đồ ăn có ngon, vừa khẩu vị và đúng như mong đợi không?" /></label>
   </>;
 }
 export default function CustomerReviews({ restaurantId }) {
@@ -99,9 +105,9 @@ export default function CustomerReviews({ restaurantId }) {
   const summary = data?.summary;
   return <section className="container commerce-page" aria-label="Đánh giá nhà hàng">
     <h2>Đánh giá từ khách hàng</h2>
-    {summary && <div className="commerce-summary"><strong>{Number(summary.reviewCount) ? `${Number(summary.averageRating).toFixed(1)} / 5` : 'Chưa có đánh giá'}</strong><span>{summary.reviewCount} lượt đánh giá đã mua hàng</span><div>{[5, 4, 3, 2, 1].map(n => <span key={n}>{n}★: {summary[`stars${n}`]}　</span>)}</div></div>}
+    {summary && <div className="commerce-summary"><strong>{Number(summary.reviewCount) ? `${Number(summary.averageRating).toFixed(1)} / 5.0` : 'Chưa có đánh giá'}</strong><span>{summary.reviewCount} lượt đánh giá đã mua hàng</span><div>{[5, 4, 3, 2, 1].map(n => <span key={n}>{n}★: {summary[`stars${n}`]}　</span>)}</div></div>}
     <div className="commerce-filters">
-      <label>Số sao <select value={stars} onChange={e => { setStars(e.target.value); setPage(0); }}><option value="">Tất cả</option>{[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} sao</option>)}</select></label>
+      <div className="commerce-star-filter" aria-label="Lọc theo số sao"><span>Số sao</span><button type="button" className={!stars ? 'is-active' : ''} onClick={() => { setStars(''); setPage(0); }}>Tất cả</button>{[5, 4, 3, 2, 1].map(n => <button type="button" key={n} className={Number(stars) === n ? 'is-active' : ''} onClick={() => { setStars(String(n)); setPage(0); }}>{n}★</button>)}</div>
       <label>Sắp xếp <select value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}><option value="newest">Mới nhất</option><option value="highest">Điểm cao</option><option value="lowest">Điểm thấp</option></select></label>
       <label><input type="checkbox" checked={photos} onChange={e => { setPhotos(e.target.checked); setPage(0); }} /> Có ảnh</label>
       <button className="btn btn--outline btn--sm" disabled={loading} onClick={() => setReload(n => n + 1)}>Tải lại</button>
@@ -112,15 +118,6 @@ export default function CustomerReviews({ restaurantId }) {
       {data?.items.map(review => <ReviewCard key={review.reviewId} review={review}>{user?.role === 'CUSTOMER' && !review.own && <ReportButton reviewId={review.reviewId} />}</ReviewCard>)}
       <Pagination page={page} total={data?.total || 0} setPage={setPage} />
     </>}
-    {user?.role === 'CUSTOMER' ? <div className="commerce-compose"><h3>Chia sẻ trải nghiệm sau khi mua</h3>
-      <p>Mỗi đơn hoàn tất được đánh giá một lần trong 30 ngày. Bạn có 7 ngày để chỉnh sửa.</p>
-      <Link to="/customer/reviews">Đánh giá của tôi · sửa, xóa và thêm ảnh</Link>
-      {eligibility ? eligibility.orders.length ? <form className="form" onSubmit={submit}>
-        <label className="commerce-field">Đơn đã hoàn tất<select required value={order} onChange={e => setOrder(e.target.value)}>{eligibility.orders.map(o => <option key={o.orderId} value={o.orderId}>{o.orderCode}</option>)}</select></label>
-        <RatingFields {...{ rating, setRating, content, setContent }} />
-        <button className="btn btn--primary" disabled={busy || !order}>Gửi đánh giá</button>
-      </form> : <p>{eligibility.reason}</p> : <p>Đang kiểm tra điều kiện đánh giá…</p>}
-      {formError && <Alert type="error">{formError}</Alert>}{success && <Alert type="success">{success}</Alert>}
-    </div> : !user && <p><Link to="/login" state={{ from: `/restaurants/${restaurantId}` }}>Đăng nhập</Link> để xem quyền đánh giá sau khi mua hàng.</p>}
+    {!user && <p><Link to="/login" state={{ from: `/restaurants/${restaurantId}` }}>Đăng nhập</Link> để xem quyền đánh giá sau khi mua hàng.</p>}
   </section>;
 }

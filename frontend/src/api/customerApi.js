@@ -10,6 +10,7 @@ export const cartApi = {
 export const reviewApi = {
   list: (id, params) => api.get(`/restaurants/${id}/reviews`, { params }).then(r => r.data),
   eligibility: id => api.get('/customer/reviews/eligibility', { params: { restaurantId: id } }).then(r => r.data),
+  forOrder: orderId => api.get(`/customer/orders/${orderId}/review`).then(r => r.status === 204 ? null : r.data),
   create: body => api.post('/customer/reviews', body).then(r => r.data),
   edit: (id, body) => api.put(`/customer/reviews/${id}`, body),
   remove: (id, version) => api.delete(`/customer/reviews/${id}`, { params: { version } }),
