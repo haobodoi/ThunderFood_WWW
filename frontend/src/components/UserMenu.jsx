@@ -63,10 +63,6 @@ export default function UserMenu() {
               <Icon name="shoppingBag" size={18} />
               Đơn hàng của tôi
             </Link>
-            <Link to="/customer/reviews" className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
-              <Icon name="star" size={18} />
-              Đánh giá của tôi
-            </Link>
           </>}
           <button type="button" className="user-menu__item user-menu__item--danger" role="menuitem" onClick={handleLogout}>
             <Icon name="logout" size={18} />

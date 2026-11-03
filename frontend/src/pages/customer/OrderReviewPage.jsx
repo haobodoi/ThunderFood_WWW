@@ -7,6 +7,7 @@ import { PAYMENT_METHOD } from '../../utils/orderUtils.js';
 import { reviewTime, RatingFields } from '../../components/CustomerReviews.jsx';
 import { OrderLines, OrderStatus, PaymentStatus } from '../../components/OrderParts.jsx';
 import Alert from '../../components/Alert.jsx';
+import Icon from '../../components/Icon.jsx';
 import Modal from '../../components/Modal.jsx';
 
 function isReviewable(order) {
@@ -129,7 +130,10 @@ export default function OrderReviewPage() {
           <p>Hãy chia sẻ cảm nhận tổng quan về đồ ăn và trải nghiệm tại <strong>{order.restaurantName}</strong>.</p>
           <RatingFields {...{ rating, setRating, content, setContent }} />
           {review && <label className="commerce-field">Thêm ảnh JPG/PNG · tối đa 1MB/ảnh, tối đa 5 ảnh
-            <input type="file" accept="image/jpeg,image/png" disabled={busy || review.images.length >= 5} onChange={uploadImage} />
+            <span className={`order-review-page__camera-upload${busy || review.images.length >= 5 ? ' is-disabled' : ''}`} title="Chọn ảnh để tải lên">
+              <input className="order-review-page__file-input" type="file" accept="image/jpeg,image/png" aria-label="Chọn ảnh để tải lên" disabled={busy || review.images.length >= 5} onChange={uploadImage} />
+              <Icon name="camera" size={34} />
+            </span>
           </label>}
           {review?.images?.length > 0 && <div className="commerce-images">{review.images.map(image => <div key={image.imageId} className="order-review-page__image">
             <img src={image.url} alt={`Ảnh đánh giá ${image.displayOrder}`} /><button type="button" className="btn btn--ghost btn--sm" disabled={busy} onClick={() => removeImage(image)}>Xóa ảnh</button>
