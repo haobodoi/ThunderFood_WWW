@@ -1,6 +1,8 @@
 package vn.edu.iuh.fit.thunderfood.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,4 +32,13 @@ public interface MenuItemRepository extends JpaRepository<MenuItemEntity, Long> 
     void clearCategoryForItems(@Param("categoryId") Long categoryId);
 
     long countByCategoryIdAndDeletedFalse(Long categoryId);
+
+    /** Chỉ lấy id quán, không nạp entity: lockedItem sau đó vẫn đọc được giá trị mới nhất của món. */
+    @Query("SELECT m.restaurantId FROM MenuItemEntity m WHERE m.id = :id")
+    Optional<Long> findRestaurantIdById(@Param("id") Long id);
+
+    /** FOR UPDATE khóa cả dòng món lẫn dòng quán nhờ phép join. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MenuItemEntity m JOIN FETCH m.restaurant WHERE m.id = :id")
+    Optional<MenuItemEntity> findWithLockById(@Param("id") Long id);
 }

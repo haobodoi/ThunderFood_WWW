@@ -342,6 +342,29 @@ textarea {
   margin-left: auto;
 }
 
+.navbar__cart-link {
+  gap: 7px;
+  font-weight: 700;
+}
+
+.navbar__cart-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--tf-orange-500);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.navbar__cart-link:hover .navbar__cart-count {
+  background: var(--tf-orange-600);
+}
+
 .navbar__placeholder {
   width: 180px;
   height: 36px;

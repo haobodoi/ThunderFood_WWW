@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import vn.edu.iuh.fit.thunderfood.dto.ApiErrorDto;
 import vn.edu.iuh.fit.thunderfood.exception.BusinessException;
+import vn.edu.iuh.fit.thunderfood.exception.ConcurrentUpdateException;
 import vn.edu.iuh.fit.thunderfood.exception.FieldValidationException;
 import vn.edu.iuh.fit.thunderfood.exception.ResourceNotFoundException;
 
@@ -22,6 +23,11 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ConcurrentUpdateException.class)
+    public ResponseEntity<ApiErrorDto> concurrentUpdate(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorDto.of("STALE_VERSION", ex.getMessage()));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorDto> invalidBody(MethodArgumentNotValidException ex) {
@@ -68,6 +74,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorDto> conflict(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiErrorDto.of("CONFLICT", "Dữ liệu bị trùng hoặc không hợp lệ (ví dụ email/số điện thoại đã được sử dụng)"));
+                .body(ApiErrorDto.of("CONFLICT", "Dữ liệu đã tồn tại hoặc tham chiếu không hợp lệ. Vui lòng tải lại trước khi thử lại."));
     }
 }

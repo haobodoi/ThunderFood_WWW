@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Backend (DB Docker)" type="Application" factoryName="Application">
+    <envs>
+      <env name="SPRING_DATASOURCE_URL" value="jdbc:mariadb://localhost:3307/thunderfood" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="vn.edu.iuh.fit.thunderfood.ThunderFoodApplication" />
+    <module name="thunderfood-backend" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/backend" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

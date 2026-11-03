@@ -1,0 +1,5 @@
+target/
+uploads/
+tests/
+database/
+.DS_Store

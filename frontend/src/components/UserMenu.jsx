@@ -58,6 +58,12 @@ export default function UserMenu() {
             <Icon name="home" size={18} />
             Trang của tôi
           </Link>
+          {user.role === 'CUSTOMER' && <>
+            <Link to="/customer/orders" className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
+              <Icon name="shoppingBag" size={18} />
+              Đơn hàng của tôi
+            </Link>
+          </>}
           <button type="button" className="user-menu__item user-menu__item--danger" role="menuitem" onClick={handleLogout}>
             <Icon name="logout" size={18} />
             Đăng xuất

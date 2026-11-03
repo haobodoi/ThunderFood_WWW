@@ -1,5 +1,6 @@
 package vn.edu.iuh.fit.thunderfood.config;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -52,6 +53,8 @@ public class SecurityConfig {
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(auth -> auth
+                        // Luồng SSE đã qua kiểm tra quyền lúc mở; dispatch ASYNC khi đóng luồng không có request mới.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/auth/me").permitAll()
