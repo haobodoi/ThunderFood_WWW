@@ -28,6 +28,11 @@ public class CustomerReviewController {
     public Eligibility eligibility(@AuthenticationPrincipal UserDetailsDto user,@RequestParam long restaurantId) { return service.eligibility(user.getId(),restaurantId); }
     @GetMapping("/api/customer/reviews")
     public PageResponse<ManagedReview> own(@AuthenticationPrincipal UserDetailsDto user,@RequestParam(defaultValue="0") int page) { return service.own(user.getId(),"CUSTOMER",page); }
+    @GetMapping("/api/customer/orders/{orderId}/review")
+    public ResponseEntity<ManagedReview> ownForOrder(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long orderId) {
+        var review = service.ownForOrder(user.getId(), orderId);
+        return review == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(review);
+    }
     @PostMapping("/api/customer/reviews")
     public CreatedReview create(@AuthenticationPrincipal UserDetailsDto user,@Valid @RequestBody Review request) { return service.create(user.getId(),request); }
     @PutMapping("/api/customer/reviews/{id}")

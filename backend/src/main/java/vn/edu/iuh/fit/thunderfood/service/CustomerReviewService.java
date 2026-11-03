@@ -12,6 +12,7 @@ import vn.edu.iuh.fit.thunderfood.entity.ReviewModerationLogEntity;
 import vn.edu.iuh.fit.thunderfood.entity.ReviewReplyEntity;
 import vn.edu.iuh.fit.thunderfood.entity.ReviewReportEntity;
 import vn.edu.iuh.fit.thunderfood.enums.OrderStatusEnum;
+import vn.edu.iuh.fit.thunderfood.enums.OrderPaymentStatusEnum;
 import vn.edu.iuh.fit.thunderfood.enums.RestaurantStatusEnum;
 import vn.edu.iuh.fit.thunderfood.enums.ReviewReportReasonEnum;
 import vn.edu.iuh.fit.thunderfood.enums.ReviewReportStatusEnum;
@@ -88,13 +89,20 @@ public class CustomerReviewService {
         var rows = orders.findReviewable(customer, restaurant, now.minusDays(30), now).stream().map(EligibleOrder::from).toList();
         return new Eligibility(rows, rows.isEmpty() ? "Bạn cần đơn đã hoàn tất trong 30 ngày và chưa đánh giá để viết đánh giá." : "");
     }
+    @Transactional(readOnly = true)
+    public ManagedReview ownForOrder(long customer, long orderId) {
+        rules.actor(customer, CUSTOMER_ROLE, false);
+        return reviews.findByOrderIdAndCustomerId(orderId, customer)
+                .map(review -> ManagedReview.from(review, review.getDeletedAt() == null && withinEditWindow(review.getCreatedAt())))
+                .orElse(null);
+    }
     public CreatedReview create(long customer, Review request) {
         rules.actor(customer, CUSTOMER_ROLE, true);
         var order = orders.findWithLockByIdAndCustomerId(request.orderId(), customer).orElseThrow(CustomerReviewService::missing);
         var restaurant = order.getRestaurant();
         var completed = order.getCompletedAt();
         var now = rules.now();
-        if (order.getOrderStatus() != OrderStatusEnum.COMPLETED || completed == null || completed.isAfter(now) || completed.isBefore(now.minusDays(30)) || restaurant.getOwnerUserId() == customer || restaurant.getStatus() != RestaurantStatusEnum.APPROVED)
+        if (order.getOrderStatus() != OrderStatusEnum.COMPLETED || order.getPaymentStatus() != OrderPaymentStatusEnum.PAID || completed == null || completed.isAfter(now) || completed.isBefore(now.minusDays(30)) || restaurant.getOwnerUserId() == customer || restaurant.getStatus() != RestaurantStatusEnum.APPROVED)
             throw new BusinessException("Đơn hàng không đủ điều kiện đánh giá");
         if (reviews.existsByOrderId(request.orderId())) throw new BusinessException("Đơn này đã được đánh giá");
         if (reviews.countByCustomerIdAndCreatedAtGreaterThanEqual(customer, now.minusDays(1)) >= 10)

@@ -76,7 +76,7 @@ export default function OrderDetailPage() {
         <OrderTotals subtotal={order.subtotal} fee={order.deliveryFee} total={order.totalAmount} />
         <p>{PAYMENT_METHOD[order.paymentMethod]}</p>
         <PaymentStatus status={order.paymentStatus} />
-        {order.orderStatus === 'COMPLETED' && <Link className="btn btn--outline btn--block tf-order-review" to={`/restaurants/${order.restaurantId}`}>Đánh giá quán</Link>}
+        {order.orderStatus === 'COMPLETED' && order.paymentStatus === 'PAID' && <Link className="btn btn--outline btn--block tf-order-review" to={`/customer/orders/${order.orderId}/review`}>Đánh giá đồ ăn</Link>}
       </aside>
     </div>
   </main>;
