@@ -46,8 +46,10 @@ public class CustomerReviewService {
     private final OrderRepository orders;
     private final RestaurantRepository restaurants;
     private final CustomerRules rules;
-    public CustomerReviewService(CustomerReviewRepository reviews, ReviewReplyRepository replies, ReviewReportRepository reports, ReviewModerationLogRepository logs, OrderRepository orders, RestaurantRepository restaurants, CustomerRules rules) {
+    private final AdminAuditService audit;
+    public CustomerReviewService(CustomerReviewRepository reviews, ReviewReplyRepository replies, ReviewReportRepository reports, ReviewModerationLogRepository logs, OrderRepository orders, RestaurantRepository restaurants, CustomerRules rules, AdminAuditService audit) {
         this.reviews = reviews; this.replies = replies; this.reports = reports; this.logs = logs; this.orders = orders; this.restaurants = restaurants; this.rules = rules;
+        this.audit = audit;
     }
 
     private static ResourceNotFoundException missing() { return new ResourceNotFoundException("Không tìm thấy dữ liệu"); }
@@ -174,6 +176,7 @@ public class CustomerReviewService {
         var now = rules.now();
         logs.save(new ReviewModerationLogEntity(row, admin, row.getStatus(), target, text(request.reason(), 5, 500), now));
         row.moderate(target, now);
+        audit.record(admin,"REVIEW_MODERATE","review:"+id,target+"; "+text(request.reason(),5,500));
     }
     public void resolve(long admin, long id, ResolveReport request) {
         rules.actor(admin, ADMIN_ROLE, true);
@@ -183,5 +186,6 @@ public class CustomerReviewService {
         boolean open = row.getStatus() == ReviewReportStatusEnum.OPEN || row.getStatus() == ReviewReportStatusEnum.PROCESSING;
         if (!closing || !open) throw new BusinessException("Báo cáo đã xử lý hoặc trạng thái không hợp lệ");
         row.resolve(target, admin, text(request.note(), 1, 500), rules.now());
+        audit.record(admin,"REVIEW_REPORT_RESOLVE","review-report:"+id,target+"; "+text(request.note(),1,500));
     }
 }

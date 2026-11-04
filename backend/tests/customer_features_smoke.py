@@ -22,7 +22,7 @@ DB_PORT = os.environ.get('TEST_DB_PORT', '13317')
 API_PORT = os.environ.get('TEST_API_PORT', '18081')
 CLIENT = os.environ.get('MARIADB_CLIENT', 'C:/Program Files/MariaDB 12.2/bin/mariadb.exe')
 ENV = {**os.environ, 'MYSQL_PWD': os.environ.get('TEST_DB_PASSWORD', 'local-test-only')}
-ARGS = [CLIENT, '--host=127.0.0.1', f'--port={DB_PORT}', '--user=root', '--default-character-set=utf8mb4', '--batch', '--skip-column-names']
+ARGS = [CLIENT, '--host=127.0.0.1', f'--port={DB_PORT}', '--user=root', '--skip-ssl', '--default-character-set=utf8mb4', '--batch', '--skip-column-names']
 checks = 0
 
 def sql(statement, success=True):
@@ -69,6 +69,7 @@ def run():
     guard = sql('SELECT @@port, @@datadir;')
     assert DB_PORT in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
+    sql((ROOT / 'backend/database/migrations/V5__admin.sql').read_text(encoding='utf-8'))
     # Full-day fixture makes service-hour tests independent of execution time.
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")
     anon = Session()
@@ -173,7 +174,7 @@ def run():
     customer.call('POST','/customer/reviews',{**review_body,'orderId':2},expected=400)
     check(anon.call('GET','/restaurants/1/reviews')['summary']['reviewCount']==1, 'expired edit blocked; soft delete allowed; no second review for same order')
     sql("USE thunderfood; UPDATE users SET account_status='LOCKED' WHERE user_id=6;")
-    outsider.call('GET','/customer/carts',expected=400)
+    outsider.call('GET','/customer/carts',expected=401)
     check(True, 'fresh account status checked after session login')
     print(f'All {checks} integration checks passed.')
 

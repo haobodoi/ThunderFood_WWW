@@ -47,10 +47,11 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async ({ strict = false } = {}) => {
     try {
       await authApi.logout();
-    } catch {
+    } catch (error) {
+      if (strict) throw error;
       // vẫn xóa trạng thái phía client nếu server lỗi
     }
     try {

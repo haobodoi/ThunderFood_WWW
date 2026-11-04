@@ -26,3 +26,4 @@ frontend/node_modules/
 frontend/dist/
 uploads/
 .test-runtime/
+__pycache__/

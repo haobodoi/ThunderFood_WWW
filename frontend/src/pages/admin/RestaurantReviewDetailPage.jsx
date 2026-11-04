@@ -9,6 +9,7 @@ import FullPageLoader from '../../components/FullPageLoader.jsx';
 import StatusLabel from '../../components/StatusLabel.jsx';
 import RestaurantSummary from '../../components/RestaurantSummary.jsx';
 import Modal from '../../components/Modal.jsx';
+import ConfirmModal from '../../components/ConfirmModal.jsx';
 import Icon from '../../components/Icon.jsx';
 
 export default function RestaurantReviewDetailPage() {
@@ -19,6 +20,7 @@ export default function RestaurantReviewDetailPage() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState('');
 
@@ -38,6 +40,7 @@ export default function RestaurantReviewDetailPage() {
     setError('');
     try {
       setRegistration(await adminRestaurantApi.approve(id));
+      setApproving(false);
       setNotice('Đã duyệt quán. Quán sẽ xuất hiện trong mục "Quán của tôi" của đối tác.');
     } catch (err) {
       setError(getErrorMessage(err, 'Duyệt thất bại.'));
@@ -104,7 +107,7 @@ export default function RestaurantReviewDetailPage() {
                   <Icon name="x" size={16} />
                   Từ chối
                 </button>
-                <button type="button" className="btn btn--primary" onClick={approve} disabled={busy}>
+                <button type="button" className="btn btn--primary" onClick={() => { setError(''); setApproving(true); }} disabled={busy}>
                   <Icon name="check" size={16} />
                   Duyệt quán
                 </button>
@@ -118,6 +121,7 @@ export default function RestaurantReviewDetailPage() {
         </>
       )}
 
+      {approving && <ConfirmModal open title="Xác nhận duyệt quán" message={<><span>Quán sẽ được phép hoạt động sau khi duyệt. Xác nhận đã kiểm tra hồ sơ và giấy tờ?</span>{error && <Alert type="error">{error}</Alert>}</>} isDanger={false} confirmText="Duyệt quán" loading={busy} onConfirm={approve} onCancel={() => setApproving(false)} />}
       {rejecting && (
         <Modal
           title="Từ chối hồ sơ"

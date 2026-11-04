@@ -13,6 +13,8 @@ export default function MenuItemModal({
   error = '',
   onSave,
   onClose,
+  uploadImage = fileApi.upload,
+  categoryOptionsSlot,
 }) {
   const [itemName, setItemName] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -35,7 +37,7 @@ export default function MenuItemModal({
       setAvailable(item.available ?? true);
     } else {
       setItemName('');
-      setCategoryId(categories.length > 0 ? String(categories[0].id) : '');
+      setCategoryId('');
       setPrice('');
       setDescription('');
       setImageUrl('');
@@ -43,12 +45,17 @@ export default function MenuItemModal({
     }
     setFieldErrors({});
     setUploadError('');
-  }, [item, open, categories]);
+  }, [item, open]);
 
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setUploadError('Chỉ nhận ảnh JPG, PNG hoặc WEBP.');
+      return;
+    }
 
     if (file.size > 1024 * 1024) {
       setUploadError('Ảnh không được vượt quá 1MB.');
@@ -58,7 +65,7 @@ export default function MenuItemModal({
     setUploading(true);
     setUploadError('');
     try {
-      const res = await fileApi.upload('FOOD_IMAGE', file);
+      const res = await uploadImage('FOOD_IMAGE', file);
       setImageUrl(res.url);
     } catch (err) {
       setUploadError(getErrorMessage(err, 'Tải ảnh thất bại.'));
@@ -89,7 +96,7 @@ export default function MenuItemModal({
       categoryId: categoryId ? Number(categoryId) : null,
       price: Number(price),
       description: description.trim() || null,
-      imageUrl: imageUrl.trim() || null,
+      imageUrl: imageUrl.trim(),
       available: Boolean(available),
     });
   };
@@ -114,6 +121,7 @@ export default function MenuItemModal({
           <div className="field__control">
             <input
               id="menu-item-name"
+              maxLength={180}
               name="itemName"
               type="text"
               className="field__input"
@@ -155,6 +163,7 @@ export default function MenuItemModal({
                   </option>
                 ))}
               </select>
+              {categoryOptionsSlot}
             </div>
           </div>
 
@@ -169,7 +178,8 @@ export default function MenuItemModal({
                 name="price"
                 type="number"
                 min="0"
-                step="1000"
+                max="9999999999.99"
+                step="0.01"
                 className="field__input tf-menu-item-form__price-input"
                 value={price}
                 onChange={(e) => {
@@ -200,6 +210,7 @@ export default function MenuItemModal({
               id="menu-item-desc"
               name="description"
               rows={2}
+              maxLength={2000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Thành phần, độ cay, hương vị đặc sắc..."
@@ -265,6 +276,7 @@ export default function MenuItemModal({
               </label>
               <input
                 id="menu-item-image-url"
+                maxLength={1000}
                 name="imageUrl"
                 type="text"
                 value={imageUrl}

@@ -19,6 +19,7 @@ public record MenuItemRequestDto(
 
         @NotNull(message = "Vui lòng nhập giá món ăn")
         @DecimalMin(value = "0.0", message = "Giá món ăn không được âm")
+        @jakarta.validation.constraints.Digits(integer=10, fraction=2)
         BigDecimal price,
 
         @Size(max = 1000, message = "Đường dẫn ảnh tối đa 1000 ký tự")

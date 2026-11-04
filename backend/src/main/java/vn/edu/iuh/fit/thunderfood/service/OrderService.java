@@ -147,6 +147,10 @@ public class OrderService {
     public void updateStatus(long partner, long id, OrderStatus request) {
         rules.actor(partner, PARTNER_ROLE, true);
         var order = ownedOrder(partner, id);
+        updateStatus(order, request);
+    }
+
+    private void updateStatus(OrderEntity order, OrderStatus request) {
         OrderStatusEnum current = order.getOrderStatus(), target = request.status();
         var now = rules.now();
         if (target == REJECTED) {
@@ -169,6 +173,10 @@ public class OrderService {
     public void confirmPayment(long partner, long id) {
         rules.actor(partner, PARTNER_ROLE, true);
         var order = ownedOrder(partner, id);
+        confirmPayment(order);
+    }
+
+    private void confirmPayment(OrderEntity order) {
         if (order.getPaymentMethod() != PaymentMethodEnum.ONLINE || order.getOrderStatus() != PENDING || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID)
             throw new BusinessException("Đơn này không ở trạng thái chờ xác nhận thanh toán");
         var now = rules.now();
@@ -180,10 +188,27 @@ public class OrderService {
     public void refund(long partner, long id) {
         rules.actor(partner, PARTNER_ROLE, true);
         var order = ownedOrder(partner, id);
+        refund(order);
+    }
+
+    private void refund(OrderEntity order) {
         if (order.getOrderStatus() != REJECTED || order.getPaymentStatus() != OrderPaymentStatusEnum.PAID)
             throw new BusinessException("Chỉ hoàn tiền được đơn đã thanh toán và bị từ chối");
         order.settle(OrderPaymentStatusEnum.REFUNDED, PaymentRecordStatusEnum.REFUNDED, "MANUAL", rules.now());
         changed(order, false);
+    }
+
+    /** Admin uses exactly the partner state machine, with a locked row and stale-screen check. */
+    public void administer(long id, String action, OrderStatusEnum expectedStatus, OrderPaymentStatusEnum expectedPayment, OrderStatus request) {
+        var order = orders.findWithLockById(id).orElseThrow(OrderService::notFound);
+        if (order.getOrderStatus() != expectedStatus || order.getPaymentStatus() != expectedPayment) throw new ConcurrentUpdateException();
+        switch (action) {
+            case "status" -> updateStatus(order, request);
+            case "confirm-payment" -> confirmPayment(order);
+            case "refund" -> refund(order);
+            default -> throw new BusinessException("Thao tác đơn hàng không hợp lệ");
+        }
+        orders.flush();
     }
 
     private void changed(OrderEntity order, boolean created) {

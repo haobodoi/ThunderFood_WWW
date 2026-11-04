@@ -24,9 +24,9 @@ export default function ConfirmModal({
               <Icon name="alert" size={20} />
             </div>
           )}
-          <p>
+          <div>
             {message}
-          </p>
+          </div>
         </div>
 
         <div className="tf-form-actions">

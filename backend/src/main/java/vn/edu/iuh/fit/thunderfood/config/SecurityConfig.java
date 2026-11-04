@@ -47,8 +47,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, SecurityHandler handlers) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, SecurityHandler handlers, vn.edu.iuh.fit.thunderfood.repository.UserRepository users) throws Exception {
         http
+                .addFilterBefore(new LiveAccountFilter(users), org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
@@ -60,6 +61,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/auth/me").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+                        .requestMatchers("/api/admin/orders/*/confirm-payment", "/api/admin/orders/*/refund").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/dashboard/**", "/api/admin/orders/**", "/api/admin/catalog/**", "/api/admin/uploads").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/partner/**").hasRole("RESTAURANT_PARTNER")
                         .requestMatchers("/api/customer/**").hasRole("CUSTOMER")

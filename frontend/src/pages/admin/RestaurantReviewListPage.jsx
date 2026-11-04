@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { adminRestaurantApi } from '../../api/adminRestaurantApi.js';
+import { adminApi } from '../../api/adminApi.js';
+import { Search, Pager } from './AdminShared.jsx';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { formatDateTime } from '../../utils/restaurantUtils.js';
 import Alert from '../../components/Alert.jsx';
@@ -11,6 +12,7 @@ const TABS = [
   { status: 'PENDING', label: 'Chờ duyệt' },
   { status: 'APPROVED', label: 'Đã duyệt' },
   { status: 'REJECTED', label: 'Bị từ chối' },
+  { status: 'LOCKED', label: 'Đã khóa' },
 ];
 
 export default function RestaurantReviewListPage() {
@@ -18,16 +20,19 @@ export default function RestaurantReviewListPage() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     let active = true;
     setItems(null);
     setError('');
-    adminRestaurantApi.list(status)
-      .then((data) => { if (active) setItems(Array.isArray(data) ? data : []); })
+    adminApi.get('/restaurant-reviews', { status, q, page })
+      .then((data) => { if (active) { setItems(data.items); setTotal(data.total); } })
       .catch((err) => { if (active) setError(getErrorMessage(err, 'Không tải được danh sách hồ sơ.')); });
     return () => { active = false; };
-  }, [status, reloadToken]);
+  }, [status, q, page, reloadToken]);
 
   return (
     <div className="page page--wide">
@@ -39,9 +44,10 @@ export default function RestaurantReviewListPage() {
         {TABS.map((tab) => (
           <button key={tab.status} type="button" aria-pressed={status === tab.status}
             className={'tabs__item' + (status === tab.status ? ' is-active' : '')}
-            onClick={() => setStatus(tab.status)}>{tab.label}</button>
+            onClick={() => { setStatus(tab.status); setPage(0); }}>{tab.label}</button>
         ))}
       </div>
+      <Search value={q} label="Tên quán / chủ quán / email" onChange={value => { setQ(value); setPage(0); }} />
       {error && <div><Alert type="error">{error}</Alert>
         <button type="button" className="btn btn--outline btn--sm" onClick={() => setReloadToken((value) => value + 1)}>Thử lại</button>
       </div>}
@@ -67,6 +73,7 @@ export default function RestaurantReviewListPage() {
           ))}</tbody>
         </table>
       </div>}
+      {items && <Pager page={page} total={total} onChange={setPage} />}
     </div>
   );
 }

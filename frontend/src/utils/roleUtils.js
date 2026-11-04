@@ -2,18 +2,21 @@ export const ROLES = {
   CUSTOMER: 'CUSTOMER',
   RESTAURANT_PARTNER: 'RESTAURANT_PARTNER',
   ADMIN: 'ADMIN',
+  STAFF: 'STAFF',
 };
 
 export const ROLE_HOME = {
   [ROLES.CUSTOMER]: '/customer',
   [ROLES.RESTAURANT_PARTNER]: '/partner',
   [ROLES.ADMIN]: '/admin',
+  [ROLES.STAFF]: '/admin',
 };
 
 export const ROLE_LABEL = {
   [ROLES.CUSTOMER]: 'Khách hàng',
   [ROLES.RESTAURANT_PARTNER]: 'Đối tác nhà hàng',
   [ROLES.ADMIN]: 'Quản trị viên',
+  [ROLES.STAFF]: 'Nhân viên vận hành',
 };
 
 export function homePathFor(user) {

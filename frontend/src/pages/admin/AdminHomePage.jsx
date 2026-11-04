@@ -1,46 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { adminRestaurantApi } from '../../api/adminRestaurantApi.js';
-import AccountInfoCard from '../../components/AccountInfoCard.jsx';
-import Icon from '../../components/Icon.jsx';
+import { adminApi } from '../../api/adminApi.js';
+import { partnerStatisticsApi } from '../../api/partnerStatisticsApi.js';
+import Alert from '../../components/Alert.jsx';
+import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../../utils/orderUtils.js';
+import { Head, Field, DataState, Table, OrderTable, RestaurantPicker, useAdminData, formatVND } from './AdminShared.jsx';
 
-export default function AdminHomePage() {
+const dateValue = date => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+const today = () => dateValue(new Date());
+function startDate() { const d = new Date(); d.setDate(d.getDate() - 29); return dateValue(d); }
+function Change({ current, previous, money }) {
+  const delta = previous ? ((current - previous) / previous * 100) : null;
+  return <small className="admin-kpi__comparison">{delta === null ? 'Kỳ trước: ' + (money ? formatVND(previous) : previous) : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}% so với kỳ trước`}</small>;
+}
+function Chart({ series, metric, title, money }) {
+  const peak = Math.max(0, ...series.map(s => Number(s[metric]))), max = Math.max(1, peak), width = 900, height = 200, step = width / Math.max(1, series.length);
+  return <section className="admin-panel"><div className="admin-section-head"><h2>{title}</h2><span className="muted">Đỉnh: {money ? formatVND(peak) : peak}</span></div><svg className="admin-chart" viewBox={`0 0 ${width} ${height + 30}`} role="img" aria-label={`${title}. Số liệu chi tiết ở bảng bên dưới.`}><line x1="0" x2={width} y1={height} y2={height} className="admin-chart__axis" />{series.map((s, i) => <g key={String(s.period)}><rect className={`admin-chart__bar admin-chart__bar--${metric}`} x={i * step + step * .15} y={height - Number(s[metric]) / max * (height - 15)} width={Math.max(.3, step * .7)} height={Number(s[metric]) / max * (height - 15)} rx={Math.min(3, step * .15)}><title>{String(s.period).slice(0, 10)}: {money ? formatVND(s[metric]) : s[metric]}</title></rect>{i % Math.max(1, Math.ceil(series.length / 7)) === 0 && <text x={i * step} y={height + 22}>{String(s.period).slice(5, 10)}</text>}</g>)}</svg></section>;
+}
+export default function AdminHomePage({ area = 'admin' }) {
   const { user } = useAuth();
-  const [pending, setPending] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    adminRestaurantApi
-      .list('PENDING')
-      .then((items) => active && setPending(items.length))
-      .catch(() => active && setPending(null));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return (
-    <div className="page">
-      <div className="page__head">
-        <h1>Trang quản trị</h1>
-        <p className="muted">Xin chào {user.fullName}, bạn đã đăng nhập với vai trò quản trị viên.</p>
-      </div>
-
-      {pending !== null && (
-        <Link to="/admin/restaurants" className="callout">
-          <span className="callout__icon">
-            <Icon name="shield" size={20} />
-          </span>
-          <span className="callout__text">
-            <strong>{pending} hồ sơ quán đang chờ duyệt</strong>
-            <small>Xem và duyệt hồ sơ đăng ký quán của đối tác</small>
-          </span>
-          <Icon name="arrowRight" size={18} />
-        </Link>
-      )}
-
-      <AccountInfoCard user={user} />
-    </div>
-  );
+  const partner = area === 'partner', client = partner ? partnerStatisticsApi : adminApi;
+  const [restaurant, setRestaurant] = useState(null);
+  const [draft, setDraft] = useState({ from: startDate(), to: today(), group: 'day' }), [filters, setFilters] = useState(draft), [error, setError] = useState(''), [exporting, setExporting] = useState(false);
+  const params = partner ? { ...filters, restaurantId: restaurant?.id } : filters;
+  const resource = useAdminData('/dashboard', params, client), d = resource.data;
+  async function download() {
+    setExporting(true); setError('');
+    try { const blob = await client.export(params), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `ThunderFood-${filters.from}-${filters.to}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+    catch { setError('Không xuất được CSV. Vui lòng thử lại.'); }
+    finally { setExporting(false); }
+  }
+  return <div className="admin-page"><Head title={partner ? 'Thống kê kinh doanh của quán' : 'Tổng quan kinh doanh'} description={`Xin chào ${user.fullName}. Theo dõi hoạt động và những việc cần xử lý.`}><button className="btn btn--outline" onClick={resource.refresh}>Làm mới</button><button className="btn btn--primary" disabled={exporting || !d} onClick={download}>{exporting ? 'Đang xuất…' : 'Xuất báo cáo CSV'}</button></Head>
+    {partner && <><RestaurantPicker value={restaurant} onChange={setRestaurant} client={partnerStatisticsApi} path="/restaurants" /><p className="muted">{restaurant ? restaurant.name : 'Tổng hợp tất cả quán của bạn. Chọn một quán để xem riêng.'}</p></>}
+    <form className="admin-filters admin-panel" onSubmit={e => { e.preventDefault(); if (draft.to < draft.from) { setError('Ngày kết thúc phải sau ngày bắt đầu.'); return; } setError(''); setFilters({ ...draft }); }}><Field label="Từ ngày"><input type="date" required value={draft.from} onChange={e => setDraft({ ...draft, from: e.target.value })} /></Field><Field label="Đến ngày"><input type="date" required min={draft.from} value={draft.to} onChange={e => setDraft({ ...draft, to: e.target.value })} /></Field><Field label="Nhóm thống kê"><select value={draft.group} onChange={e => setDraft({ ...draft, group: e.target.value })}>{[['day','Ngày'],['week','Tuần'],['month','Tháng'],['year','Năm']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></Field><button className="btn btn--primary">Áp dụng</button></form>
+    {error && <Alert type="error">{error}</Alert>}<DataState resource={resource}>{d && <>
+      <p className="admin-period">{d.from} → {d.to} · Asia/Ho_Chi_Minh · VND<br /><small>So sánh {d.previousFrom} → {d.previousTo}. Khoảng lọc dựa trên ngày tạo đơn; trạng thái lấy tại lúc báo cáo.</small></p>
+      <div className="admin-kpis">{[['revenue','Doanh thu món',true],['orders','Tổng đơn hàng',false],['customers',partner ? 'Khách đặt trong kỳ' : 'Khách hàng mới',false],['average','Giá trị TB / đơn hoàn tất',true]].map(([key,label,money]) => <article className="admin-kpi" key={key}><span>{label}</span><strong>{money ? formatVND(d.current[key]) : Number(d.current[key]).toLocaleString('vi-VN')}</strong><Change current={Number(d.current[key])} previous={Number(d.previous[key])} money={money} />{key === 'customers' && <small>{partner ? 'Tổng khách từng đặt tại quán' : 'Tổng khách hàng toàn hệ thống'}: {d.current.totalCustomers}</small>}</article>)}</div>
+      <div className="admin-notice"><strong>Quy tắc doanh thu</strong><p>Chỉ đơn hoàn tất và đã thanh toán. Doanh thu món = tạm tính món; không gồm phí giao hàng. Đơn hủy, từ chối và hoàn tiền bị loại. Hệ thống hiện chưa áp dụng giảm giá.</p><p>Phí giao: {formatVND(d.current.deliveryFees)} · Tổng thu đơn đủ điều kiện: {formatVND(d.current.receipts)} · Tỷ lệ hủy/từ chối: {d.current.cancellationRate}% ({d.current.cancelled}/{d.current.orders} đơn).</p></div>
+      <section className="admin-panel"><div className="admin-section-head"><h2>{partner ? 'Cần xử lý tại quán của bạn' : 'Cần xử lý trên toàn hệ thống'}</h2><span className="muted">Không giới hạn theo bộ lọc ngày</span></div><div className="admin-attention"><Link to={partner ? '/partner/orders?status=PENDING' : '/admin/orders?status=PENDING'}>{d.attention.pending} đơn chờ xác nhận →</Link><Link to={partner ? '/partner/orders?status=REJECTED' : '/admin/orders?status=REJECTED&payment=PAID'}>{d.attention.refunds} đơn cần hoàn tiền →</Link>{user.role === 'ADMIN' && <><Link to="/admin/restaurants">{d.attention.restaurants} hồ sơ quán →</Link><Link to="/admin/review-reports">{d.attention.reports} báo cáo đánh giá →</Link></>}</div></section>
+      <div className="admin-grid"><Chart series={d.series} metric="revenue" title="Doanh thu món theo kỳ" money /><Chart series={d.series} metric="orders" title="Số đơn theo kỳ" /></div>
+      <details className="admin-panel"><summary>Xem bảng số liệu biểu đồ</summary><Table headers={['Đầu kỳ', 'Số đơn', 'Doanh thu món (VND)']} caption="Số liệu biểu đồ">{d.series.map(s => <tr key={String(s.period)}><td>{String(s.period).slice(0, 10)}</td><td data-numeric>{s.orders}</td><td data-numeric>{formatVND(s.revenue)}</td></tr>)}</Table></details>
+      <div className="admin-grid"><section className="admin-panel"><h2>Đơn theo trạng thái</h2><ul className="admin-breakdown">{Object.entries(ORDER_STATUS).map(([key,meta]) => <li key={key}><span>{meta.label}</span><strong>{d.statuses.find(s => s.status === key)?.count || 0}</strong></li>)}</ul></section><section className="admin-panel"><h2>Thanh toán</h2><ul className="admin-breakdown">{Object.entries(PAYMENT_STATUS).map(([key,meta]) => <li key={key}><span>{meta.label}</span><strong>{d.payments.find(s => s.status === key)?.count || 0} đơn</strong></li>)}</ul><h3>Phương thức / Tổng thu đơn đủ điều kiện</h3><ul className="admin-breakdown">{Object.entries(PAYMENT_METHOD).map(([key,label]) => { const p = d.paymentMethods.find(s => s.method === key); return <li key={key}><span>{label} · {p?.count || 0} đơn</span><strong>{formatVND(p?.receipts || 0)}</strong></li>; })}</ul></section></div>
+      <div className="admin-grid">{[['topItems','Món bán chạy'],['topCategories','Danh mục bán chạy'],['slowItems','Món bán chậm / chưa bán']].map(([key,title]) => <section className="admin-panel" key={key}><h2>{title}</h2>{key === 'topCategories' && <p className="muted">Danh mục lưu khi đặt đơn. Đơn cũ chưa lưu được gộp riêng.</p>}{d[key].length ? <Table headers={['Tên', 'Số lượng', key === 'slowItems' ? 'Quán' : 'Doanh thu món']} caption={title}>{d[key].map((s,i) => <tr key={i}><td>{s.name}</td><td data-numeric>{s.quantity}</td><td data-numeric={key !== 'slowItems'}>{key === 'slowItems' ? s.restaurantName : formatVND(s.revenue)}</td></tr>)}</Table> : <p className="muted">Chưa có đơn đủ điều kiện trong khoảng này.</p>}</section>)}</div>
+      {partner && <section className="admin-panel"><h2>So sánh giữa các quán trong kỳ</h2>{d.byRestaurant?.length ? <Table headers={['Quán', 'Số đơn', 'Doanh thu món']} caption="Thống kê từng quán">{d.byRestaurant.map(r => <tr key={r.id}><td>{r.name}</td><td data-numeric>{r.orders}</td><td data-numeric>{formatVND(r.revenue)}</td></tr>)}</Table> : <p className="muted">Chưa có đơn hàng trong kỳ.</p>}</section>}
+      <section className="admin-panel"><div className="admin-section-head"><h2>Đơn mới nhất trong kỳ</h2><Link className="admin-link" to={partner ? '/partner/orders' : '/admin/orders'}>Tất cả đơn hàng →</Link></div>{d.latest.length ? <OrderTable items={d.latest} area={area} /> : <p className="muted">Chưa có đơn hàng trong khoảng ngày đã chọn.</p>}</section>
+    </>}</DataState></div>;
 }
