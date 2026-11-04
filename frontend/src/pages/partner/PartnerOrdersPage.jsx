@@ -53,7 +53,10 @@ function OrderActions({ order, reload }) {
 }
 
 export default function PartnerOrdersPage() {
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(() => {
+    const requested = new URLSearchParams(window.location.search).get('status');
+    return Object.hasOwn(ORDER_STATUS, requested) ? requested : '';
+  });
   const [page, setPage] = useState(0);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');

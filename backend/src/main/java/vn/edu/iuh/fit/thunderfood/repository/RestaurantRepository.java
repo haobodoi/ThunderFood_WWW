@@ -10,6 +10,9 @@ import java.util.Optional;
 
 public interface RestaurantRepository extends JpaRepository<RestaurantEntity, Long> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<RestaurantEntity> findWithLockById(Long id);
+
     List<RestaurantEntity> findByOwnerUserIdOrderByIdDesc(Long ownerUserId);
 
     Optional<RestaurantEntity> findByIdAndOwnerUserId(Long id, Long ownerUserId);

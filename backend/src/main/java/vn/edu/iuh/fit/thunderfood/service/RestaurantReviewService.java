@@ -11,7 +11,6 @@ import vn.edu.iuh.fit.thunderfood.exception.ResourceNotFoundException;
 import vn.edu.iuh.fit.thunderfood.repository.RestaurantRepository;
 import vn.edu.iuh.fit.thunderfood.util.InputNormalizerUtil;
 
-import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -27,9 +26,13 @@ public class RestaurantReviewService {
             RestaurantStatusEnum.LOCKED);
 
     private final RestaurantRepository restaurantRepository;
+    private final AdminAuditService audit;
+    private final CustomerRules rules;
 
-    public RestaurantReviewService(RestaurantRepository restaurantRepository) {
+    public RestaurantReviewService(RestaurantRepository restaurantRepository, AdminAuditService audit, CustomerRules rules) {
         this.restaurantRepository = restaurantRepository;
+        this.audit = audit;
+        this.rules = rules;
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +56,8 @@ public class RestaurantReviewService {
         restaurant.setStatus(RestaurantStatusEnum.APPROVED);
         restaurant.setStatusReason(null);
         restaurant.setReviewedBy(adminId);
-        restaurant.setReviewedAt(LocalDateTime.now());
+        restaurant.setReviewedAt(rules.now());
+        audit.record(adminId,"RESTAURANT_APPROVE","restaurant:"+restaurantId,"Duyệt hồ sơ quán");
         return RestaurantRegistrationDto.from(restaurant);
     }
 
@@ -62,7 +66,8 @@ public class RestaurantReviewService {
         restaurant.setStatus(RestaurantStatusEnum.REJECTED);
         restaurant.setStatusReason(InputNormalizerUtil.text(reason));
         restaurant.setReviewedBy(adminId);
-        restaurant.setReviewedAt(LocalDateTime.now());
+        restaurant.setReviewedAt(rules.now());
+        audit.record(adminId,"RESTAURANT_REJECT","restaurant:"+restaurantId,InputNormalizerUtil.text(reason));
         return RestaurantRegistrationDto.from(restaurant);
     }
 
@@ -72,7 +77,8 @@ public class RestaurantReviewService {
     }
 
     private RestaurantEntity findPending(Long restaurantId) {
-        RestaurantEntity restaurant = find(restaurantId);
+        RestaurantEntity restaurant = restaurantRepository.findWithLockById(restaurantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ quán"));
         if (restaurant.getStatus() != RestaurantStatusEnum.PENDING) {
             throw new BusinessException("Chỉ xử lý được hồ sơ đang chờ duyệt");
         }

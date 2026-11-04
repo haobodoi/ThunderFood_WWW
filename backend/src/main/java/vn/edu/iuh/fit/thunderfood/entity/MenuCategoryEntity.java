@@ -29,6 +29,11 @@ public class MenuCategoryEntity {
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder = 0;
 
+    @Column(name = "is_visible", nullable = false)
+    private boolean visible = true;
+    public boolean isVisible() { return visible; }
+    public void setVisible(boolean visible) { this.visible = visible; }
+
     public MenuCategoryEntity() {
     }
 

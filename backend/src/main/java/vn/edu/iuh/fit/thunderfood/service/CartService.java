@@ -124,6 +124,7 @@ public class CartService {
         if (restaurant.getStatus() != RestaurantStatusEnum.APPROVED) return "Quán hiện không hoạt động";
         if (item.getDeleted() || item.getApprovalStatus() != ApprovalStatusEnum.APPROVED) return "Món không còn phục vụ";
         if (!item.getAvailable()) return "Món tạm hết hàng";
+        if (item.getCategory() != null && !item.getCategory().isVisible()) return "Danh mục đang tạm ẩn";
         if (!open) return "Quán đang đóng cửa";
         return "";
     }

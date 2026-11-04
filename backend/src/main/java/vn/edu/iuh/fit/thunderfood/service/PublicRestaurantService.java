@@ -70,6 +70,7 @@ public class PublicRestaurantService {
         List<MenuItemResponseDto> uncategorized = new ArrayList<>();
 
         for (MenuItemEntity item : items) {
+            if (item.getCategory() != null && !item.getCategory().isVisible()) continue;
             String catName = item.getCategory() != null ? item.getCategory().getCategoryName() : null;
             MenuItemResponseDto dto = new MenuItemResponseDto(
                     item.getId(),
@@ -97,6 +98,7 @@ public class PublicRestaurantService {
         List<RestaurantMenuResponseDto.CategoryWithItemsDto> menu = new ArrayList<>();
 
         for (MenuCategoryEntity cat : categories) {
+            if (!cat.isVisible()) continue;
             List<MenuItemResponseDto> catItems = itemsByCategory.getOrDefault(cat.getId(), Collections.emptyList());
             menu.add(new RestaurantMenuResponseDto.CategoryWithItemsDto(
                     cat.getId(),

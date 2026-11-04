@@ -82,6 +82,7 @@ def run():
     guard = sql('SELECT @@port, @@datadir;')
     assert DB_PORT in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
+    sql((ROOT / 'backend/database/migrations/V5__admin.sql').read_text(encoding='utf-8'))
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")
     anon = Session()
     customer = Session('customer@example.com')
@@ -267,7 +268,7 @@ def run():
         check(sorted(pool.map(confirm, range(3))) == [200, 400, 400], 'row lock lets only one concurrent payment confirmation through')
 
     sql("USE thunderfood; UPDATE users SET account_status='LOCKED' WHERE email='orders.test@example.com';")
-    outsider.call('GET', '/customer/orders', expected=400)
+    outsider.call('GET', '/customer/orders', expected=401)
     check(True, 'fresh account status checked after session login')
     print('All order and payment checks passed.')
 

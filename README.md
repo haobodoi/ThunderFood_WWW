@@ -2,6 +2,8 @@
 
 Backend dùng **Spring Boot 3.5.6 (Java 21) + Spring Security + Spring Data JPA + MariaDB**, frontend dùng **React 18 + Vite**.
 
+**Bản cài mới đầy đủ:** [backend/database/thunderfood_final.sql](backend/database/thunderfood_final.sql) gộp schema + V5 + dữ liệu mẫu lớn (20.001 đơn / 60.002 dòng món). Chỉ cần import một file SQL. Hướng dẫn và tài khoản: [FINAL_SETUP.md](FINAL_SETUP.md). Thống kê đối tác: `/partner/statistics`, có lọc quán sở hữu, khoảng ngày và CSV.
+
 Đã có:
 - **Tài khoản:** đăng ký, đăng nhập (email hoặc số điện thoại), đăng xuất, phân quyền theo 3 vai trò.
 - **Đăng ký quán cho đối tác:** quy trình 5 bước giống ShopeeFood, lưu nháp theo từng bước.
@@ -53,7 +55,6 @@ Chỉ cần Docker, không cần cài JDK, Node hay MariaDB:
 docker compose up -d --build     # mở http://localhost:5173
 docker compose logs -f backend   # xem log
 docker compose down              # dừng, giữ dữ liệu
-docker compose down -v           # dừng và xóa dữ liệu; lần up sau nạp lại dữ liệu mẫu từ schema v4
 ```
 
 MariaDB mở ở `127.0.0.1:3307` (`root` / `123456`) để xem bằng HeidiSQL/DBeaver. Đổi cổng hoặc mật khẩu bằng biến `WEB_PORT`, `DB_PORT`, `DB_PASSWORD`. Sau khi sửa code, chạy lại lệnh `up -d --build`.
@@ -74,9 +75,8 @@ Thanh Run có sẵn: **Backend** (dùng DB trong `application.properties`), **Ba
 
 **Yêu cầu:** JDK 21, Maven (hoặc IntelliJ), Node.js 18+, MariaDB 10.6+.
 
-1. **Tạo CSDL:** chạy `backend/database/thunderfood_mariadb_v4.sql` trong HeidiSQL/DBeaver (bản hiện tại có giỏ hàng và đánh giá).
-   ⚠️ File bắt đầu bằng `DROP DATABASE IF EXISTS thunderfood` nên mỗi lần chạy sẽ xóa và tạo lại toàn bộ dữ liệu.
-2. **Backend:** sửa user/mật khẩu MariaDB trong `backend/src/main/resources/application.properties` (mặc định `root` / `123456`), rồi chạy `ThunderFoodApplication`.
+1. **Cài mới:** chạy `backend/database/thunderfood_final.sql` trong HeidiSQL/DBeaver hoặc MariaDB CLI. File không xóa database; nếu `thunderfood` đã tồn tại, dừng tại lỗi đầu tiên. DB đang dùng chỉ cần migration V5, không import lại dữ liệu demo.
+2. **Backend:** cấu hình `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` theo MariaDB đang dùng, rồi chạy `ThunderFoodApplication`. Với DB Docker mẫu ở 3307, chọn cấu hình **Backend (DB Docker)**.
    Ảnh tải lên được lưu trong thư mục `uploads/`, nằm trong thư mục làm việc của backend.
 3. **Frontend:**
    ```bash
@@ -127,6 +127,8 @@ Trạng thái quán: `DRAFT` (đang soạn) → `PENDING` (chờ duyệt) → `A
 - Backend kiểm tra dung lượng (≤ 1MB) và định dạng thật của file (JPG/PNG/WEBP), không chỉ dựa vào đuôi file.
 
 ## API
+
+Phần quản trị/thống kê mới: xem [ADMIN_HANDOVER.md](ADMIN_HANDOVER.md) để chạy migration V5 **trên DB hiện có**, cấu hình DB qua biến môi trường, phân quyền ADMIN/STAFF, quy tắc doanh thu và kết quả/giới hạn kiểm thử. Không import lại schema v4 để cập nhật.
 
 | API | Quyền | Mô tả |
 |---|---|---|

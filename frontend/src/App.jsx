@@ -15,6 +15,10 @@ import RestaurantRegisterPage from './pages/partner/RestaurantRegisterPage.jsx';
 import RestaurantDetailPage from './pages/customer/RestaurantDetailPage.jsx';
 import RestaurantMenuPage from './pages/partner/RestaurantMenuPage.jsx';
 import AdminHomePage from './pages/admin/AdminHomePage.jsx';
+import AdminOrdersPage, { AdminOrderDetailPage } from './pages/admin/AdminOrdersPage.jsx';
+import AdminCatalogPage from './pages/admin/AdminCatalogPage.jsx';
+import AdminUsersPage, { AdminUserDetailPage } from './pages/admin/AdminUsersPage.jsx';
+import { AdminActivityPage, AdminStoresPage, AdminComplaintsPage } from './pages/admin/AdminOperationsPage.jsx';
 import RestaurantReviewListPage from './pages/admin/RestaurantReviewListPage.jsx';
 import RestaurantReviewDetailPage from './pages/admin/RestaurantReviewDetailPage.jsx';
 import CartPage from './pages/customer/CartPage.jsx';
@@ -57,6 +61,7 @@ export default function App() {
         <Route element={<ProtectedRoute roles={[ROLES.RESTAURANT_PARTNER]} />}>
           <Route element={<DashboardLayout area="partner" />}>
             <Route path="/partner" element={<MyRestaurantsPage />} />
+            <Route path="/partner/statistics" element={<AdminHomePage area="partner" />} />
             <Route path="/partner/orders" element={<PartnerOrdersPage />} />
             <Route path="/partner/reviews" element={<ReviewManagementPage area="partner" />} />
             <Route path="/partner/restaurants/:restaurantId/menu" element={<RestaurantMenuPage />} />
@@ -65,12 +70,22 @@ export default function App() {
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute roles={[ROLES.ADMIN]} />}>
+        <Route element={<ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]} />}>
           <Route element={<DashboardLayout area="admin" />}>
             <Route path="/admin" element={<AdminHomePage />} />
+            <Route path="/admin/orders" element={<AdminOrdersPage />} />
+            <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />
+            <Route path="/admin/catalog" element={<AdminCatalogPage />} />
+            <Route element={<ProtectedRoute roles={[ROLES.ADMIN]} />}>
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
+            <Route path="/admin/activity" element={<AdminActivityPage />} />
+            <Route path="/admin/stores" element={<AdminStoresPage />} />
+            <Route path="/admin/complaints" element={<AdminComplaintsPage />} />
             <Route path="/admin/review-reports" element={<ReviewManagementPage area="admin" />} />
             <Route path="/admin/restaurants" element={<RestaurantReviewListPage />} />
             <Route path="/admin/restaurants/:id" element={<RestaurantReviewDetailPage />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

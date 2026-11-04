@@ -18,6 +18,9 @@ import java.util.Optional;
 /** items và payments nạp theo lô bằng @BatchSize: fetch join một-nhiều sẽ khiến phân trang chạy trong bộ nhớ. */
 public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<OrderEntity> findWithLockById(Long id);
+
     Optional<OrderEntity> findByIdAndCustomerId(Long id, Long customerId);
 
     @EntityGraph(attributePaths = "restaurant")

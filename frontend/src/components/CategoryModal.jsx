@@ -56,6 +56,10 @@ export default function CategoryModal({
           <div className="field__control">
             <input
               id="category-name-input"
+              required
+              maxLength={120}
+              aria-invalid={Boolean(fieldError)}
+              aria-describedby={fieldError ? 'category-name-error' : undefined}
               type="text"
               className="field__input"
               value={name}
@@ -68,7 +72,7 @@ export default function CategoryModal({
               autoFocus
             />
           </div>
-          {fieldError && <p className="field__error">{fieldError}</p>}
+          {fieldError && <p className="field__error" id="category-name-error">{fieldError}</p>}
         </div>
 
         <div className="field">
