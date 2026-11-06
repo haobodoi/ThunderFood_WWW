@@ -2,9 +2,11 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom';
 import { buildChartModel, buildYAxis, chartRatio, formatAxisValue, formatChartValue, fullPeriod, GROUP_LABEL, shortPeriod, tickIndices, tooltipPosition } from '../utils/statisticsChart.js';
 
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
 function Tooltip({ point, money, anchor, id }) {
   const ref = useRef(null), [position, setPosition] = useState(null);
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const box = ref.current.getBoundingClientRect();
     setPosition(tooltipPosition(anchor, box, { width: window.innerWidth, height: window.innerHeight }));
   }, [anchor, point]);
@@ -34,7 +36,7 @@ function StatisticsChart({ series, metric, title, money, from, to, group, loadin
   const xTicks = new Set(tickIndices(model.points.length, plotWidth));
   const yOf = units => bottom - chartRatio(units, axis.top) * (bottom - top);
   const selected = active === null ? null : model.points[active.index];
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const element = plotRef.current;
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => setWidth(Math.max(1, entry.contentRect.width)));
