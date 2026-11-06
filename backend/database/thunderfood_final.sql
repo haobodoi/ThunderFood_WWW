@@ -6,7 +6,7 @@
 -- Use a fresh database/server; stop on the first SQL error. Never use --force.
 -- Existing installations: apply migrations/V5__admin.sql instead of this installer.
 -- Records are dated relative to import time, covering the last two years.
-DROP DATABASE IF EXISTS thunderfood;
+
 CREATE DATABASE thunderfood
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;

@@ -1215,6 +1215,13 @@ textarea {
 
   .dash__menu-btn {
     display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .dash__logout {
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .dash__topbar,
