@@ -1,5 +1,6 @@
 import { Link, Outlet } from 'react-router-dom';
 import Navbar, { Brand } from '../components/Navbar.jsx';
+import ChatWidget from '../components/ChatWidget.jsx';
 
 export default function PublicLayout() {
   return (
@@ -49,6 +50,7 @@ export default function PublicLayout() {
           </div>
         </div>
       </footer>
+      <ChatWidget />
     </div>
   );
 }

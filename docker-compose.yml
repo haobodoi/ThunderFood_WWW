@@ -21,9 +21,20 @@ services:
       retries: 30
       start_period: 30s
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "127.0.0.1:${QDRANT_PORT:-6334}:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
   backend:
     build: ./backend
     environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_RAG_ENABLED: ${AI_RAG_ENABLED:-false}
+      QDRANT_HOST: qdrant
       SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/thunderfood
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-123456}
@@ -34,6 +45,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      qdrant:
+        condition: service_started
     healthcheck:
       test: ["CMD", "bash", "-c", "</dev/tcp/localhost/8080"]
       interval: 5s
@@ -52,3 +65,4 @@ services:
 volumes:
   db-data:
   uploads:
+  qdrant-data:

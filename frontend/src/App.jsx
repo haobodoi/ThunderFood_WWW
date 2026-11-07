@@ -27,6 +27,7 @@ import CheckoutPage from './pages/customer/CheckoutPage.jsx';
 import OrdersPage from './pages/customer/OrdersPage.jsx';
 import OrderDetailPage from './pages/customer/OrderDetailPage.jsx';
 import OrderReviewPage from './pages/customer/OrderReviewPage.jsx';
+import PolicyChatPage from './pages/customer/PolicyChatPage.jsx';
 import PartnerOrdersPage from './pages/partner/PartnerOrdersPage.jsx';
 import { ROLES } from './utils/roleUtils.js';
 
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/customer/orders/:id" element={<OrderDetailPage />} />
             <Route path="/customer/orders/:id/review" element={<OrderReviewPage />} />
             <Route path="/customer/reviews" element={<ReviewManagementPage />} />
+            <Route path="/customer/assistant" element={<PolicyChatPage />} />
           </Route>
 
           <Route path="/403" element={<ForbiddenPage />} />
