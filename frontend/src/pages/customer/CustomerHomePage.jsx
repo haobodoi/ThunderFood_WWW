@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import AccountInfoCard from '../../components/AccountInfoCard.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -12,6 +13,7 @@ export default function CustomerHomePage() {
           <div>
             <h1>Xin chào, {user?.fullName || 'bạn'}!</h1>
             <p>Khám phá thực đơn và chọn món cho bữa ăn hôm nay.</p>
+            <Link className="btn btn--outline" to="/customer/assistant">Hỏi về chính sách</Link>
           </div>
           <div className="welcome-card__icon"><Icon name="utensils" size={32} /></div>
         </div>
