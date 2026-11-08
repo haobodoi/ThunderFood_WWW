@@ -19,18 +19,33 @@ export default function OrdersPage() {
     const request = ++sequence.current;
     try {
       const result = await orderApi.mine(page);
-      if (request === sequence.current) { setData(result); setError(''); }
-    } catch (e) { if (request === sequence.current) setError(getErrorMessage(e)); }
-    finally { if (request === sequence.current) setLoading(false); }
+      if (request === sequence.current) {
+        setData(result);
+        setError('');
+      }
+    } catch (e) {
+      if (request === sequence.current) setError(getErrorMessage(e));
+    } finally {
+      if (request === sequence.current) setLoading(false);
+    }
   }, [page]);
-  useEffect(() => { setLoading(true); load(); }, [load]);
+  useEffect(() => {
+    setLoading(true);
+    load();
+  }, [load]);
   const live = useOrderEvents('customer', load);
 
   return <main className="container commerce-page">
-    <div className="commerce-row commerce-wrap"><h1>Đơn hàng của tôi</h1><LiveStatus live={live} /></div>
+    <div className="commerce-row commerce-wrap">
+      <h1>Đơn hàng của tôi</h1>
+      <LiveStatus live={live} />
+    </div>
     {error && <Alert type="error">{error}</Alert>}
     {loading && <p role="status">Đang tải…</p>}
-    {!loading && !error && !data?.items.length && <div className="empty-state"><h2>Bạn chưa có đơn hàng nào</h2><Link className="btn btn--primary" to="/">Khám phá món ngon</Link></div>}
+    {!loading && !error && !data?.items.length && <div className="empty-state">
+      <h2>Bạn chưa có đơn hàng nào</h2>
+      <Link className="btn btn--primary" to="/">Khám phá món ngon</Link>
+    </div>}
     {!loading && data?.items.map(order => <article key={order.orderId} className="tf-order-card">
       <div className="commerce-row commerce-wrap">
         <h2><Link to={`/customer/orders/${order.orderId}`}>{order.restaurantName}</Link></h2>
@@ -42,7 +57,12 @@ export default function OrdersPage() {
         <strong>{formatVND(order.totalAmount)}</strong>
         <PaymentStatus status={order.paymentStatus} />
       </div>
-      <Link className={`btn btn--sm ${awaitingTransfer(order) ? 'btn--primary' : 'btn--outline'}`} to={`/customer/orders/${order.orderId}`}>{awaitingTransfer(order) ? 'Thanh toán' : 'Xem chi tiết'}</Link>
+      <Link
+        className={`btn btn--sm ${awaitingTransfer(order) ? 'btn--primary' : 'btn--outline'}`}
+        to={`/customer/orders/${order.orderId}`}
+      >
+        {awaitingTransfer(order) ? 'Thanh toán' : 'Xem chi tiết'}
+      </Link>
     </article>)}
     {!loading && <Pagination page={page} total={data?.total || 0} setPage={setPage} />}
   </main>;

@@ -36,8 +36,19 @@ public class ReviewImageEntity {
         this.displayOrder = displayOrder;
     }
 
-    public Long getId() { return id; }
-    public CustomerReviewEntity getReview() { return review; }
-    public String getFileKey() { return fileKey; }
-    public Integer getDisplayOrder() { return displayOrder; }
+    public Long getId() {
+        return id;
+    }
+
+    public CustomerReviewEntity getReview() {
+        return review;
+    }
+
+    public String getFileKey() {
+        return fileKey;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
 }

@@ -53,7 +53,10 @@ public class ReviewReportEntity {
     protected ReviewReportEntity() {
     }
 
-    public ReviewReportEntity(CustomerReviewEntity review, Long reporterId, ReviewReportReasonEnum reasonCode, String reason) {
+    public ReviewReportEntity(CustomerReviewEntity review,
+                              Long reporterId,
+                              ReviewReportReasonEnum reasonCode,
+                              String reason) {
         this.review = review;
         this.reporterId = reporterId;
         this.reasonCode = reasonCode;
@@ -67,15 +70,47 @@ public class ReviewReportEntity {
         this.resolutionNote = note;
     }
 
-    public Long getId() { return id; }
-    public CustomerReviewEntity getReview() { return review; }
-    public Long getReporterId() { return reporterId; }
-    public ReviewReportReasonEnum getReasonCode() { return reasonCode; }
-    public String getReason() { return reason; }
-    public ReviewReportStatusEnum getStatus() { return status; }
-    public Long getHandledBy() { return handledBy; }
-    public LocalDateTime getHandledAt() { return handledAt; }
-    public String getResolutionNote() { return resolutionNote; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public Long getId() {
+        return id;
+    }
+
+    public CustomerReviewEntity getReview() {
+        return review;
+    }
+
+    public Long getReporterId() {
+        return reporterId;
+    }
+
+    public ReviewReportReasonEnum getReasonCode() {
+        return reasonCode;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public ReviewReportStatusEnum getStatus() {
+        return status;
+    }
+
+    public Long getHandledBy() {
+        return handledBy;
+    }
+
+    public LocalDateTime getHandledAt() {
+        return handledAt;
+    }
+
+    public String getResolutionNote() {
+        return resolutionNote;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 }

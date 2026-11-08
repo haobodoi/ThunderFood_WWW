@@ -22,11 +22,18 @@ public class CustomerRules {
     private final UserRepository users;
     private final OpeningHourRepository openingHours;
     private final Clock clock;
-    public CustomerRules(UserRepository users, OpeningHourRepository openingHours, Clock clock) { this.users = users; this.openingHours = openingHours; this.clock = clock; }
+
+    public CustomerRules(UserRepository users, OpeningHourRepository openingHours, Clock clock) {
+        this.users = users;
+        this.openingHours = openingHours;
+        this.clock = clock;
+    }
+
     public LocalDateTime now() { return LocalDateTime.now(clock); }
     /** Also serializes writes by one actor, including first-cart creation and rate checks. */
     public void actor(long id, String role, boolean lock) {
-        var user = (lock ? users.findWithLockById(id) : users.findById(id)).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
+        var user = (lock ? users.findWithLockById(id) : users.findById(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
         if (user.getAccountStatus() != AccountStatusEnum.ACTIVE || !role.equals(user.getRole().getRoleCode()))
             throw new BusinessException("Tài khoản không có quyền thực hiện thao tác này");
     }
@@ -36,23 +43,34 @@ public class CustomerRules {
         if (length < min || length > max) throw new BusinessException("Nội dung phải có từ " + min + " đến " + max + " ký tự");
         return result;
     }
+
     public static void version(long current, long expected) {
         if (current != expected) throw new ConcurrentUpdateException();
     }
     public boolean open(long restaurantId, boolean manualOpen) {
         if (!manualOpen) return false;
         var now = now();
-        return openingHours.findByRestaurantIdAndDayOfWeek(restaurantId, now.getDayOfWeek().getValue()).stream().anyMatch(h -> within(h, now));
+        return openingHours.findByRestaurantIdAndDayOfWeek(restaurantId, now.getDayOfWeek().getValue())
+                .stream()
+                .anyMatch(h -> within(h, now));
     }
+
     /** Như open() nhưng cho nhiều quán một lúc, để liệt kê giỏ không tốn một truy vấn giờ mở cửa cho mỗi quán. */
     public Set<Long> openRestaurants(Collection<RestaurantEntity> restaurants) {
-        var manualOpen = restaurants.stream().filter(RestaurantEntity::getOpen).map(RestaurantEntity::getId).toList();
+        var manualOpen = restaurants.stream()
+                .filter(RestaurantEntity::getOpen)
+                .map(RestaurantEntity::getId)
+                .toList();
         if (manualOpen.isEmpty()) return Set.of();
         var now = now();
         return openingHours.findByRestaurantIdInAndDayOfWeek(manualOpen, now.getDayOfWeek().getValue()).stream()
-                .filter(h -> within(h, now)).map(h -> h.getRestaurant().getId()).collect(Collectors.toSet());
+                .filter(h -> within(h, now))
+                .map(h -> h.getRestaurant().getId())
+                .collect(Collectors.toSet());
     }
+
     private static boolean within(OpeningHourEntity hour, LocalDateTime now) {
-        return !now.toLocalTime().isBefore(hour.getOpenTime()) && now.toLocalTime().isBefore(hour.getCloseTime());
+        return !now.toLocalTime().isBefore(hour.getOpenTime())
+                && now.toLocalTime().isBefore(hour.getCloseTime());
     }
 }

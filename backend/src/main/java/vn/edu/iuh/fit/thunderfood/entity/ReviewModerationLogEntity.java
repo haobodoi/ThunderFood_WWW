@@ -41,7 +41,12 @@ public class ReviewModerationLogEntity {
     protected ReviewModerationLogEntity() {
     }
 
-    public ReviewModerationLogEntity(CustomerReviewEntity review, Long adminId, ReviewStatusEnum fromStatus, ReviewStatusEnum toStatus, String reason, LocalDateTime now) {
+    public ReviewModerationLogEntity(CustomerReviewEntity review,
+                                     Long adminId,
+                                     ReviewStatusEnum fromStatus,
+                                     ReviewStatusEnum toStatus,
+                                     String reason,
+                                     LocalDateTime now) {
         this.review = review;
         this.adminId = adminId;
         this.fromStatus = fromStatus;
@@ -50,8 +55,19 @@ public class ReviewModerationLogEntity {
         this.createdAt = now;
     }
 
-    public ReviewStatusEnum getFromStatus() { return fromStatus; }
-    public ReviewStatusEnum getToStatus() { return toStatus; }
-    public String getReason() { return reason; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public ReviewStatusEnum getFromStatus() {
+        return fromStatus;
+    }
+
+    public ReviewStatusEnum getToStatus() {
+        return toStatus;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 }

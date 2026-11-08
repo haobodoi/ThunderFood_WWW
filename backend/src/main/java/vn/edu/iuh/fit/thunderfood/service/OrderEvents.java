@@ -35,7 +35,8 @@ public class OrderEvents {
         emitter.onTimeout(emitter::complete);
         emitter.onError(error -> mine.remove(emitter));
         mine.add(emitter);
-        while (mine.size() > MAX_STREAMS_PER_USER) mine.removeFirst().complete();
+        while (mine.size() > MAX_STREAMS_PER_USER)
+            mine.removeFirst().complete();
         // Gửi ngay một dòng để header đi qua proxy, EventSource biết đã kết nối.
         send(mine, emitter, SseEmitter.event().comment("connected"));
         return emitter;
@@ -48,17 +49,21 @@ public class OrderEvents {
         for (long userId : List.of(event.customerId(), event.partnerId())) {
             var mine = streams.get(userId);
             if (mine == null) continue;
-            mine.forEach(emitter -> send(mine, emitter, SseEmitter.event().name("order").data(data, MediaType.APPLICATION_JSON)));
+            mine.forEach(emitter -> send(mine, emitter,
+                    SseEmitter.event().name("order").data(data, MediaType.APPLICATION_JSON)));
         }
     }
 
     /** Giữ kết nối qua proxy và dọn các kết nối đã chết. */
     @Scheduled(fixedDelay = HEARTBEAT_MS)
     public void heartbeat() {
-        streams.values().forEach(mine -> mine.forEach(emitter -> send(mine, emitter, SseEmitter.event().comment("ping"))));
+        streams.values().forEach(mine -> mine.forEach(
+                emitter -> send(mine, emitter, SseEmitter.event().comment("ping"))));
     }
 
-    private static void send(List<SseEmitter> mine, SseEmitter emitter, SseEmitter.SseEventBuilder event) {
+    private static void send(List<SseEmitter> mine,
+                             SseEmitter emitter,
+                             SseEmitter.SseEventBuilder event) {
         try {
             emitter.send(event);
         } catch (IOException | IllegalStateException closed) {

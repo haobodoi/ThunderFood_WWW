@@ -41,18 +41,26 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReviewEn
     long countByCustomerIdAndCreatedAtGreaterThanEqual(Long customerId, LocalDateTime from);
 
     @EntityGraph(attributePaths = "customer")
-    @Query("SELECT r FROM CustomerReviewEntity r WHERE r.restaurant.id = :restaurantId AND r.status = PUBLISHED AND r.deletedAt IS NULL " +
+    @Query(
+            "SELECT r FROM CustomerReviewEntity r WHERE r.restaurant.id = :restaurantId AND r.status = PUBLISHED AND r.deletedAt IS NULL " +
             "AND (:rating IS NULL OR r.rating = :rating) " +
             "AND (:photos = FALSE OR EXISTS (SELECT 1 FROM ReviewImageEntity i WHERE i.review = r))")
-    Page<CustomerReviewEntity> findPublic(@Param("restaurantId") Long restaurantId, @Param("rating") Integer rating, @Param("photos") boolean photos, Pageable pageable);
+    Page<CustomerReviewEntity> findPublic(@Param("restaurantId") Long restaurantId,
+                                          @Param("rating") Integer rating,
+                                          @Param("photos") boolean photos,
+                                          Pageable pageable);
 
     @EntityGraph(attributePaths = {"customer", "restaurant"})
     Page<CustomerReviewEntity> findByCustomerIdAndDeletedAtIsNull(Long customerId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"customer", "restaurant"})
-    Page<CustomerReviewEntity> findByRestaurantOwnerUserIdAndStatusAndDeletedAtIsNull(Long ownerUserId, ReviewStatusEnum status, Pageable pageable);
+    Page<CustomerReviewEntity> findByRestaurantOwnerUserIdAndStatusAndDeletedAtIsNull(Long ownerUserId,
+                                                                                      ReviewStatusEnum status,
+                                                                                      Pageable pageable);
 
-    @Query(value = "SELECT review_count AS reviewCount, average_rating AS averageRating, stars_1 AS stars1, stars_2 AS stars2, " +
-            "stars_3 AS stars3, stars_4 AS stars4, stars_5 AS stars5 FROM restaurant_rating_summary WHERE restaurant_id = :restaurantId", nativeQuery = true)
+    @Query(value =
+            "SELECT review_count AS reviewCount, average_rating AS averageRating, stars_1 AS stars1, stars_2 AS stars2, " +
+            "stars_3 AS stars3, stars_4 AS stars4, stars_5 AS stars5 FROM restaurant_rating_summary WHERE restaurant_id = :restaurantId",
+            nativeQuery = true)
     Optional<RatingSummaryView> findRatingSummary(@Param("restaurantId") Long restaurantId);
 }

@@ -21,7 +21,8 @@ public interface ReviewReportRepository extends JpaRepository<ReviewReportEntity
 
     /** Báo cáo chưa xử lý lên trước; lịch sử kiểm duyệt của từng đánh giá nạp theo lô. */
     @EntityGraph(attributePaths = {"review", "review.restaurant"})
-    @Query(value = "SELECT p FROM ReviewReportEntity p ORDER BY CASE WHEN p.status = OPEN THEN 0 WHEN p.status = PROCESSING THEN 1 ELSE 2 END, p.createdAt DESC, p.id DESC",
+    @Query(value =
+            "SELECT p FROM ReviewReportEntity p ORDER BY CASE WHEN p.status = OPEN THEN 0 WHEN p.status = PROCESSING THEN 1 ELSE 2 END, p.createdAt DESC, p.id DESC",
             countQuery = "SELECT COUNT(p) FROM ReviewReportEntity p")
     Page<ReviewReportEntity> findQueue(Pageable pageable);
 }

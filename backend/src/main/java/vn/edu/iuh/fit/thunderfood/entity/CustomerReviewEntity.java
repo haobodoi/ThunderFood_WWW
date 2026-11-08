@@ -79,7 +79,12 @@ public class CustomerReviewEntity {
     protected CustomerReviewEntity() {
     }
 
-    public CustomerReviewEntity(Long orderId, Long customerId, RestaurantEntity restaurant, Integer rating, String content, LocalDateTime now) {
+    public CustomerReviewEntity(Long orderId,
+                                Long customerId,
+                                RestaurantEntity restaurant,
+                                Integer rating,
+                                String content,
+                                LocalDateTime now) {
         this.orderId = orderId;
         this.customerId = customerId;
         this.restaurant = restaurant;
@@ -114,19 +119,63 @@ public class CustomerReviewEntity {
         version++;
     }
 
-    public Long getId() { return id; }
-    public Long getOrderId() { return orderId; }
-    public Long getCustomerId() { return customerId; }
-    public UserEntity getCustomer() { return customer; }
-    public RestaurantEntity getRestaurant() { return restaurant; }
-    public Integer getRating() { return rating; }
-    public String getContent() { return content; }
-    public ReviewStatusEnum getStatus() { return status; }
-    public long getVersion() { return version; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getEditedAt() { return editedAt; }
-    public LocalDateTime getDeletedAt() { return deletedAt; }
-    public List<ReviewImageEntity> getImages() { return images; }
-    public List<ReviewReplyEntity> getReplies() { return replies; }
-    public List<ReviewModerationLogEntity> getModerationLogs() { return moderationLogs; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public UserEntity getCustomer() {
+        return customer;
+    }
+
+    public RestaurantEntity getRestaurant() {
+        return restaurant;
+    }
+
+    public Integer getRating() {
+        return rating;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public ReviewStatusEnum getStatus() {
+        return status;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getEditedAt() {
+        return editedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public List<ReviewImageEntity> getImages() {
+        return images;
+    }
+
+    public List<ReviewReplyEntity> getReplies() {
+        return replies;
+    }
+
+    public List<ReviewModerationLogEntity> getModerationLogs() {
+        return moderationLogs;
+    }
 }

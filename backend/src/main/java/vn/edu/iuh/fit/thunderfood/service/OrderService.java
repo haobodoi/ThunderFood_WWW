@@ -45,7 +45,8 @@ public class OrderService {
     private static final String CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
     private static final int PAGE_SIZE = 10;
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
-    private static final Map<OrderStatusEnum, OrderStatusEnum> NEXT_STATUS = Map.of(CONFIRMED, PREPARING, PREPARING, DELIVERING, DELIVERING, COMPLETED);
+    private static final Map<OrderStatusEnum, OrderStatusEnum> NEXT_STATUS =
+            Map.of(CONFIRMED, PREPARING, PREPARING, DELIVERING, DELIVERING, COMPLETED);
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final OrderRepository orders;
@@ -55,14 +56,34 @@ public class OrderService {
     private final CartService carts;
     private final OrderEvents events;
     private final ApplicationEventPublisher publisher;
-    public OrderService(OrderRepository orders, RestaurantRepository restaurants, CartRepository cartRepository, CustomerRules rules, CartService carts, OrderEvents events, ApplicationEventPublisher publisher) {
-        this.orders = orders; this.restaurants = restaurants; this.cartRepository = cartRepository; this.rules = rules; this.carts = carts; this.events = events; this.publisher = publisher;
+
+    public OrderService(OrderRepository orders,
+                        RestaurantRepository restaurants,
+                        CartRepository cartRepository,
+                        CustomerRules rules,
+                        CartService carts,
+                        OrderEvents events,
+                        ApplicationEventPublisher publisher) {
+        this.orders = orders;
+        this.restaurants = restaurants;
+        this.cartRepository = cartRepository;
+        this.rules = rules;
+        this.carts = carts;
+        this.events = events;
+        this.publisher = publisher;
     }
 
     @Transactional(readOnly = true)
-    public SseEmitter customerStream(long customer) { rules.actor(customer, CUSTOMER_ROLE, false); return events.subscribe(customer); }
+    public SseEmitter customerStream(long customer) {
+        rules.actor(customer, CUSTOMER_ROLE, false);
+        return events.subscribe(customer);
+    }
+
     @Transactional(readOnly = true)
-    public SseEmitter partnerStream(long partner) { rules.actor(partner, PARTNER_ROLE, false); return events.subscribe(partner); }
+    public SseEmitter partnerStream(long partner) {
+        rules.actor(partner, PARTNER_ROLE, false);
+        return events.subscribe(partner);
+    }
 
     @Transactional(readOnly = true)
     public CheckoutPreview preview(long customer, long cartId) {
@@ -71,8 +92,12 @@ public class OrderService {
         var restaurant = restaurant(cart.restaurantId());
         BigDecimal subtotal = cart.subtotal();
         BigDecimal total = subtotal.add(restaurant.getDeliveryFee());
-        var lines = cart.items().stream().map(line -> new CheckoutLine(line.cartItemId(), line.itemName(), line.quantity(), line.lineTotal(), line.note(), line.available())).toList();
-        return new CheckoutPreview(cartId, cart.version(), restaurant.getRestaurantName(), lines, subtotal, restaurant.getDeliveryFee(), total, qrBin(restaurant, total).isPresent());
+        var lines = cart.items().stream()
+                .map(line -> new CheckoutLine(line.cartItemId(), line.itemName(), line.quantity(),
+                        line.lineTotal(), line.note(), line.available()))
+                .toList();
+        return new CheckoutPreview(cartId, cart.version(), restaurant.getRestaurantName(), lines, subtotal,
+                restaurant.getDeliveryFee(), total, qrBin(restaurant, total).isPresent());
     }
 
     public CustomerOrder checkout(long customer, Checkout request) {
@@ -85,7 +110,8 @@ public class OrderService {
         String name = InputNormalizerUtil.text(request.recipientName());
         String phone = InputNormalizerUtil.phone(request.recipientPhone());
         if (phone == null || !phone.matches("^0\\d{9}$"))
-            throw new FieldValidationException("Dữ liệu chưa hợp lệ", Map.of("recipientPhone", "Số điện thoại gồm 10 chữ số và bắt đầu bằng 0"));
+            throw new FieldValidationException("Dữ liệu chưa hợp lệ",
+                    Map.of("recipientPhone", "Số điện thoại gồm 10 chữ số và bắt đầu bằng 0"));
         String address = InputNormalizerUtil.text(request.deliveryAddress());
         String note = text(request.note(), 0, 1000);
 
@@ -96,15 +122,19 @@ public class OrderService {
         BigDecimal subtotal = cart.subtotal();
         BigDecimal total = subtotal.add(restaurant.getDeliveryFee());
         if (total.compareTo(request.expectedTotal()) != 0)
-            throw new BusinessException("Giá món hoặc phí giao hàng vừa thay đổi. Vui lòng kiểm tra lại tổng tiền rồi đặt lại.");
+            throw new BusinessException(
+                    "Giá món hoặc phí giao hàng vừa thay đổi. Vui lòng kiểm tra lại tổng tiền rồi đặt lại.");
         if (method == PaymentMethodEnum.ONLINE && qrBin(restaurant, total).isEmpty())
-            throw new BusinessException("Quán chưa hỗ trợ thanh toán VietQR cho đơn này. Vui lòng chọn thanh toán khi nhận hàng.");
+            throw new BusinessException(
+                    "Quán chưa hỗ trợ thanh toán VietQR cho đơn này. Vui lòng chọn thanh toán khi nhận hàng.");
 
         var now = rules.now();
         String code = "TF-" + now.format(DateTimeFormatter.BASIC_ISO_DATE) + "-" + randomCode();
-        var order = new OrderEntity(code, customer, restaurant, name, phone, address, note.isEmpty() ? null : note, method, subtotal, restaurant.getDeliveryFee(), total, now);
+        var order = new OrderEntity(code, customer, restaurant, name, phone, address,
+                note.isEmpty() ? null : note, method, subtotal, restaurant.getDeliveryFee(), total, now);
         for (var line : lines)
-            order.addItem(line.itemId(), line.itemName(), line.unitPrice(), line.quantity(), line.lineTotal(), line.note().isEmpty() ? null : line.note());
+            order.addItem(line.itemId(), line.itemName(), line.unitPrice(), line.quantity(), line.lineTotal(),
+                    line.note().isEmpty() ? null : line.note());
         order.addPayment(method == PaymentMethodEnum.ONLINE ? "VIETQR" : "COD", transferContent(code), now);
         orders.save(order);
         lockedCart.removeItems(lines.stream().map(CartLine::cartItemId).toList(), now);
@@ -123,15 +153,18 @@ public class OrderService {
     @Transactional(readOnly = true)
     public CustomerOrder get(long customer, long id) {
         rules.actor(customer, CUSTOMER_ROLE, false);
-        var order = orders.findByIdAndCustomerId(id, customer).orElseThrow(OrderService::notFound);
+        var order = orders.findByIdAndCustomerId(id, customer)
+                .orElseThrow(OrderService::notFound);
         return CustomerOrder.from(order, qr(order));
     }
 
     public CustomerOrder cancel(long customer, long id, OrderReason request) {
         rules.actor(customer, CUSTOMER_ROLE, true);
-        var order = orders.findWithLockByIdAndCustomerId(id, customer).orElseThrow(OrderService::notFound);
+        var order = orders.findWithLockByIdAndCustomerId(id, customer)
+                .orElseThrow(OrderService::notFound);
         if (order.getOrderStatus() != PENDING || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID)
-            throw new BusinessException("Đơn đã được quán tiếp nhận nên không thể tự hủy. Vui lòng liên hệ quán.");
+            throw new BusinessException(
+                    "Đơn đã được quán tiếp nhận nên không thể tự hủy. Vui lòng liên hệ quán.");
         close(order, CANCELLED, text(request.reason(), 5, 500));
         changed(order, false);
         return CustomerOrder.from(order, qr(order));
@@ -140,7 +173,9 @@ public class OrderService {
     @Transactional(readOnly = true)
     public PageResponse<PartnerOrder> partnerOrders(long partner, OrderStatusEnum status, int page) {
         rules.actor(partner, PARTNER_ROLE, false);
-        var result = status == null ? orders.findByRestaurantOwnerUserId(partner, page(page)) : orders.findByRestaurantOwnerUserIdAndOrderStatus(partner, status, page(page));
+        var result = status == null
+                ? orders.findByRestaurantOwnerUserId(partner, page(page))
+                : orders.findByRestaurantOwnerUserIdAndOrderStatus(partner, status, page(page));
         return PageResponse.from(result, PartnerOrder::from);
     }
 
@@ -154,14 +189,17 @@ public class OrderService {
         OrderStatusEnum current = order.getOrderStatus(), target = request.status();
         var now = rules.now();
         if (target == REJECTED) {
-            if (current != PENDING && current != CONFIRMED) throw new BusinessException("Chỉ từ chối được đơn chưa bắt đầu chế biến");
+            if (current != PENDING && current != CONFIRMED)
+                throw new BusinessException("Chỉ từ chối được đơn chưa bắt đầu chế biến");
             close(order, REJECTED, text(request.reason(), 5, 500));
         } else if (target == CONFIRMED) {
             if (current != PENDING) throw new BusinessException("Đơn không còn ở trạng thái chờ xác nhận");
-            if (order.getPaymentMethod() == PaymentMethodEnum.ONLINE) throw new BusinessException("Đơn VietQR cần xác nhận đã nhận tiền trước");
+            if (order.getPaymentMethod() == PaymentMethodEnum.ONLINE)
+                throw new BusinessException("Đơn VietQR cần xác nhận đã nhận tiền trước");
             order.moveTo(CONFIRMED, now);
         } else {
-            if (target != NEXT_STATUS.get(current)) throw new BusinessException("Không thể chuyển đơn sang trạng thái này");
+            if (target != NEXT_STATUS.get(current))
+                throw new BusinessException("Không thể chuyển đơn sang trạng thái này");
             order.moveTo(target, now);
             // Đơn COD thu tiền lúc giao; đơn VietQR đã PAID trước khi rời PENDING.
             if (target == COMPLETED && order.getPaymentMethod() == PaymentMethodEnum.COD)
@@ -177,7 +215,9 @@ public class OrderService {
     }
 
     private void confirmPayment(OrderEntity order) {
-        if (order.getPaymentMethod() != PaymentMethodEnum.ONLINE || order.getOrderStatus() != PENDING || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID)
+        if (order.getPaymentMethod() != PaymentMethodEnum.ONLINE
+                || order.getOrderStatus() != PENDING
+                || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID)
             throw new BusinessException("Đơn này không ở trạng thái chờ xác nhận thanh toán");
         var now = rules.now();
         order.settle(OrderPaymentStatusEnum.PAID, PaymentRecordStatusEnum.SUCCESS, "MANUAL", now);
@@ -194,14 +234,20 @@ public class OrderService {
     private void refund(OrderEntity order) {
         if (order.getOrderStatus() != REJECTED || order.getPaymentStatus() != OrderPaymentStatusEnum.PAID)
             throw new BusinessException("Chỉ hoàn tiền được đơn đã thanh toán và bị từ chối");
-        order.settle(OrderPaymentStatusEnum.REFUNDED, PaymentRecordStatusEnum.REFUNDED, "MANUAL", rules.now());
+        order.settle(OrderPaymentStatusEnum.REFUNDED, PaymentRecordStatusEnum.REFUNDED, "MANUAL",
+                rules.now());
         changed(order, false);
     }
 
     /** Admin uses exactly the partner state machine, with a locked row and stale-screen check. */
-    public void administer(long id, String action, OrderStatusEnum expectedStatus, OrderPaymentStatusEnum expectedPayment, OrderStatus request) {
+    public void administer(long id,
+                           String action,
+                           OrderStatusEnum expectedStatus,
+                           OrderPaymentStatusEnum expectedPayment,
+                           OrderStatus request) {
         var order = orders.findWithLockById(id).orElseThrow(OrderService::notFound);
-        if (order.getOrderStatus() != expectedStatus || order.getPaymentStatus() != expectedPayment) throw new ConcurrentUpdateException();
+        if (order.getOrderStatus() != expectedStatus || order.getPaymentStatus() != expectedPayment)
+            throw new ConcurrentUpdateException();
         switch (action) {
             case "status" -> updateStatus(order, request);
             case "confirm-payment" -> confirmPayment(order);
@@ -212,8 +258,10 @@ public class OrderService {
     }
 
     private void changed(OrderEntity order, boolean created) {
-        publisher.publishEvent(new OrderEvents.OrderChanged(order.getId(), order.getCustomerId(), order.getRestaurant().getOwnerUserId(), created));
+        publisher.publishEvent(new OrderEvents.OrderChanged(order.getId(), order.getCustomerId(),
+                order.getRestaurant().getOwnerUserId(), created));
     }
+
     /** Đơn đã nhận tiền giữ nguyên PAID để quán còn phải hoàn tiền, không ghi nhận là thanh toán thất bại. */
     private void close(OrderEntity order, OrderStatusEnum status, String reason) {
         var now = rules.now();
@@ -221,34 +269,54 @@ public class OrderService {
         if (order.getPaymentStatus() == OrderPaymentStatusEnum.UNPAID)
             order.settle(OrderPaymentStatusEnum.FAILED, PaymentRecordStatusEnum.FAILED, status.name(), now);
     }
+
     private OrderEntity ownedOrder(long partner, long id) {
-        return orders.findWithLockByIdAndRestaurantOwnerUserId(id, partner).orElseThrow(OrderService::notFound);
+        return orders.findWithLockByIdAndRestaurantOwnerUserId(id, partner)
+                .orElseThrow(OrderService::notFound);
     }
+
     private RestaurantEntity restaurant(long id) {
-        return restaurants.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy quán"));
+        return restaurants.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy quán"));
     }
-    private static ResourceNotFoundException notFound() { return new ResourceNotFoundException("Không tìm thấy đơn hàng"); }
+
+    private static ResourceNotFoundException notFound() {
+        return new ResourceNotFoundException("Không tìm thấy đơn hàng");
+    }
+
     /** Mã QR chỉ tồn tại khi khách còn phải trả tiền; quán đổi sang tài khoản không hỗ trợ thì không có mã, đơn vẫn xem được. */
     private static PaymentQr qr(OrderEntity order) {
-        if (order.getPaymentMethod() != PaymentMethodEnum.ONLINE || order.getOrderStatus() != PENDING || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID) return null;
+        if (order.getPaymentMethod() != PaymentMethodEnum.ONLINE
+                || order.getOrderStatus() != PENDING
+                || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID)
+            return null;
         var restaurant = order.getRestaurant();
         var bin = qrBin(restaurant, order.getTotalAmount());
         if (bin.isEmpty()) return null;
         String account = restaurant.getBankAccountNumber(), content = transferContent(order.getOrderCode());
-        return new PaymentQr(VietQrUtil.payload(bin.get(), account, order.getTotalAmount(), content), restaurant.getBankName(), account, restaurant.getBankAccountHolder(), order.getTotalAmount(), content);
+        return new PaymentQr(VietQrUtil.payload(bin.get(), account, order.getTotalAmount(), content),
+                restaurant.getBankName(), account, restaurant.getBankAccountHolder(), order.getTotalAmount(), content);
     }
+
     private static Optional<String> qrBin(RestaurantEntity restaurant, BigDecimal amount) {
         String account = restaurant.getBankAccountNumber();
-        if (account == null || !account.matches("\\d{6,19}") || !VietQrUtil.isPayableAmount(amount)) return Optional.empty();
+        if (account == null || !account.matches("\\d{6,19}") || !VietQrUtil.isPayableAmount(amount))
+            return Optional.empty();
         return VietQrUtil.binOf(restaurant.getBankName());
     }
+
     /** Ứng dụng ngân hàng có thể bỏ ký tự đặc biệt, nên nội dung chỉ giữ chữ và số để quán còn đối soát được. */
-    private static String transferContent(String orderCode) { return orderCode.replace("-", ""); }
+    private static String transferContent(String orderCode) {
+        return orderCode.replace("-", "");
+    }
+
     private static String randomCode() {
         var code = new StringBuilder();
-        for (int i = 0; i < 6; i++) code.append(CODE_ALPHABET.charAt(RANDOM.nextInt(CODE_ALPHABET.length())));
+        for (int i = 0; i < 6; i++)
+            code.append(CODE_ALPHABET.charAt(RANDOM.nextInt(CODE_ALPHABET.length())));
         return code.toString();
     }
+
     private static Pageable page(int page) {
         if (page < 0 || page > 10000) throw new BusinessException("Trang không hợp lệ");
         return PageRequest.of(page, PAGE_SIZE, NEWEST_FIRST);
