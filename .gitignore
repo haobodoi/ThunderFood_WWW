@@ -27,3 +27,8 @@ frontend/dist/
 uploads/
 .test-runtime/
 __pycache__/
+
+# Biến môi trường cục bộ (chứa API key, mật khẩu)
+.env
+.env.*
+!.env.example
