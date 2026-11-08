@@ -94,8 +94,18 @@ public class OrderEntity {
     protected OrderEntity() {
     }
 
-    public OrderEntity(String orderCode, Long customerId, RestaurantEntity restaurant, String recipientName, String recipientPhone, String deliveryAddress, String note,
-                       PaymentMethodEnum paymentMethod, BigDecimal subtotal, BigDecimal deliveryFee, BigDecimal totalAmount, LocalDateTime now) {
+    public OrderEntity(String orderCode,
+                       Long customerId,
+                       RestaurantEntity restaurant,
+                       String recipientName,
+                       String recipientPhone,
+                       String deliveryAddress,
+                       String note,
+                       PaymentMethodEnum paymentMethod,
+                       BigDecimal subtotal,
+                       BigDecimal deliveryFee,
+                       BigDecimal totalAmount,
+                       LocalDateTime now) {
         this.orderCode = orderCode;
         this.customerId = customerId;
         this.restaurant = restaurant;
@@ -111,7 +121,12 @@ public class OrderEntity {
         this.updatedAt = now;
     }
 
-    public void addItem(Long itemId, String itemName, BigDecimal unitPrice, Integer quantity, BigDecimal lineTotal, String note) {
+    public void addItem(Long itemId,
+                        String itemName,
+                        BigDecimal unitPrice,
+                        Integer quantity,
+                        BigDecimal lineTotal,
+                        String note) {
         items.add(new OrderItemEntity(this, itemId, itemName, unitPrice, quantity, lineTotal, note));
     }
 
@@ -133,29 +148,88 @@ public class OrderEntity {
         updatedAt = now;
     }
 
-    public void settle(OrderPaymentStatusEnum orderPayment, PaymentRecordStatusEnum record, String responseCode, LocalDateTime now) {
+    public void settle(OrderPaymentStatusEnum orderPayment,
+                       PaymentRecordStatusEnum record,
+                       String responseCode,
+                       LocalDateTime now) {
         paymentStatus = orderPayment;
         updatedAt = now;
         payments.forEach(payment -> payment.record(record, responseCode, now));
     }
 
-    public Long getId() { return id; }
-    public String getOrderCode() { return orderCode; }
-    public Long getCustomerId() { return customerId; }
-    public RestaurantEntity getRestaurant() { return restaurant; }
-    public String getRecipientName() { return recipientName; }
-    public String getRecipientPhone() { return recipientPhone; }
-    public String getDeliveryAddress() { return deliveryAddress; }
-    public String getNote() { return note; }
-    public OrderStatusEnum getOrderStatus() { return orderStatus; }
-    public PaymentMethodEnum getPaymentMethod() { return paymentMethod; }
-    public OrderPaymentStatusEnum getPaymentStatus() { return paymentStatus; }
-    public BigDecimal getSubtotal() { return subtotal; }
-    public BigDecimal getDeliveryFee() { return deliveryFee; }
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public String getCancelReason() { return cancelReason; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getCompletedAt() { return completedAt; }
-    public List<OrderItemEntity> getItems() { return items; }
-    public List<PaymentEntity> getPayments() { return payments; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getOrderCode() {
+        return orderCode;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public RestaurantEntity getRestaurant() {
+        return restaurant;
+    }
+
+    public String getRecipientName() {
+        return recipientName;
+    }
+
+    public String getRecipientPhone() {
+        return recipientPhone;
+    }
+
+    public String getDeliveryAddress() {
+        return deliveryAddress;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public OrderStatusEnum getOrderStatus() {
+        return orderStatus;
+    }
+
+    public PaymentMethodEnum getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public OrderPaymentStatusEnum getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public BigDecimal getDeliveryFee() {
+        return deliveryFee;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public List<OrderItemEntity> getItems() {
+        return items;
+    }
+
+    public List<PaymentEntity> getPayments() {
+        return payments;
+    }
 }

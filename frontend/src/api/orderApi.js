@@ -8,7 +8,9 @@ export const orderApi = {
   cancel: (id, reason) => api.post(`/customer/orders/${id}/cancel`, { reason }).then(r => r.data),
 };
 export const partnerOrderApi = {
-  list: (status, page) => api.get('/partner/orders', { params: { status: status || undefined, page } }).then(r => r.data),
+  list: (status, page) => api
+    .get('/partner/orders', { params: { status: status || undefined, page } })
+    .then(r => r.data),
   updateStatus: (id, status, reason) => api.patch(`/partner/orders/${id}/status`, { status, reason }),
   confirmPayment: id => api.post(`/partner/orders/${id}/confirm-payment`),
   refund: id => api.post(`/partner/orders/${id}/refund`),

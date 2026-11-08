@@ -30,7 +30,9 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
     Page<OrderEntity> findByRestaurantOwnerUserId(Long ownerUserId, Pageable pageable);
 
     @EntityGraph(attributePaths = "restaurant")
-    Page<OrderEntity> findByRestaurantOwnerUserIdAndOrderStatus(Long ownerUserId, OrderStatusEnum status, Pageable pageable);
+    Page<OrderEntity> findByRestaurantOwnerUserIdAndOrderStatus(Long ownerUserId,
+                                                                OrderStatusEnum status,
+                                                                Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<OrderEntity> findWithLockByIdAndCustomerId(Long id, Long customerId);
@@ -42,5 +44,8 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
     @Query("SELECT o FROM OrderEntity o WHERE o.customerId = :customerId AND o.restaurant.id = :restaurantId AND o.restaurant.ownerUserId <> :customerId " +
             "AND o.orderStatus = COMPLETED AND o.paymentStatus = PAID AND o.completedAt >= :from AND o.completedAt <= :to " +
             "AND NOT EXISTS (SELECT 1 FROM CustomerReviewEntity v WHERE v.orderId = o.id) ORDER BY o.completedAt DESC, o.id DESC")
-    List<OrderEntity> findReviewable(@Param("customerId") Long customerId, @Param("restaurantId") Long restaurantId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+    List<OrderEntity> findReviewable(@Param("customerId") Long customerId,
+                                     @Param("restaurantId") Long restaurantId,
+                                     @Param("from") LocalDateTime from,
+                                     @Param("to") LocalDateTime to);
 }

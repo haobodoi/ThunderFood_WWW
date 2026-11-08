@@ -67,10 +67,27 @@ public class CartItemEntity {
         change(quantity + extraQuantity, note, price);
     }
 
-    public Long getId() { return id; }
-    public Long getItemId() { return itemId; }
-    public MenuItemEntity getItem() { return item; }
-    public Integer getQuantity() { return quantity; }
-    public String getNote() { return note; }
-    public BigDecimal getLastSeenUnitPrice() { return lastSeenUnitPrice; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getItemId() {
+        return itemId;
+    }
+
+    public MenuItemEntity getItem() {
+        return item;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public BigDecimal getLastSeenUnitPrice() {
+        return lastSeenUnitPrice;
+    }
 }

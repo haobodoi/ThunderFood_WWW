@@ -34,7 +34,12 @@ public class CartService {
     private final CartRepository carts;
     private final MenuItemRepository menuItems;
     private final CustomerRules rules;
-    public CartService(CartRepository carts, MenuItemRepository menuItems, CustomerRules rules) { this.carts = carts; this.menuItems = menuItems; this.rules = rules; }
+
+    public CartService(CartRepository carts, MenuItemRepository menuItems, CustomerRules rules) {
+        this.carts = carts;
+        this.menuItems = menuItems;
+        this.rules = rules;
+    }
 
     @Transactional(readOnly = true)
     public List<CartResponse> list(long customer) {
@@ -43,6 +48,7 @@ public class CartService {
         var open = rules.openRestaurants(found.stream().map(CartEntity::getRestaurant).toList());
         return found.stream().map(cart -> response(cart, open)).toList();
     }
+
     @Transactional(readOnly = true)
     public CartResponse get(long customer, long cart) {
         rules.actor(customer, CUSTOMER_ROLE, false);
@@ -52,7 +58,9 @@ public class CartService {
     public CartResponse add(long customer, AddItem request) {
         rules.actor(customer, CUSTOMER_ROLE, true);
         long restaurantId = menuItems.findRestaurantIdById(request.itemId()).orElseThrow(CartService::notFound);
-        var cart = carts.findIdByCustomerIdAndRestaurantId(customer, restaurantId).map(id -> lockedCart(customer, id)).orElse(null);
+        var cart = carts.findIdByCustomerIdAndRestaurantId(customer, restaurantId)
+                .map(id -> lockedCart(customer, id))
+                .orElse(null);
         version(cart == null ? 0 : cart.getVersion(), request.version());
         var dish = lockedItem(request.itemId());
         requireAvailable(dish);
@@ -60,7 +68,8 @@ public class CartService {
         List<CartItemEntity> lines = cart == null ? List.of() : cart.getItems();
         quantityLimit(lines, request.itemId(), request.quantity(), null);
         var existing = sameNote(lines, request.itemId(), note, null);
-        if (existing.isEmpty() && lines.size() >= MAX_LINES) throw new BusinessException("Một giỏ tối đa 50 dòng món");
+        if (existing.isEmpty() && lines.size() >= MAX_LINES)
+            throw new BusinessException("Một giỏ tối đa 50 dòng món");
         var now = rules.now();
         // Tạo giỏ sau khi đã khóa quán: khóa dùng chung do khóa ngoại của INSERT rồi mới xin FOR UPDATE sẽ deadlock với khách khác cùng quán.
         if (cart == null) cart = carts.save(new CartEntity(customer, dish.getRestaurant(), now));
@@ -96,7 +105,9 @@ public class CartService {
         rules.actor(customer, CUSTOMER_ROLE, true);
         var cart = lockedCart(customer, cartId);
         version(cart.getVersion(), expected);
-        var removed = lineId == null ? cart.getItems().stream().map(CartItemEntity::getId).toList() : List.of(line(cart, lineId).getId());
+        var removed = lineId == null
+                ? cart.getItems().stream().map(CartItemEntity::getId).toList()
+                : List.of(line(cart, lineId).getId());
         cart.removeItems(removed, rules.now());
         carts.flush();
         return view(customer, cartId);
@@ -110,36 +121,59 @@ public class CartService {
     private CartEntity lockedCart(long customer, long id) {
         return carts.findWithLockByIdAndCustomerId(id, customer).orElseThrow(CartService::notFound);
     }
+
     private MenuItemEntity lockedItem(long id) {
         return menuItems.findWithLockById(id).orElseThrow(CartService::notFound);
     }
+
     private CartResponse response(CartEntity cart, Set<Long> open) {
         boolean restaurantOpen = open.contains(cart.getRestaurantId());
         return CartResponse.from(cart, line -> unavailable(line.getItem(), cart.getRestaurant(), restaurantOpen));
     }
+
     private static CartItemEntity line(CartEntity cart, long lineId) {
-        return cart.getItems().stream().filter(line -> line.getId() == lineId).findFirst().orElseThrow(CartService::notFound);
+        return cart.getItems().stream()
+                .filter(line -> line.getId() == lineId)
+                .findFirst()
+                .orElseThrow(CartService::notFound);
     }
+
     private static String unavailable(MenuItemEntity item, RestaurantEntity restaurant, boolean open) {
         if (restaurant.getStatus() != RestaurantStatusEnum.APPROVED) return "Quán hiện không hoạt động";
-        if (item.getDeleted() || item.getApprovalStatus() != ApprovalStatusEnum.APPROVED) return "Món không còn phục vụ";
+        if (item.getDeleted() || item.getApprovalStatus() != ApprovalStatusEnum.APPROVED)
+            return "Món không còn phục vụ";
         if (!item.getAvailable()) return "Món tạm hết hàng";
         if (item.getCategory() != null && !item.getCategory().isVisible()) return "Danh mục đang tạm ẩn";
         if (!open) return "Quán đang đóng cửa";
         return "";
     }
+
     private void requireAvailable(MenuItemEntity item) {
         var restaurant = item.getRestaurant();
         String reason = unavailable(item, restaurant, rules.open(restaurant.getId(), restaurant.getOpen()));
         if (!reason.isEmpty()) throw new BusinessException(reason);
     }
+
     private static void quantityLimit(List<CartItemEntity> lines, long itemId, int target, Long excludedLine) {
-        int others = lines.stream().filter(line -> line.getItemId() == itemId && !line.getId().equals(excludedLine)).mapToInt(CartItemEntity::getQuantity).sum();
-        if (target + others > MAX_DISH_QUANTITY) throw new BusinessException("Mỗi món tối đa 99 phần trong một giỏ, tính cả các ghi chú khác nhau");
+        int others = lines.stream()
+                .filter(line -> line.getItemId() == itemId && !line.getId().equals(excludedLine))
+                .mapToInt(CartItemEntity::getQuantity)
+                .sum();
+        if (target + others > MAX_DISH_QUANTITY)
+            throw new BusinessException("Mỗi món tối đa 99 phần trong một giỏ, tính cả các ghi chú khác nhau");
     }
+
     /** So sánh chính xác từng ký tự, khớp collation utf8mb4_bin của cột note; note đã qua text() nên không có khoảng trắng cuối. */
-    private static Optional<CartItemEntity> sameNote(List<CartItemEntity> lines, long itemId, String note, Long excludedLine) {
-        return lines.stream().filter(line -> line.getItemId() == itemId && line.getNote().equals(note) && !line.getId().equals(excludedLine)).findFirst();
+    private static Optional<CartItemEntity> sameNote(List<CartItemEntity> lines, long itemId, String note,
+                                                     Long excludedLine) {
+        return lines.stream()
+                .filter(line -> line.getItemId() == itemId
+                        && line.getNote().equals(note)
+                        && !line.getId().equals(excludedLine))
+                .findFirst();
     }
-    private static ResourceNotFoundException notFound() { return new ResourceNotFoundException("Không tìm thấy dữ liệu"); }
+
+    private static ResourceNotFoundException notFound() {
+        return new ResourceNotFoundException("Không tìm thấy dữ liệu");
+    }
 }

@@ -44,7 +44,11 @@ public class PaymentEntity {
     protected PaymentEntity() {
     }
 
-    public PaymentEntity(OrderEntity order, String provider, String transactionCode, BigDecimal amount, LocalDateTime createdAt) {
+    public PaymentEntity(OrderEntity order,
+                         String provider,
+                         String transactionCode,
+                         BigDecimal amount,
+                         LocalDateTime createdAt) {
         this.order = order;
         this.provider = provider;
         this.transactionCode = transactionCode;
@@ -52,7 +56,9 @@ public class PaymentEntity {
         this.createdAt = createdAt;
     }
 
-    public String getTransactionCode() { return transactionCode; }
+    public String getTransactionCode() {
+        return transactionCode;
+    }
 
     /** Chỉ ghi paidAt khi thanh toán thành công, để hoàn tiền không làm mất thời điểm đã trả. */
     public void record(PaymentRecordStatusEnum status, String responseCode, LocalDateTime now) {

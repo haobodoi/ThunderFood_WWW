@@ -31,14 +31,23 @@ public class ReviewImageService {
     private final ReviewImageRepository images;
     private final CustomerReviewService reviews;
     private final CustomerRules rules;
-    public ReviewImageService(@Value("${app.upload-dir:uploads}") String directory, ReviewImageRepository images, CustomerReviewService reviews, CustomerRules rules) {
-        root=Path.of(directory).toAbsolutePath().normalize().resolve("reviews"); this.images=images; this.reviews=reviews; this.rules=rules;
+
+    public ReviewImageService(@Value("${app.upload-dir:uploads}") String directory,
+                              ReviewImageRepository images,
+                              CustomerReviewService reviews,
+                              CustomerRules rules) {
+        root=Path.of(directory).toAbsolutePath().normalize().resolve("reviews");
+        this.images=images;
+        this.reviews=reviews;
+        this.rules=rules;
     }
+
     @Transactional
     public void upload(long customer,long reviewId,long expected,MultipartFile file) {
         rules.actor(customer,"CUSTOMER",true);
         var review=reviews.locked(reviewId);
-        reviews.editable(customer,review); version(review.getVersion(),expected);
+        reviews.editable(customer,review);
+        version(review.getVersion(),expected);
         if(file.isEmpty() || file.getSize()>1024*1024) throw new BusinessException("Ảnh JPG/PNG tối đa 1MB");
         var slots=review.getImages().stream().map(ReviewImageEntity::getDisplayOrder).collect(Collectors.toSet());
         int slot=1;
@@ -69,12 +78,15 @@ public class ReviewImageService {
         images.save(new ReviewImageEntity(review,target.getFileName().toString(),slot));
         review.imagesChanged(rules.now());
     }
+
     @Transactional
     public void remove(long customer,long reviewId,long imageId,long expected) {
         rules.actor(customer,"CUSTOMER",true);
         var review=reviews.locked(reviewId);
-        reviews.editable(customer,review); version(review.getVersion(),expected);
-        var image=images.findByIdAndReviewId(imageId,reviewId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dữ liệu"));
+        reviews.editable(customer,review);
+        version(review.getVersion(),expected);
+        var image=images.findByIdAndReviewId(imageId,reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dữ liệu"));
         Path file=path(image.getFileKey());
         images.delete(image);
         review.imagesChanged(rules.now());
@@ -82,23 +94,30 @@ public class ReviewImageService {
             @Override public void afterCommit() { cleanup(file); }
         });
     }
+
     @Transactional(readOnly=true)
     public Resource load(long imageId,UserDetailsDto principal) {
-        var image=images.findWithReviewById(imageId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dữ liệu"));
+        var image=images.findWithReviewById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dữ liệu"));
         var review=image.getReview();
-        boolean visible=review.getStatus()==ReviewStatusEnum.PUBLISHED && review.getDeletedAt()==null && review.getRestaurant().getStatus()==RestaurantStatusEnum.APPROVED;
+        boolean visible=review.getStatus()==ReviewStatusEnum.PUBLISHED
+                && review.getDeletedAt()==null
+                && review.getRestaurant().getStatus()==RestaurantStatusEnum.APPROVED;
         if(!visible) {
             if(principal==null) throw new ResourceNotFoundException("Không tìm thấy ảnh");
             rules.actor(principal.getId(),principal.getRoleCode(),false);
-            if(!"ADMIN".equals(principal.getRoleCode()) && !principal.getId().equals(review.getCustomerId())) throw new ResourceNotFoundException("Không tìm thấy ảnh");
+            if(!"ADMIN".equals(principal.getRoleCode()) && !principal.getId().equals(review.getCustomerId()))
+                throw new ResourceNotFoundException("Không tìm thấy ảnh");
         }
         Path file=path(image.getFileKey());
         if(!Files.isRegularFile(file)) throw new ResourceNotFoundException("Không tìm thấy ảnh");
         return new FileSystemResource(file);
     }
+
     private Path path(String key) {
         if(!key.matches("[a-f0-9-]{36}\\.png")) throw new ResourceNotFoundException("Không tìm thấy ảnh");
         return root.resolve(key);
     }
+
     private static void cleanup(Path file) { try { Files.deleteIfExists(file); } catch(IOException ignored) { /* Retry through operational orphan cleanup if the filesystem is unavailable. */ } }
 }

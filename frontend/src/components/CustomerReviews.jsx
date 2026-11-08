@@ -14,11 +14,24 @@ export function reviewTime(value) {
 
 export function ReviewCard({ review, children }) {
   return <article className="commerce-review">
-    <div className="commerce-row commerce-wrap"><strong>{review.authorName || 'Đánh giá của bạn'}</strong><span className="commerce-stars" aria-label={`${review.rating} trên 5 sao`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
+    <div className="commerce-row commerce-wrap">
+      <strong>{review.authorName || 'Đánh giá của bạn'}</strong>
+      <span className="commerce-stars" aria-label={`${review.rating} trên 5 sao`}>
+        {'★'.repeat(review.rating)}
+        {'☆'.repeat(5 - review.rating)}
+      </span>
+    </div>
     <small>Đã mua hàng · {reviewTime(review.createdAt)}{review.editedAt ? ' · Đã chỉnh sửa' : ''}</small>
     <p className="commerce-text">{review.content}</p>
-    <div className="commerce-images">{review.images?.map(i => <a key={i.imageId} href={i.url} target="_blank" rel="noreferrer"><img src={i.url} alt="Ảnh khách hàng đính kèm đánh giá" loading="lazy" /></a>)}</div>
-    {review.replies?.map(reply => <blockquote key={reply.replyId}><strong>Phản hồi từ quán</strong><p className="commerce-text">{reply.content}</p></blockquote>)}
+    <div className="commerce-images">
+      {review.images?.map(i => <a key={i.imageId} href={i.url} target="_blank" rel="noreferrer">
+        <img src={i.url} alt="Ảnh khách hàng đính kèm đánh giá" loading="lazy" />
+      </a>)}
+    </div>
+    {review.replies?.map(reply => <blockquote key={reply.replyId}>
+      <strong>Phản hồi từ quán</strong>
+      <p className="commerce-text">{reply.content}</p>
+    </blockquote>)}
     {children}
   </article>;
 }
@@ -91,7 +104,16 @@ export default function CustomerReviews({ restaurantId }) {
   }, [restaurantId, page, stars, photos, sort, reload]);
   useEffect(() => {
     let active = true; setEligibility(null); setOrder('');
-    if (user?.role === 'CUSTOMER') reviewApi.eligibility(restaurantId).then(result => { if (active) { setEligibility(result); setOrder(String(result.orders[0]?.orderId || '')); } }).catch(err => { if (active) setEligibility({ orders: [], reason: getErrorMessage(err, 'Không kiểm tra được quyền đánh giá.') }); });
+    if (user?.role === 'CUSTOMER') reviewApi.eligibility(restaurantId)
+      .then(result => {
+        if (active) {
+          setEligibility(result);
+          setOrder(String(result.orders[0]?.orderId || ''));
+        }
+      })
+      .catch(err => {
+        if (active) setEligibility({ orders: [], reason: getErrorMessage(err, 'Không kiểm tra được quyền đánh giá.') });
+      });
     return () => { active = false; };
   }, [restaurantId, user?.id, user?.role, reload]);
   const submit = async e => {
@@ -115,7 +137,9 @@ export default function CustomerReviews({ restaurantId }) {
     {error && <Alert type="error">{error}</Alert>}
     {loading ? <p role="status">Đang tải đánh giá…</p> : !error && <>
       {!data?.items.length && <p>Chưa có đánh giá phù hợp.</p>}
-      {data?.items.map(review => <ReviewCard key={review.reviewId} review={review}>{user?.role === 'CUSTOMER' && !review.own && <ReportButton reviewId={review.reviewId} />}</ReviewCard>)}
+      {data?.items.map(review => <ReviewCard key={review.reviewId} review={review}>
+        {user?.role === 'CUSTOMER' && !review.own && <ReportButton reviewId={review.reviewId} />}
+      </ReviewCard>)}
       <Pagination page={page} total={data?.total || 0} setPage={setPage} />
     </>}
     {!user && <p><Link to="/login" state={{ from: `/restaurants/${restaurantId}` }}>Đăng nhập</Link> để xem quyền đánh giá sau khi mua hàng.</p>}

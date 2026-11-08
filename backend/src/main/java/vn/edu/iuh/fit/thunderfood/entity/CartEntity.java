@@ -66,10 +66,27 @@ public class CartEntity {
         touch(now);
     }
 
-    public Long getId() { return id; }
-    public Long getCustomerId() { return customerId; }
-    public Long getRestaurantId() { return restaurantId; }
-    public RestaurantEntity getRestaurant() { return restaurant; }
-    public Long getVersion() { return version; }
-    public List<CartItemEntity> getItems() { return items; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public Long getRestaurantId() {
+        return restaurantId;
+    }
+
+    public RestaurantEntity getRestaurant() {
+        return restaurant;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public List<CartItemEntity> getItems() {
+        return items;
+    }
 }

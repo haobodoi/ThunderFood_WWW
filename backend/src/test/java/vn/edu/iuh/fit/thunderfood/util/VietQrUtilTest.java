@@ -31,7 +31,8 @@ class VietQrUtilTest {
 
     @Test
     void wholeThousandsAreNotWrittenInScientificNotation() {
-        assertTrue(VietQrUtil.payload("970436", "0123456789", new BigDecimal("100000"), "TF1").contains("5406100000"));
+        assertTrue(VietQrUtil.payload("970436", "0123456789", new BigDecimal("100000"), "TF1")
+                .contains("5406100000"));
     }
 
     @Test
@@ -45,9 +46,9 @@ class VietQrUtilTest {
 
     @Test
     void everyRegistrationBankHasBin() {
-        for (String bank : new String[] {"Vietcombank", "VietinBank", "BIDV", "Agribank", "Techcombank", "MB Bank", "ACB",
-                "VPBank", "TPBank", "Sacombank", "VIB", "HDBank", "SHB", "OCB", "MSB", "SeABank", "Eximbank", "LPBank",
-                "Nam A Bank", "Bac A Bank"}) {
+        for (String bank : new String[] {"Vietcombank", "VietinBank", "BIDV", "Agribank", "Techcombank",
+                "MB Bank", "ACB", "VPBank", "TPBank", "Sacombank", "VIB", "HDBank", "SHB", "OCB", "MSB", "SeABank",
+                "Eximbank", "LPBank", "Nam A Bank", "Bac A Bank"}) {
             assertTrue(VietQrUtil.binOf(bank).isPresent(), bank);
         }
         assertTrue(VietQrUtil.binOf("Ngân hàng lạ").isEmpty());

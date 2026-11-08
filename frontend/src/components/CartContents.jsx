@@ -32,22 +32,52 @@ function CartLine({ cart, line }) {
     <div className="commerce-cart-line__layout">
       <CartItemImage line={line} />
       <div className="commerce-cart-line__content">
-        <div className="commerce-row"><strong>{line.itemName}</strong><strong>{formatVND(line.lineTotal)}</strong></div>
+        <div className="commerce-row">
+          <strong>{line.itemName}</strong>
+          <strong>{formatVND(line.lineTotal)}</strong>
+        </div>
         <p>{formatVND(line.unitPrice)} / phần</p>
-        {line.priceChanged && <Alert type="warning">Giá đổi từ {formatVND(line.lastSeenUnitPrice)} thành {formatVND(line.unitPrice)}. Giá mới được ghi nhận khi bạn cập nhật món.</Alert>}
-        {!line.available && <Alert type="warning">{line.unavailableReason} · không tính vào tạm tính món khả dụng</Alert>}
+        {line.priceChanged && <Alert type="warning">
+          Giá đổi từ {formatVND(line.lastSeenUnitPrice)} thành {formatVND(line.unitPrice)}.
+          Giá mới được ghi nhận khi bạn cập nhật món.
+        </Alert>}
+        {!line.available && <Alert type="warning">
+          {line.unavailableReason} · không tính vào tạm tính món khả dụng
+        </Alert>}
         <div className="commerce-row commerce-wrap">
           <div className="tf-quantity">
-            <button className="icon-btn" disabled={disabled} aria-label={`Giảm ${line.itemName}`} onClick={() => run(() => line.quantity === 1 ? state.remove(cart, line) : state.change(cart, line, line.quantity - 1, line.note))}>−</button>
+            <button
+              className="icon-btn"
+              disabled={disabled}
+              aria-label={`Giảm ${line.itemName}`}
+              onClick={() => run(() => line.quantity === 1
+                ? state.remove(cart, line)
+                : state.change(cart, line, line.quantity - 1, line.note))}
+            >
+              −
+            </button>
             <strong>{line.quantity}</strong>
-            <button className="icon-btn" disabled={disabled || !line.available || line.quantity >= 99} aria-label={`Tăng ${line.itemName}`} onClick={() => run(() => state.change(cart, line, line.quantity + 1, line.note))}>+</button>
+            <button
+              className="icon-btn"
+              disabled={disabled || !line.available || line.quantity >= 99}
+              aria-label={`Tăng ${line.itemName}`}
+              onClick={() => run(() => state.change(cart, line, line.quantity + 1, line.note))}
+            >
+              +
+            </button>
           </div>
           <button className="btn btn--ghost btn--sm" disabled={disabled} onClick={() => run(() => state.remove(cart, line))}>Xóa món</button>
         </div>
         <label className="commerce-field">Ghi chú cho món
           <textarea maxLength={300} value={note} onChange={e => setNote(e.target.value)} disabled={disabled} rows={2} />
         </label>
-        {(note !== line.note || line.priceChanged) && <button className="btn btn--outline btn--sm" disabled={disabled} onClick={() => run(() => state.change(cart, line, line.quantity, note))}>Lưu ghi chú / giá hiện tại</button>}
+        {(note !== line.note || line.priceChanged) && <button
+          className="btn btn--outline btn--sm"
+          disabled={disabled}
+          onClick={() => run(() => state.change(cart, line, line.quantity, note))}
+        >
+          Lưu ghi chú / giá hiện tại
+        </button>}
         {error && <Alert type="error">{error}</Alert>}
       </div>
     </div>
@@ -62,13 +92,22 @@ export default function CartContents({ cart }) {
     try { await state.clear(cart); } catch (e) { setError(e.response?.data?.message || e.message); }
   };
   return <section className="commerce-cart">
-    <h2><Link to={`/restaurants/${cart.restaurantId}`}>{cart.restaurantName}</Link></h2>
+    <h2>
+      <Link to={`/restaurants/${cart.restaurantId}`}>{cart.restaurantName}</Link>
+    </h2>
     {cart.items.map(line => <CartLine key={`${line.cartItemId}:${line.note}`} cart={cart} line={line} />)}
     <div className="commerce-row commerce-total"><strong>Tạm tính món khả dụng</strong><strong>{formatVND(cart.subtotal)}</strong></div>
     <p>Chưa gồm phí giao hàng. Giỏ hàng không giữ món; giá và tình trạng phục vụ có thể thay đổi.</p>
     <div className="tf-order-actions">
-      {cart.items.some(line => line.available) && <Link className="btn btn--primary" to={`/customer/checkout/${cart.cartId}`}>Đặt hàng</Link>}
-      <button className="btn btn--outline" disabled={state.busy || state.loading} onClick={clear}>Xóa giỏ quán này</button>
+      {cart.items.some(line => line.available) && <Link
+        className="btn btn--primary"
+        to={`/customer/checkout/${cart.cartId}`}
+      >
+        Đặt hàng
+      </Link>}
+      <button className="btn btn--outline" disabled={state.busy || state.loading} onClick={clear}>
+        Xóa giỏ quán này
+      </button>
     </div>
     {error && <Alert type="error">{error}</Alert>}
   </section>;

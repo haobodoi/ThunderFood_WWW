@@ -38,7 +38,13 @@ public class OrderItemEntity {
     protected OrderItemEntity() {
     }
 
-    public OrderItemEntity(OrderEntity order, Long itemId, String itemName, BigDecimal unitPrice, Integer quantity, BigDecimal lineTotal, String note) {
+    public OrderItemEntity(OrderEntity order,
+                           Long itemId,
+                           String itemName,
+                           BigDecimal unitPrice,
+                           Integer quantity,
+                           BigDecimal lineTotal,
+                           String note) {
         this.order = order;
         this.itemId = itemId;
         this.itemName = itemName;
@@ -48,11 +54,31 @@ public class OrderItemEntity {
         this.note = note;
     }
 
-    public Long getId() { return id; }
-    public Long getItemId() { return itemId; }
-    public String getItemName() { return itemName; }
-    public BigDecimal getUnitPrice() { return unitPrice; }
-    public Integer getQuantity() { return quantity; }
-    public BigDecimal getLineTotal() { return lineTotal; }
-    public String getNote() { return note; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getItemId() {
+        return itemId;
+    }
+
+    public String getItemName() {
+        return itemName;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public BigDecimal getLineTotal() {
+        return lineTotal;
+    }
+
+    public String getNote() {
+        return note;
+    }
 }

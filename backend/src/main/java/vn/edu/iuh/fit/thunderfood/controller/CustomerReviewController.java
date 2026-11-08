@@ -17,46 +17,86 @@ import vn.edu.iuh.fit.thunderfood.service.ReviewImageService;
 public class CustomerReviewController {
     private final CustomerReviewService service;
     private final ReviewImageService images;
+
     public CustomerReviewController(CustomerReviewService service,ReviewImageService images) { this.service=service; this.images=images; }
     @GetMapping("/api/restaurants/{id}/reviews")
-    public PublicReviewPage list(@PathVariable long id,@RequestParam(defaultValue="0") int page,@RequestParam(required=false) Integer stars,@RequestParam(defaultValue="false") boolean photos,@RequestParam(defaultValue="newest") String sort,@AuthenticationPrincipal UserDetailsDto user) { return service.list(id,page,stars,photos,sort,user == null ? null : user.getId()); }
+    public PublicReviewPage list(@PathVariable long id,
+                                 @RequestParam(defaultValue = "0") int page,
+                                 @RequestParam(required = false) Integer stars,
+                                 @RequestParam(defaultValue = "false") boolean photos,
+                                 @RequestParam(defaultValue = "newest") String sort,
+                                 @AuthenticationPrincipal UserDetailsDto user) {
+        return service.list(id, page, stars, photos, sort, user == null ? null : user.getId());
+    }
+
     @GetMapping("/api/restaurants/review-images/{id}")
     public ResponseEntity<Resource> image(@PathVariable long id,@AuthenticationPrincipal UserDetailsDto user) {
         return ResponseEntity.ok().header("Cache-Control","no-store").header("X-Content-Type-Options","nosniff").header("Content-Type","image/png").body(images.load(id,user));
     }
+
     @GetMapping("/api/customer/reviews/eligibility")
-    public Eligibility eligibility(@AuthenticationPrincipal UserDetailsDto user,@RequestParam long restaurantId) { return service.eligibility(user.getId(),restaurantId); }
+    public Eligibility eligibility(@AuthenticationPrincipal UserDetailsDto user,
+                                   @RequestParam long restaurantId) {
+        return service.eligibility(user.getId(), restaurantId);
+    }
+
     @GetMapping("/api/customer/reviews")
-    public PageResponse<ManagedReview> own(@AuthenticationPrincipal UserDetailsDto user,@RequestParam(defaultValue="0") int page) { return service.own(user.getId(),"CUSTOMER",page); }
+    public PageResponse<ManagedReview> own(@AuthenticationPrincipal UserDetailsDto user,
+                                           @RequestParam(defaultValue = "0") int page) {
+        return service.own(user.getId(), "CUSTOMER", page);
+    }
+
     @GetMapping("/api/customer/orders/{orderId}/review")
     public ResponseEntity<ManagedReview> ownForOrder(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long orderId) {
         var review = service.ownForOrder(user.getId(), orderId);
         return review == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(review);
     }
+
     @PostMapping("/api/customer/reviews")
-    public CreatedReview create(@AuthenticationPrincipal UserDetailsDto user,@Valid @RequestBody Review request) { return service.create(user.getId(),request); }
+    public CreatedReview create(@AuthenticationPrincipal UserDetailsDto user,
+                                @Valid @RequestBody Review request) {
+        return service.create(user.getId(), request);
+    }
+
     @PutMapping("/api/customer/reviews/{id}")
     public void edit(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@Valid @RequestBody EditReview request) { service.edit(user.getId(),id,request); }
+
     @DeleteMapping("/api/customer/reviews/{id}")
     public void delete(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@RequestParam long version) { service.delete(user.getId(),id,version); }
+
     @PostMapping("/api/customer/reviews/{id}/images")
     public void upload(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@RequestParam long version,@RequestPart("file") MultipartFile file) { images.upload(user.getId(),id,version,file); }
+
     @DeleteMapping("/api/customer/reviews/{id}/images/{imageId}")
     public void removeImage(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@PathVariable long imageId,@RequestParam long version) { images.remove(user.getId(),id,imageId,version); }
+
     @PostMapping("/api/customer/reviews/{id}/reports")
     public void report(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@Valid @RequestBody Report request) { service.report(user.getId(),id,"CUSTOMER",request); }
+
     @GetMapping("/api/partner/reviews")
-    public PageResponse<ManagedReview> partner(@AuthenticationPrincipal UserDetailsDto user,@RequestParam(defaultValue="0") int page) { return service.own(user.getId(),"RESTAURANT_PARTNER",page); }
+    public PageResponse<ManagedReview> partner(@AuthenticationPrincipal UserDetailsDto user,
+                                               @RequestParam(defaultValue = "0") int page) {
+        return service.own(user.getId(), "RESTAURANT_PARTNER", page);
+    }
+
     @PutMapping("/api/partner/reviews/{id}/reply")
     public void reply(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@Valid @RequestBody Reply request) { service.reply(user.getId(),id,request,false); }
+
     @DeleteMapping("/api/partner/reviews/{id}/reply")
     public void deleteReply(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@RequestParam long version) { service.reply(user.getId(),id,new Reply("",version),true); }
+
     @PostMapping("/api/partner/reviews/{id}/reports")
     public void partnerReport(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@Valid @RequestBody Report request) { service.report(user.getId(),id,"RESTAURANT_PARTNER",request); }
+
     @GetMapping("/api/admin/review-reports")
-    public PageResponse<ReportRow> reports(@AuthenticationPrincipal UserDetailsDto user,@RequestParam(defaultValue="0") int page) { return service.reports(user.getId(),page); }
+    public PageResponse<ReportRow> reports(@AuthenticationPrincipal UserDetailsDto user,
+                                           @RequestParam(defaultValue = "0") int page) {
+        return service.reports(user.getId(), page);
+    }
+
     @PatchMapping("/api/admin/reviews/{id}/visibility")
     public void moderate(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@Valid @RequestBody Moderate request) { service.moderate(user.getId(),id,request); }
+
     @PatchMapping("/api/admin/review-reports/{id}")
     public void resolve(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long id,@Valid @RequestBody ResolveReport request) { service.resolve(user.getId(),id,request); }
 }

@@ -18,7 +18,8 @@ public interface CartRepository extends JpaRepository<CartEntity, Long> {
 
     /** Đọc thường, không khóa: FOR UPDATE trên dòng chưa tồn tại sẽ giữ gap lock và hai khách cùng tạo giỏ đầu tiên có thể deadlock. */
     @Query("SELECT c.id FROM CartEntity c WHERE c.customerId = :customerId AND c.restaurantId = :restaurantId")
-    Optional<Long> findIdByCustomerIdAndRestaurantId(@Param("customerId") Long customerId, @Param("restaurantId") Long restaurantId);
+    Optional<Long> findIdByCustomerIdAndRestaurantId(@Param("customerId") Long customerId,
+                                                     @Param("restaurantId") Long restaurantId);
 
     @EntityGraph(attributePaths = {"restaurant", "items", "items.item"})
     Optional<CartEntity> findDetailedByIdAndCustomerId(Long id, Long customerId);
