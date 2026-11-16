@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { reviewApi } from '../api/customerApi.js';
 import { getErrorMessage } from '../api/baseApi.js';
-import { Pagination, RatingFields, ReportButton, ReviewCard, reviewTime } from '../components/CustomerReviews.jsx';
+import { Pagination, RatingFields, ReportButton, ReviewCard } from '../components/CustomerReviews.jsx';
 import Alert from '../components/Alert.jsx';
 
 function ReviewActions({ review, partner, reload }) {
@@ -79,56 +79,6 @@ function ReviewActions({ review, partner, reload }) {
     {error && <Alert type="error">{error}</Alert>}
   </div>;
 }
-function ReportActions({ report, reload }) {
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const action = async fn => { setBusy(true); setError(''); try { await fn(); reload(); } catch (e) { setError(getErrorMessage(e)); if (e.response?.status === 409) reload(); } finally { setBusy(false); } };
-  const closed = ['RESOLVED', 'REJECTED'].includes(report.status);
-  return <article className="commerce-review">
-    <h3>{report.restaurantName} · {report.rating}★</h3>
-    <p className="commerce-text">{report.reviewContent}</p>
-    <p>Báo cáo #{report.reportId} · {report.status} · {report.reasonCode}</p>
-    <p className="commerce-text">{report.reason}</p>
-    <p>Đánh giá: {report.reviewStatus}{report.deletedAt ? ' · Khách đã xóa' : ''}</p>
-    {report.resolutionNote && <p>Kết quả: {report.resolutionNote}</p>}
-    <label className="commerce-field">Lý do xử lý<textarea minLength={5} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>
-    {!report.deletedAt && <button
-      className="btn btn--outline"
-      disabled={busy || reason.trim().length < 5}
-      onClick={() => action(() => reviewApi.moderate(report.reviewId, {
-        status: report.reviewStatus === 'PUBLISHED' ? 'HIDDEN' : 'PUBLISHED',
-        reason,
-        version: report.reviewVersion
-      }))}
-    >
-      {report.reviewStatus === 'PUBLISHED' ? 'Ẩn đánh giá' : 'Khôi phục công khai'}
-    </button>}
-    {!closed && <div className="commerce-filters">
-      <button
-        className="btn btn--primary"
-        disabled={busy || reason.trim().length < 5}
-        onClick={() => action(() => reviewApi.resolve(report.reportId, { status: 'RESOLVED', note: reason }))}
-      >
-        Đã xử lý báo cáo
-      </button>
-      <button
-        className="btn btn--outline"
-        disabled={busy || reason.trim().length < 5}
-        onClick={() => action(() => reviewApi.resolve(report.reportId, { status: 'REJECTED', note: reason }))}
-      >
-        Từ chối báo cáo
-      </button>
-    </div>}
-    <details>
-      <summary>Lịch sử kiểm duyệt</summary>
-      {report.history.map((h, i) => <p key={i}>
-        {reviewTime(h.createdAt)}: {h.fromStatus} → {h.toStatus} · {h.reason}
-      </p>)}
-    </details>
-    {error && <Alert type="error">{error}</Alert>}
-  </article>;
-}
 export default function ReviewManagementPage({ area = 'customer' }) {
   const location = useLocation();
   const [page, setPage] = useState(0);
@@ -139,19 +89,17 @@ export default function ReviewManagementPage({ area = 'customer' }) {
   const reload = () => setRevision(n => n + 1);
   useEffect(() => {
     let active = true; setLoading(true); setError('');
-    const load = area === 'admin' ? reviewApi.reports : area === 'partner' ? reviewApi.partner : reviewApi.mine;
+    const load = area === 'partner' ? reviewApi.partner : reviewApi.mine;
     load(page).then(result => { if (active) setData(result); }).catch(e => { if (active) setError(getErrorMessage(e)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [area, page, revision]);
   return <main className={area === 'customer' ? 'container commerce-page' : 'commerce-page'}>
-    <div className="commerce-row"><h1>{area === 'admin' ? 'Báo cáo đánh giá' : area === 'partner' ? 'Đánh giá về quán' : 'Đánh giá của tôi'}</h1><button className="btn btn--outline" disabled={loading} onClick={reload}>Tải lại</button></div>
+    <div className="commerce-row"><h1>{area === 'partner' ? 'Đánh giá về quán' : 'Đánh giá của tôi'}</h1><button className="btn btn--outline" disabled={loading} onClick={reload}>Tải lại</button></div>
     {area === 'customer' && location.state?.notice && <Alert type="success">{location.state.notice}</Alert>}
     {error && <Alert type="error">{error}</Alert>}
     {loading ? <p role="status">Đang tải…</p> : !error && <>
       {!data?.items.length && <p>Chưa có dữ liệu.</p>}
-      {data?.items.map(row => area === 'admin'
-        ? <ReportActions key={`${row.reportId}:${revision}`} report={row} reload={reload} />
-        : <div key={`${row.reviewId}:${row.version}:${revision}`}>
+      {data?.items.map(row => <div key={`${row.reviewId}:${row.version}:${revision}`}>
           <h2>
             <Link to={`/restaurants/${row.restaurantId}`}>{row.restaurantName}</Link>
           </h2>

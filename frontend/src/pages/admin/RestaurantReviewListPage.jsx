@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../../api/adminApi.js';
-import { Search, Pager } from './AdminShared.jsx';
+import { Search, Pager, Head, DataState, RowActions } from './AdminShared.jsx';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { formatDateTime } from '../../utils/restaurantUtils.js';
 import Alert from '../../components/Alert.jsx';
@@ -35,11 +35,9 @@ export default function RestaurantReviewListPage() {
   }, [status, q, page, reloadToken]);
 
   return (
-    <div className="page page--wide">
-      <div className="page__head">
-        <h1>Duyệt quán</h1>
-        <p className="muted">Kiểm tra hồ sơ đăng ký trước khi cho quán hoạt động.</p>
-      </div>
+    <div className="admin-page">
+      <Head title="Duyệt nhà hàng" description="Kiểm tra hồ sơ đăng ký trước khi cho quán hoạt động." />
+      <section className="admin-panel">
       <div className="tabs" aria-label="Lọc trạng thái hồ sơ">
         {TABS.map((tab) => (
           <button key={tab.status} type="button" aria-pressed={status === tab.status}
@@ -48,16 +46,18 @@ export default function RestaurantReviewListPage() {
         ))}
       </div>
       <Search value={q} label="Tên quán / chủ quán / email" onChange={value => { setQ(value); setPage(0); }} />
+      </section>
       {error && <div><Alert type="error">{error}</Alert>
         <button type="button" className="btn btn--outline btn--sm" onClick={() => setReloadToken((value) => value + 1)}>Thử lại</button>
       </div>}
-      {!items && !error && <p className="muted" role="status">Đang tải hồ sơ...</p>}
+      {!items && !error && <DataState resource={{ loading: true }} />}
       {items && items.length === 0 && <div className="empty-state">
         <Icon name="shield" size={34} /><strong>Không có hồ sơ trong mục này</strong>
         <p>Hồ sơ mới sẽ xuất hiện khi đối tác gửi đăng ký.</p>
       </div>}
       {items && items.length > 0 && <div className="tf-admin-table-wrap">
         <table className="tf-admin-table">
+          <caption className="tf-visually-hidden">Hồ sơ nhà hàng</caption>
           <thead><tr><th scope="col">Quán</th><th scope="col">Chủ quán</th>
             <th scope="col">Gửi lúc</th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
           <tbody>{items.map((item) => (
@@ -66,9 +66,7 @@ export default function RestaurantReviewListPage() {
               <td>{item.ownerName}<small>{item.ownerEmail}</small></td>
               <td>{formatDateTime(item.submittedAt)}</td>
               <td><StatusLabel status={item.status} /></td>
-              <td><Link to={'/admin/restaurants/' + item.id} className="btn btn--outline btn--sm">
-                {item.status === 'PENDING' ? 'Xem & duyệt' : 'Xem'}
-              </Link></td>
+              <td><RowActions label={`Thao tác với ${item.restaurantName || 'nhà hàng'}`}><Link to={'/admin/restaurants/' + item.id}>{item.status === 'PENDING' ? 'Xem & duyệt' : 'Xem'}</Link></RowActions></td>
             </tr>
           ))}</tbody>
         </table>

@@ -19,7 +19,7 @@ export const reviewApi = {
   reply: (id, body) => api.put(`/partner/reviews/${id}/reply`, body),
   deleteReply: (id, version) => api.delete(`/partner/reviews/${id}/reply`, { params: { version } }),
   report: (id, body, partner = false) => api.post(`/${partner ? 'partner' : 'customer'}/reviews/${id}/reports`, body),
-  reports: page => api.get('/admin/review-reports', { params: { page } }).then(r => r.data),
+  reports: (page, signal) => api.get('/admin/review-reports', { params: { page }, signal }).then(r => r.data),
   moderate: (id, body) => api.patch(`/admin/reviews/${id}/visibility`, body),
   resolve: (id, body) => api.patch(`/admin/review-reports/${id}`, body),
   upload: (id, version, file) => { const form = new FormData(); form.append('file', file); return api.post(`/customer/reviews/${id}/images`, form, { params: { version } }); },

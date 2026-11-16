@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { adminApi } from '../../api/adminApi.js';
@@ -7,14 +8,59 @@ import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, NEXT_ACTION, awaitingTran
 import { OrderStatus, PaymentStatus, OrderLines, OrderTotals, OrderProgress } from '../../components/OrderParts.jsx';
 import Modal from '../../components/Modal.jsx';
 import Alert from '../../components/Alert.jsx';
-import { Head, Field, Search, Pager, DataState, OrderTable, useAdminData, formatDateTime } from './AdminShared.jsx';
+import { Head, Field, Search, Pager, DataState, OrderTable, Toast, useAdminData, formatDateTime } from './AdminShared.jsx';
+
+const ORDER_VIEWS = [
+  { label: 'Tất cả', status: '', payment: '' },
+  { label: 'Chờ xác nhận', status: 'PENDING', payment: '' },
+  { label: 'Đang giao', status: 'DELIVERING', payment: '' },
+  { label: 'Cần hoàn tiền', status: 'REJECTED', payment: 'PAID' },
+];
 
 export default function AdminOrdersPage() {
   const [params, setParams] = useSearchParams();
-  const filters = Object.fromEntries(params), page = Math.max(0, Number(filters.page) || 0);
+  const filters = Object.fromEntries(params);
+  const requestedPage = Number(filters.page);
+  const page = Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
   const resource = useAdminData('/orders', { ...filters, page });
-  const change = (key, value) => { const next = { ...filters, [key]: value, page: 0 }; Object.keys(next).forEach(k => !next[k] && delete next[k]); setParams(next); };
-  return <div className="admin-page"><Head title="Quản lý đơn hàng" description="Tra cứu đơn, theo dõi thanh toán và xử lý theo đúng luồng vận hành."><button className="btn btn--outline" onClick={resource.refresh}>Làm mới</button></Head><section className="admin-panel admin-filters"><Search value={filters.q || ''} label="Mã đơn / khách hàng" onChange={v => change('q', v)} /><Field label="Trạng thái đơn"><select value={filters.status || ''} onChange={e => change('status', e.target.value)}><option value="">Tất cả</option>{Object.entries(ORDER_STATUS).map(([v,m]) => <option key={v} value={v}>{m.label}</option>)}</select></Field><Field label="Thanh toán"><select value={filters.payment || ''} onChange={e => change('payment', e.target.value)}><option value="">Tất cả</option>{Object.entries(PAYMENT_STATUS).map(([v,m]) => <option key={v} value={v}>{m.label}</option>)}</select></Field><Field label="Từ ngày"><input type="date" value={filters.from || ''} onChange={e => change('from', e.target.value)} /></Field><Field label="Đến ngày"><input type="date" min={filters.from} value={filters.to || ''} onChange={e => change('to', e.target.value)} /></Field><Field label="Sắp xếp"><select value={filters.sort || 'newest'} onChange={e => change('sort', e.target.value)}><option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option><option value="total">Tổng tiền giảm dần</option></select></Field>{filters.customer && <button className="btn btn--outline" onClick={() => change('customer', '')}>Bỏ lọc khách #{filters.customer}</button>}<button className="btn btn--ghost" onClick={() => setParams({})}>Xóa bộ lọc</button></section><DataState resource={resource} empty={resource.data?.items.length === 0}><OrderTable items={resource.data?.items} /></DataState>{resource.data && <Pager page={page} total={resource.data.total} onChange={p => setParams({ ...filters, page: p })} />}</div>;
+
+  function change(changes) {
+    const next = { ...filters, ...changes, page: 0 };
+    setParams(Object.fromEntries(Object.entries(next).filter(([, value]) => value)));
+  }
+
+  return <div className="admin-page">
+    <Head title="Quản lý đơn hàng" description="Tra cứu đơn, theo dõi thanh toán và xử lý theo trạng thái.">
+      <button type="button" className="btn btn--outline" disabled={resource.loading} onClick={resource.refresh}><RefreshCw size={16} /> Làm mới</button>
+    </Head>
+    <section className="admin-panel order-filters">
+      <div className="tabs" role="group" aria-label="Lọc nhanh đơn hàng">
+        {ORDER_VIEWS.map(view => {
+          const active = (filters.status || '') === view.status && (filters.payment || '') === view.payment;
+          return <button key={view.label} type="button" className={'tabs__item' + (active ? ' is-active' : '')}
+            aria-pressed={active} onClick={() => change({ status: view.status, payment: view.payment })}>{view.label}</button>;
+        })}
+      </div>
+      <div className="admin-filters">
+        <Search value={filters.q || ''} label="Mã đơn / khách hàng" onChange={q => change({ q })} />
+        <Field label="Trạng thái đơn"><select value={filters.status || ''} onChange={event => change({ status: event.target.value })}>
+          <option value="">Tất cả</option>{Object.entries(ORDER_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
+        </select></Field>
+        <Field label="Thanh toán"><select value={filters.payment || ''} onChange={event => change({ payment: event.target.value })}>
+          <option value="">Tất cả</option>{Object.entries(PAYMENT_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
+        </select></Field>
+        <Field label="Từ ngày"><input type="date" max={filters.to || undefined} value={filters.from || ''} onChange={event => change({ from: event.target.value })} /></Field>
+        <Field label="Đến ngày"><input type="date" min={filters.from || undefined} value={filters.to || ''} onChange={event => change({ to: event.target.value })} /></Field>
+        <Field label="Sắp xếp"><select value={filters.sort || 'newest'} onChange={event => change({ sort: event.target.value })}>
+          <option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option><option value="total">Tổng tiền giảm dần</option>
+        </select></Field>
+        {filters.customer && <button type="button" className="btn btn--outline" onClick={() => change({ customer: '' })}>Bỏ lọc khách #{filters.customer}</button>}
+        {!!params.size && <button type="button" className="btn btn--ghost" onClick={() => setParams({})}>Xóa bộ lọc</button>}
+      </div>
+    </section>
+    <DataState resource={resource} empty={resource.data?.items.length === 0}><OrderTable items={resource.data?.items} /></DataState>
+    {resource.data && <Pager page={page} total={resource.data.total} onChange={next => setParams({ ...filters, page: next })} />}
+  </div>;
 }
 
 export function AdminOrderDetailPage() {
@@ -29,8 +75,8 @@ export function AdminOrderDetailPage() {
     } catch (err) { setError(getErrorMessage(err)); }
     finally { setBusy(false); }
   }
-  return <div className="admin-page"><Head title={o?.orderCode || 'Chi tiết đơn hàng'} description="Thông tin món và số tiền được lưu tại lúc đặt đơn."><Link className="btn btn--outline" to="/admin/orders">← Danh sách đơn</Link><button className="btn btn--outline" onClick={resource.refresh}>Làm mới</button></Head>{success && <Alert type="success">{success}</Alert>}<DataState resource={resource}>{o && <>
-    <section className="admin-panel"><div className="admin-actions"><OrderStatus status={o.orderStatus} /><PaymentStatus status={o.paymentStatus} /><span>{PAYMENT_METHOD[o.paymentMethod]}</span></div><OrderProgress status={o.orderStatus} /><div className="admin-actions">
+  return <div className="admin-page"><Head title={o?.orderCode || 'Chi tiết đơn hàng'} description="Thông tin món và số tiền được lưu tại lúc đặt đơn."><Link className="btn btn--outline" to="/admin/orders">← Danh sách đơn</Link><button type="button" className="btn btn--outline" onClick={resource.refresh}><RefreshCw size={16} /> Làm mới</button></Head>{success && <Toast message={success} onClose={() => setSuccess('')} />}<DataState resource={resource}>{o && <>
+    <section className="admin-panel admin-order-summary"><div className="admin-section-head"><h2>Trạng thái đơn</h2></div><div className="admin-actions"><OrderStatus status={o.orderStatus} /><PaymentStatus status={o.paymentStatus} /><span>{PAYMENT_METHOD[o.paymentMethod]}</span></div><OrderProgress status={o.orderStatus} /><div className="admin-actions">
       {o.orderStatus === 'PENDING' && !awaitingTransfer(o) && <button className="btn btn--primary" onClick={() => begin({ path: 'status', status: 'CONFIRMED', label: 'Xác nhận đơn' })}>Xác nhận đơn</button>}
       {awaitingTransfer(o) && user.role === 'ADMIN' && <button className="btn btn--primary" onClick={() => begin({ path: 'confirm-payment', label: 'Xác nhận đã nhận tiền', financial: true })}>Đã nhận tiền VietQR</button>}
       {NEXT_ACTION[o.orderStatus] && <button className="btn btn--primary" onClick={() => begin({ path: 'status', ...NEXT_ACTION[o.orderStatus] })}>{NEXT_ACTION[o.orderStatus].label}</button>}
