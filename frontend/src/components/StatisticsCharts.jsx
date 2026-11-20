@@ -72,17 +72,26 @@ function StatisticsChart({ series, metric, title, money, from, to, group, loadin
     const rect = plotRef.current.getBoundingClientRect();
     setActive({ index, anchor: { x: rect.left + left + (index + .5) * slot, y: rect.top + bottom / 2 } });
   };
-  const linePaths = [];
-  let segment = [];
+  const linePaths = [], areaPaths = [];
+  let segment = [], firstX = 0, lastX = 0;
+  function finishSegment() {
+    if (!segment.length) return;
+    const path = segment.join(' ');
+    linePaths.push(path);
+    areaPaths.push(`${path} L${lastX},${bottom} L${firstX},${bottom} Z`);
+    segment = [];
+  }
   model.points.forEach((point, index) => {
     if (point.units === null) {
-      if (segment.length) linePaths.push(segment.join(' '));
-      segment = [];
+      finishSegment();
     } else {
-      segment.push(`${segment.length ? 'L' : 'M'}${left + (index + .5) * slot},${yOf(point.units)}`);
+      const x = left + (index + .5) * slot;
+      if (!segment.length) firstX = x;
+      lastX = x;
+      segment.push(`${segment.length ? 'L' : 'M'}${x},${yOf(point.units)}`);
     }
   });
-  if (segment.length) linePaths.push(segment.join(' '));
+  finishSegment();
   return <section className="admin-panel statistics-card" aria-labelledby={titleId} aria-busy={loading}>
     <header className="statistics-card__header"><h2 id={titleId}>{title}</h2><p>{from && to ? `${shortPeriod(Date.parse(from), 'day')}/${from.slice(0, 4)} – ${shortPeriod(Date.parse(to), 'day')}/${to.slice(0, 4)}` : 'Chưa chọn khoảng thời gian'}</p>
       {!loading && !error && model.total !== null && <strong className="statistics-card__total"><span>Tổng trong kỳ</span>{formatChartValue(model.total, money)}</strong>}
@@ -93,6 +102,7 @@ function StatisticsChart({ series, metric, title, money, from, to, group, loadin
           : !model.points.length ? <div className="statistics-card__state">Không có dữ liệu trong khoảng thời gian này.</div>
             : <><span className="statistics-card__unit">Đơn vị: {moneyLabel}</span><svg viewBox={`0 0 ${width} ${svgHeight}`} width={width} height={svgHeight} className={`statistics-chart statistics-chart--${metric}`} tabIndex="0" role="group" aria-label={title} aria-describedby={selected ? tooltipId : hintId} onKeyDown={moveSelection} onBlur={() => setActive(null)} onPointerLeave={event => { if (event.pointerType === 'mouse') setActive(null); }}>
               {axis.ticks.map(tick => <g key={String(tick)} className="statistics-chart__grid"><line x1={left} x2={width - right} y1={yOf(tick)} y2={yOf(tick)} /><text x={left - 10} y={yOf(tick)} dy=".35em" textAnchor="end">{formatAxisValue(tick, money)}</text></g>)}
+              {line && areaPaths.map((path, index) => <path key={index} d={path} className="statistics-chart__area" />)}
               {line && linePaths.map((path, index) => <path key={index} d={path} className="statistics-chart__line" />)}
               {model.points.map((p, index) => {
                 const cx = left + (index + .5) * slot, isActive = active?.index === index;
@@ -108,7 +118,7 @@ function StatisticsChart({ series, metric, title, money, from, to, group, loadin
     </div>
     <footer className="statistics-card__footer" id={hintId}>
       <span>{model.factor > 1 ? `Gộp tối đa ${model.factor} ${GROUP_LABEL[group] || 'kỳ'}/cột · cộng đầy đủ, không lấy mẫu.` : `Theo ${GROUP_LABEL[group] || 'ngày'}.`}</span>
-      {!loading && !error && model.points.length > 0 && <><span>Rê chuột, chạm hoặc dùng phím ← → để xem số chính xác.</span><span className="statistics-card__legend"><i className="statistics-card__zero-key" />Giá trị 0<i className="statistics-card__missing-key" />Thiếu dữ liệu{model.missing ? ` (${model.missing} kỳ)` : ''}</span></>}
+      {!loading && !error && model.points.length > 0 && <><span>Rê chuột, chạm hoặc dùng phím ← → để xem chi tiết.</span>{model.missing > 0 && <span className="statistics-card__legend"><i className="statistics-card__missing-key" />Thiếu dữ liệu ({model.missing} kỳ) · Không tính thành 0</span>}</>}
     </footer>
     {selected && <Tooltip id={tooltipId} point={selected} money={money} anchor={active.anchor} />}
   </section>;

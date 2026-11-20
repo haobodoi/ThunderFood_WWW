@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MoreHorizontal, Inbox, X, CheckCircle2 } from 'lucide-react';
+import { MoreHorizontal, Inbox, X, CheckCircle2, Info } from 'lucide-react';
 import { adminApi } from '../../api/adminApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import Alert from '../../components/Alert.jsx';
@@ -44,13 +44,15 @@ export function Badge({ tone = 'neutral', children }) {
   return <span className={`enterprise-badge enterprise-badge--${tone}`}>{children}</span>;
 }
 export function Toast({ message, onClose }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
-    const timeout = window.setTimeout(onClose, 6000);
+    const timeout = window.setTimeout(() => closeRef.current(), 6000);
     return () => window.clearTimeout(timeout);
-  }, [message, onClose]);
+  }, [message]);
   return <div className="enterprise-toast" role="status"><CheckCircle2 size={19} /><span>{message}</span><button type="button" onClick={onClose} aria-label="Đóng thông báo"><X size={16} /></button></div>;
 }
-export function RowActions({ label, children }) {
+function useAnchoredPopover() {
   const id = useId();
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
@@ -99,6 +101,22 @@ export function RowActions({ label, children }) {
     };
   }, []);
 
+  return { id, triggerRef, menuRef };
+}
+
+export function MetricHelp({ label, description }) {
+  const { id, triggerRef, menuRef } = useAnchoredPopover();
+  return <span className="enterprise-help">
+    <button type="button" ref={triggerRef} popovertarget={id} aria-label={'Giải thích ' + label}>
+      <Info size={17} aria-hidden="true" />
+    </button>
+    <p id={id} ref={menuRef} popover="auto" className="enterprise-help__content">{description}</p>
+  </span>;
+}
+
+export function RowActions({ label, children }) {
+  const { id, triggerRef, menuRef } = useAnchoredPopover();
+
   function dismissAfterAction(event) {
     if (!event.target.closest('a[href], button:not(:disabled)')) return;
     menuRef.current?.hidePopover();
@@ -116,6 +134,9 @@ export function RowActions({ label, children }) {
 }
 export function Pager({ page, total = 0, pageSize = 20, onChange }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
+  useEffect(() => {
+    if (page >= pages) onChange(pages - 1);
+  }, [page, pages, onChange]);
   return <nav className="admin-pager" aria-label="Phân trang"><span>{total.toLocaleString('vi-VN')} kết quả · Trang {page + 1}/{pages}</span><div className="admin-actions"><button type="button" className="btn btn--outline btn--sm" disabled={page === 0} onClick={() => onChange(page - 1)}>Trước</button><button type="button" className="btn btn--outline btn--sm" disabled={page + 1 >= pages} onClick={() => onChange(page + 1)}>Sau</button></div></nav>;
 }
 export function Table({ headers, children, caption }) {
@@ -132,5 +153,5 @@ export function Search({ value, onChange, placeholder = 'Nhập để tìm kiế
 export function RestaurantPicker({ value, onChange, client = adminApi, path = '/catalog/restaurants', allLabel = 'Chọn quán…' }) {
   const [q, setQ] = useState(''), [page, setPage] = useState(0);
   const resource = useAdminData(path, { q, page }, client);
-  return <section className="admin-panel"><div className="admin-filters"><Search value={q} label="Tìm quán" onChange={v => { setQ(v); setPage(0); }} /><Field label="Quán đang quản lý"><select value={value?.id || ''} onChange={e => onChange(resource.data?.items.find(r => String(r.id) === e.target.value) || null)}><option value="">{allLabel}</option>{value && !resource.data?.items.some(r => r.id === value.id) && <option value={value.id}>{value.name}</option>}{resource.data?.items.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></Field></div><DataState resource={resource} empty={resource.data?.items.length === 0}><Pager page={page} total={resource.data?.total} onChange={setPage} /></DataState></section>;
+  return <section className="admin-panel"><div className="admin-filters"><Search value={q} label="Tìm quán" onChange={v => { setQ(v); setPage(0); }} /><Field label="Quán đang quản lý"><select value={value?.id || ''} onChange={e => onChange(resource.data?.items.find(r => String(r.id) === e.target.value) || null)}><option value="">{allLabel}</option>{value && !resource.data?.items.some(r => r.id === value.id) && <option value={value.id}>{value.name}</option>}{resource.data?.items.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></Field></div><DataState resource={resource} empty={resource.data?.items.length === 0} />{resource.data && <Pager page={page} total={resource.data.total} onChange={setPage} />}</section>;
 }

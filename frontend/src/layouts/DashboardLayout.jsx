@@ -49,6 +49,8 @@ export default function DashboardLayout({ area }) {
   useEffect(() => {
     if (!sidebarOpen || !mobile) return undefined;
     const previous = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const sidebar = document.getElementById('dashboard-sidebar');
     const focusable = () => [...sidebar.querySelectorAll('a[href],button:not(:disabled)')].filter(element => element.getClientRects().length);
     focusable()[0]?.focus();
@@ -61,7 +63,11 @@ export default function DashboardLayout({ area }) {
       }
     };
     document.addEventListener('keydown', close);
-    return () => { document.removeEventListener('keydown', close); previous?.focus?.(); };
+    return () => {
+      document.removeEventListener('keydown', close);
+      document.body.style.overflow = previousOverflow;
+      previous?.focus?.();
+    };
   }, [sidebarOpen, mobile]);
   useEffect(() => {
     if (!accountOpen) return undefined;

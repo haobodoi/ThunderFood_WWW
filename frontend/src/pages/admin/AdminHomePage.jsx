@@ -1,26 +1,29 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useId, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, CircleDollarSign, CircleX,
-  ClipboardList, Download, Info, MessageSquareWarning, Receipt, RefreshCw, ShoppingBag,
-  Store, UserRoundPlus, UsersRound, Wallet,
+  ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, CheckCircle2,
+  CircleDollarSign, CircleX, ClipboardList, Download, MessageSquareWarning, Receipt,
+  RefreshCw, ShoppingBag, Store, UserRoundPlus, UtensilsCrossed, Wallet,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { adminApi } from '../../api/adminApi.js';
 import { partnerStatisticsApi } from '../../api/partnerStatisticsApi.js';
 import StatisticsCharts from '../../components/StatisticsCharts.jsx';
 import Alert from '../../components/Alert.jsx';
-import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../../utils/orderUtils.js';
-import { parseDay, formatChartValue, toChartUnits } from '../../utils/statisticsChart.js';
-import { DataState, Field, Head, OrderTable, RestaurantPicker, Table, formatVND, useAdminData } from './AdminShared.jsx';
+import { parseDay } from '../../utils/statisticsChart.js';
+import { reportRangeError } from '../../utils/reportRange.js';
+import { DataState, Field, Head, MetricHelp, RestaurantPicker, formatVND, useAdminData } from './AdminShared.jsx';
+import { Breakdown, PeriodTable, ProductInsights, RecentOrders, ReportGuide, ReportHighlights, SectionHeading, Settlement } from './ReportSections.jsx';
+import '../../styles/statistics-report.css';
+export { Donut } from './ReportSections.jsx';
 
 const number = new Intl.NumberFormat('vi-VN');
+const changeNumber = new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const date = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
 const dayInVietnam = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
 });
 const GROUPS = { day: 'Ngày', week: 'Tuần', month: 'Tháng', year: 'Năm' };
-const COLORS = ['#bd560c', '#476783', '#7258a6', '#087e82', '#16734b', '#b83841', '#801f3e'];
 
 function recentRange(days, group = 'day') {
   const to = dayInVietnam.format(new Date());
@@ -33,73 +36,30 @@ function displayDate(value) {
   return day === null ? '—' : date.format(day);
 }
 
-export function Donut({ title, entries }) {
-  const total = entries.reduce((sum, entry) => sum + Number(entry.count ?? 0), 0);
-  let offset = 0;
-  return <section className="admin-panel donut-card">
-    <h2>{title}</h2>
-    <div className="donut-card__body">
-      <div className="donut-card__graphic" aria-hidden="true">
-        <svg viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="46" fill="none" stroke="#edf0f3" strokeWidth="13" />
-          {total > 0 && entries.map((entry, index) => {
-            const share = Number(entry.count ?? 0) / total * 100;
-            const segment = offset;
-            offset += share;
-            return share > 0 && <circle key={entry.label} cx="60" cy="60" r="46" fill="none"
-              stroke={COLORS[index % COLORS.length]} strokeWidth="13" pathLength="100"
-              strokeDasharray={share + ' ' + (100 - share)} strokeDashoffset={-segment} transform="rotate(-90 60 60)" />;
-          })}
-        </svg>
-        <div><strong>{number.format(total)}</strong><span>đơn hàng</span></div>
-      </div>
-      <ul className="donut-card__legend">
-        {entries.map((entry, index) => <li key={entry.label}>
-          <span><i style={{ backgroundColor: COLORS[index % COLORS.length] }} aria-hidden="true" />{entry.label}</span>
-          <strong>{number.format(entry.count ?? 0)} <small>({total ? (entry.count / total * 100).toFixed(1) : '0'}%)</small></strong>
-        </li>)}
-      </ul>
-    </div>
-  </section>;
-}
 
-export function Metric({ label, value, previous, money, icon: MetricIcon, description, points, featured }) {
+export function Metric({ label, value, previous, money, icon: MetricIcon, description, points, featured, context }) {
   const current = Number(value);
   const old = Number(previous);
   const delta = previous == null ? null : points ? current - old : old ? (current - old) / old * 100 : null;
-  const change = delta !== null ? Number(delta.toFixed(1)) : null;
+  const rounded = delta !== null ? Number(delta.toFixed(1)) : null;
+  const change = rounded === 0 ? 0 : rounded;
   const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'flat';
   return <article className={'admin-kpi' + (featured ? ' admin-kpi--featured' : '')}>
     <div className="enterprise-kpi-top">
-      <span className="enterprise-kpi-icon"><MetricIcon size={18} aria-hidden="true" /></span>
-      <details className="enterprise-help">
-        <summary aria-label={'Giải thích ' + label}><Info size={16} aria-hidden="true" /></summary>
-        <p>{description}</p>
-      </details>
+      <span className="enterprise-kpi-icon"><MetricIcon size={20} aria-hidden="true" /></span>
+      <MetricHelp label={label} description={description} />
     </div>
     <span>{label}</span>
     <strong>{money ? formatVND(value) : points ? number.format(current) + '%' : number.format(current)}</strong>
     {previous != null && <small className="admin-kpi__comparison" data-direction={direction} data-inverse={points || undefined}>
-      {direction === 'up' && <ArrowUpRight size={13} aria-hidden="true" />}
-      {direction === 'down' && <ArrowDownRight size={13} aria-hidden="true" />}
+      {direction === 'up' && <ArrowUpRight size={16} aria-hidden="true" />}
+      {direction === 'down' && <ArrowDownRight size={16} aria-hidden="true" />}
       {change === null
         ? 'Kỳ trước: ' + (money ? formatVND(previous) : number.format(old))
-        : (change > 0 ? '+' : '') + change.toFixed(1) + (points ? ' điểm %' : '%') + ' so với kỳ trước'}
+        : (change > 0 ? '+' : '') + changeNumber.format(change) + (points ? ' điểm %' : '%') + ' so với kỳ trước'}
     </small>}
+    {context && <small className="report-kpi-context">{context}</small>}
   </article>;
-}
-
-function Ranking({ title, items, by = 'quantity', description }) {
-  const ranked = [...items].sort((a, b) => Number(b[by]) - Number(a[by]));
-  const max = Number(ranked[0]?.[by] ?? 0);
-  return <section className="admin-panel ranking-panel">
-    <h2>{title}</h2>
-    {description && <p className="muted">{description}</p>}
-    {ranked.length ? <ol className="dashboard-ranking">{ranked.map((item, index) => <li key={item.id ?? item.name + index}>
-      <div><span>{item.name}</span><strong>{by === 'revenue' ? formatVND(item.revenue) : number.format(item.quantity) + ' phần'}</strong></div>
-      <span className="dashboard-bar" aria-hidden="true"><span style={{ width: (max ? Number(item[by]) / max * 100 : 0) + '%' }} /></span>
-    </li>)}</ol> : <p className="muted">Chưa có dữ liệu trong kỳ.</p>}
-  </section>;
 }
 
 function Attention({ attention, partner, admin }) {
@@ -113,7 +73,7 @@ function Attention({ attention, partner, admin }) {
     { label: 'Báo cáo đánh giá', count: attention.reports, icon: MessageSquareWarning, to: '/admin/review-reports' },
   );
   return <section className="admin-panel dashboard-queue">
-    <header><h2>Cần xử lý</h2><p className="muted">Tại thời điểm xem · Ngoài bộ lọc ngày</p></header>
+    <header><h2>Cần xử lý lúc này</h2><p className="muted">Số hiện tại · Không theo bộ lọc ngày</p></header>
     <ul>{tasks.map(({ label, count, icon: Icon, to }) => <li key={label}>
       <Link to={to}><span className="queue-icon"><Icon size={17} aria-hidden="true" /></span><span>{label}</span><strong>{number.format(count)}</strong><ArrowRight size={15} aria-hidden="true" /></Link>
     </li>)}</ul>
@@ -121,160 +81,122 @@ function Attention({ attention, partner, admin }) {
   </section>;
 }
 
-function Breakdown({ report }) {
-  return <div className="admin-grid">
-    <Donut title="Trạng thái đơn hàng" entries={Object.entries(ORDER_STATUS).map(([key, meta]) => ({
-      label: meta.label, count: report.statuses.find(row => row.status === key)?.count ?? 0,
-    }))} />
-    <Donut title="Phương thức thanh toán" entries={Object.entries(PAYMENT_METHOD).map(([key, label]) => ({
-      label, count: report.paymentMethods.find(row => row.method === key)?.count ?? 0,
-    }))} />
-  </div>;
-}
-
-function ProductInsights({ report, partner }) {
-  return <>
-    <div className="admin-grid">
-      <Ranking title="Món bán chạy" items={report.topItems} />
-      <Ranking title="Doanh thu theo danh mục" items={report.topCategories} by="revenue"
-        description="Tối đa 10 danh mục bán nhiều nhất, sắp theo doanh thu món." />
-    </div>
-    {partner && <Ranking title="Doanh thu món theo quán" items={report.byRestaurant ?? []} by="revenue" />}
-    <section className="admin-panel">
-      <h2>Món bán chậm / chưa bán</h2>
-      {report.slowItems.length ? <Table headers={['Tên món', 'Số phần', 'Quán']} caption="Món bán chậm / chưa bán">
-        {report.slowItems.map((item, index) => <tr key={item.name + index}><td>{item.name}</td>
-          <td data-numeric>{number.format(item.quantity)}</td><td>{item.restaurantName}</td></tr>)}
-      </Table> : <p className="muted">Chưa có dữ liệu trong kỳ.</p>}
-    </section>
-  </>;
-}
-
-function ReportFilters({ draft, setDraft, apply }) {
+function ReportFilters({ draft, setDraft, apply, quickApply, error, pending }) {
   return <form className="admin-panel report-filters" onSubmit={apply}>
     <div className="report-filters__shortcuts">
-      <div className="report-filters__label"><CalendarDays size={17} aria-hidden="true" /> Kỳ báo cáo</div>
-      <div className="dashboard-presets" role="group" aria-label="Chọn nhanh khoảng thời gian">
+      <div className="report-filters__label"><CalendarDays size={17} aria-hidden="true" /> Khoảng thời gian</div>
+      <div className="dashboard-presets" role="group" aria-label="Chọn nhanh và áp dụng khoảng thời gian">
         {[7, 30, 90].map(days => {
           const range = recentRange(days, draft.group);
           return <button type="button" key={days} className="dashboard-preset"
-            aria-pressed={range.from === draft.from && range.to === draft.to} onClick={() => setDraft(range)}>{days} ngày</button>;
+            aria-pressed={range.from === draft.from && range.to === draft.to} onClick={() => quickApply(range)}>{days} ngày qua</button>;
         })}
       </div>
     </div>
     <div className="report-filters__fields">
-      <Field label="Từ ngày"><input type="date" required value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
-      <Field label="Đến ngày"><input type="date" required min={draft.from} value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
-      <Field label="Nhóm theo"><select value={draft.group} onChange={event => setDraft({ ...draft, group: event.target.value })}>
+      <Field label="Từ ngày"><input type="date" required min="1800-01-01" max={draft.to || '2200-12-31'} aria-describedby="report-range-hint" value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
+      <Field label="Đến ngày"><input type="date" required min={draft.from || '1800-01-01'} max="2200-12-31" aria-describedby="report-range-hint" value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
+      <Field label="Xem theo"><select value={draft.group} onChange={event => setDraft({ ...draft, group: event.target.value })}>
         {Object.entries(GROUPS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
       </select></Field>
       <button type="submit" className="btn btn--primary">Áp dụng</button>
     </div>
+    <p className="report-filters__hint" id="report-range-hint">Chọn nhanh để xem ngay · Khoảng tùy chỉnh tối đa 1.096 ngày</p>
+    {pending && <p className="report-filters__pending" role="status">Bộ lọc đã thay đổi. Bấm Áp dụng để cập nhật báo cáo và tệp CSV.</p>}
+    {error && <div className="report-filters__error"><Alert type="error">{error}</Alert></div>}
   </form>;
+}
+
+const VIEWS = [
+  { key: 'summary', label: 'Tổng quan', icon: ChartNoAxesCombined },
+  { key: 'orders', label: 'Đơn hàng & thanh toán', icon: Receipt },
+  { key: 'products', label: 'Hiệu quả thực đơn', icon: UtensilsCrossed },
+];
+
+function ReportNavigation({ view, onChange, id }) {
+  function onKeyDown(event) {
+    const current = VIEWS.findIndex(item => item.key === view);
+    const next = event.key === 'ArrowRight' ? (current + 1) % VIEWS.length : event.key === 'ArrowLeft' ? (current + VIEWS.length - 1) % VIEWS.length : event.key === 'Home' ? 0 : event.key === 'End' ? VIEWS.length - 1 : null;
+    if (next === null) return;
+    event.preventDefault();
+    onChange(VIEWS[next].key);
+    event.currentTarget.querySelectorAll('[role="tab"]')[next].focus();
+  }
+  return <div className="report-navigation" role="tablist" aria-label="Nội dung báo cáo" onKeyDown={onKeyDown}>
+    {VIEWS.map(({ key, label, icon: Icon }) => <button key={key} id={`${id}-${key}`} type="button" role="tab" aria-selected={view === key} aria-controls={`${id}-panel`} tabIndex={view === key ? 0 : -1} onClick={() => onChange(key)}><Icon size={19} aria-hidden="true" />{label}</button>)}
+  </div>;
 }
 
 export default function AdminHomePage({ area = 'admin', analytics = false }) {
   const { user } = useAuth();
-  const partner = area === 'partner';
-  const overview = !partner && !analytics;
+  const partner = area === 'partner', overview = !partner && !analytics;
   const client = partner ? partnerStatisticsApi : adminApi;
-  const [restaurant, setRestaurant] = useState(null);
-  const [draftRestaurant, setDraftRestaurant] = useState(null);
-  const [draft, setDraft] = useState(() => recentRange(30));
-  const [filters, setFilters] = useState(draft);
-  const [error, setError] = useState('');
-  const [exporting, setExporting] = useState(false);
+  const [search, setSearch] = useSearchParams();
+  const view = VIEWS.some(item => item.key === search.get('view')) ? search.get('view') : 'summary';
+  const navigationId = useId();
+  const [restaurant, setRestaurant] = useState(null), [draftRestaurant, setDraftRestaurant] = useState(null);
+  const [draft, setDraft] = useState(() => recentRange(30)), [filters, setFilters] = useState(draft);
+  const [error, setError] = useState(''), [rangeError, setRangeError] = useState(''), [exporting, setExporting] = useState(false);
   const params = partner ? { ...filters, restaurantId: restaurant?.id } : filters;
   const resource = useAdminData('/dashboard', params, client);
   const report = resource.data;
+  const pending = draft.from !== filters.from || draft.to !== filters.to || draft.group !== filters.group || (partner && draftRestaurant?.id !== restaurant?.id);
 
-  async function download() {
-    setExporting(true);
-    setError('');
-    try {
-      const blob = await client.export(params);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = ['ThunderFood', filters.from, filters.to].join('-') + '.csv';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
-      setError('Không xuất được CSV. Vui lòng thử lại.');
-    } finally {
-      setExporting(false);
-    }
+  function chooseView(value) {
+    setSearch(previous => { const next = new URLSearchParams(previous); if (value === 'summary') next.delete('view'); else next.set('view', value); return next; }, { preventScrollReset: true });
+    document.getElementById(`${navigationId}-${value}`)?.focus();
   }
-
-  function apply(event) {
-    event.preventDefault();
-    setError('');
-    setRestaurant(draftRestaurant);
-    setFilters(draft);
+  function applyRange(range) {
+    const invalid = reportRangeError(range);
+    setRangeError(invalid);
+    if (invalid) return;
+    setError(''); setRestaurant(draftRestaurant); setDraft(range); setFilters(range);
+  }
+  async function download() {
+    setExporting(true); setError('');
+    try {
+      const blob = await client.export(params), url = URL.createObjectURL(blob), link = document.createElement('a');
+      link.href = url; link.download = ['ThunderFood', filters.from, filters.to].join('-') + '.csv';
+      document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { setError('Không xuất được CSV. Vui lòng thử lại.'); } finally { setExporting(false); }
   }
 
   return <div className="admin-page report-page">
-    <Head title={partner ? 'Thống kê kinh doanh' : overview ? 'Tổng quan kinh doanh' : 'Thống kê & báo cáo'}
-      description={overview ? 'Theo dõi kết quả kinh doanh và các việc cần xử lý.' : 'Phân tích doanh thu, đơn hàng, khách hàng và hiệu quả thực đơn.'}>
-      <button type="button" className="btn btn--outline" onClick={resource.refresh} disabled={resource.loading}><RefreshCw size={16} /> Làm mới</button>
-      {overview && <Link className="btn btn--outline" to="/admin/analytics">Xem báo cáo <ArrowRight size={16} /></Link>}
-      <button type="button" className="btn btn--primary" disabled={exporting || !report} onClick={download}>
-          <Download size={16} /> {exporting ? 'Đang xuất…' : 'Xuất CSV'}
-      </button>
+    <Head title={partner ? 'Thống kê kinh doanh' : overview ? 'Tổng quan kinh doanh' : 'Thống kê & báo cáo'} description={overview ? 'Kết quả kinh doanh và những việc cần xử lý, trong một góc nhìn.' : 'Theo dõi kết quả kinh doanh, dòng tiền và hiệu quả thực đơn.'}>
+      <button type="button" className="btn btn--outline" onClick={resource.refresh} disabled={resource.loading}><RefreshCw size={17} aria-hidden="true" /> Làm mới</button>
+      {overview && <Link className="btn btn--outline" to="/admin/analytics">Phân tích chi tiết <ArrowRight size={17} aria-hidden="true" /></Link>}
+      <button type="button" className="btn btn--primary" disabled={exporting || !report || resource.loading} onClick={download}><Download size={17} aria-hidden="true" />{exporting ? 'Đang xuất…' : 'Xuất báo cáo CSV'}</button>
     </Head>
-    {partner && <RestaurantPicker value={draftRestaurant} onChange={setDraftRestaurant} client={partnerStatisticsApi} path="/restaurants" allLabel="Tất cả quán của bạn" />}
-    <ReportFilters draft={draft} setDraft={setDraft} apply={apply} />
+    {partner && <details className="report-scope-picker"><summary><Store size={18} aria-hidden="true" /><span>Phạm vi nhà hàng<strong>{draftRestaurant?.name || 'Tất cả quán của bạn'}</strong></span><small>Thay đổi</small></summary>
+      <RestaurantPicker value={draftRestaurant} onChange={setDraftRestaurant} client={partnerStatisticsApi} path="/restaurants" allLabel="Tất cả quán của bạn" />
+    </details>}
+    <ReportFilters draft={draft} setDraft={value => { setDraft(value); setRangeError(''); }} apply={event => { event.preventDefault(); applyRange(draft); }} quickApply={applyRange} error={rangeError} pending={pending} />
     {error && <Alert type="error">{error}</Alert>}
-    <DataState resource={resource}>{report && <>
-      <div className="report-period">
-        <strong>{displayDate(report.from)} – {displayDate(report.to)}{restaurant && ' · ' + restaurant.name}</strong>
-        <span>Kỳ trước {displayDate(report.previousFrom)} – {displayDate(report.previousTo)} · Giờ Việt Nam</span>
-      </div>
-      <div className="admin-kpis">
-        <Metric featured label="Tổng thu đơn đã trả" value={report.current.receipts} previous={report.previous.receipts} money icon={CircleDollarSign} description="Tổng giá trị đơn hoàn tất và đã thanh toán, gồm phí giao hàng." />
-        <Metric label="Tổng đơn hàng" value={report.current.orders} previous={report.previous.orders} icon={ShoppingBag} description="Số đơn được tạo trong kỳ, gồm mọi trạng thái." />
-        <Metric label="Giá trị đơn trung bình" value={report.current.average} previous={report.previous.average} money icon={Receipt} description="Tổng thu gồm phí giao chia cho số đơn hoàn tất và đã thanh toán." />
-        <Metric label={partner ? 'Khách đặt trong kỳ' : 'Khách hàng mới'} value={report.current.customers} previous={report.previous.customers} icon={UserRoundPlus} description={partner ? 'Số khách riêng biệt đã đặt trong kỳ.' : 'Số tài khoản khách được tạo trong kỳ.'} />
-        <Metric label="Tổng khách hàng" value={report.current.totalCustomers} icon={UsersRound} description={partner ? 'Số khách từng đặt trong phạm vi quán đã chọn.' : 'Tổng tài khoản khách hiện có, gồm cả tài khoản bị khóa.'} />
-        <Metric label="Tỷ lệ hủy / từ chối" value={report.current.cancellationRate} previous={report.previous.cancellationRate} points icon={CircleX} description="Số đơn hủy hoặc bị từ chối chia cho toàn bộ đơn tạo trong kỳ." />
-      </div>
-      {overview ? <div className="report-overview">
-        <StatisticsCharts report={report} range={filters} interactive />
-        <Attention attention={report.attention} admin={user.role === 'ADMIN'} />
-      </div> : <StatisticsCharts report={report} range={filters} />}
-      {!overview && <details className="admin-panel">
-        <summary>Xem số liệu theo kỳ</summary>
-        <p className="muted">Số liệu theo ngày tạo đơn. Doanh thu món tính trên đơn hoàn tất và đã thanh toán.</p>
-        <Table headers={['Đầu kỳ', 'Số đơn', 'Doanh thu món']} caption="Số liệu theo kỳ">
-          {report.series.map(row => <tr key={row.period}><td>{displayDate(row.period)}</td>
-            <td data-numeric>{formatChartValue(toChartUnits(row.orders, false), false)}</td>
-            <td data-numeric>{formatChartValue(toChartUnits(row.revenue, true), true)}</td></tr>)}
-        </Table>
-      </details>}
-      <Breakdown report={report} />
-      {!overview && <>
-        <section className="admin-panel">
-          <h2>Đối soát doanh thu và thanh toán</h2>
-          <dl className="report-totals">
-            <div><dt>Doanh thu món</dt><dd>{formatVND(report.current.revenue)}</dd></div>
-            <div><dt>Phí giao hàng</dt><dd>{formatVND(report.current.deliveryFees)}</dd></div>
-            <div><dt>Tổng thu đơn đã trả</dt><dd>{formatVND(report.current.receipts)}</dd></div>
-          </dl>
-          <ul className="admin-breakdown">{Object.entries(PAYMENT_STATUS).map(([key, meta]) => <li key={key}>
-            <span>{meta.label}</span><strong>{number.format(report.payments.find(row => row.status === key)?.count ?? 0)} đơn</strong>
-          </li>)}</ul>
-        </section>
-        <ProductInsights report={report} partner={partner} />
-        {partner && <Attention attention={report.attention} partner />}
-      </>}
-      <section className="admin-panel">
-        <div className="admin-section-head"><h2>Đơn gần đây trong kỳ</h2>
-          <Link className="admin-link" to={partner ? '/partner/orders' : '/admin/orders'}>Tất cả đơn hàng</Link>
+    {!overview && <ReportNavigation view={view} onChange={chooseView} id={navigationId} />}
+    <DataState resource={resource}>{report && <div className="report-view" role={overview ? undefined : 'tabpanel'} id={overview ? undefined : `${navigationId}-panel`} aria-labelledby={overview ? undefined : `${navigationId}-${view}`} tabIndex={overview ? undefined : 0}>
+      <div className="report-period"><div><span>Kỳ báo cáo</span><strong>{displayDate(report.from)} – {displayDate(report.to)}</strong><small>So với {displayDate(report.previousFrom)} – {displayDate(report.previousTo)}</small></div><span className="report-scope"><Store size={16} aria-hidden="true" />{partner ? restaurant?.name || 'Tất cả quán của bạn' : 'Toàn hệ thống'}<small>Giờ Việt Nam · VND</small></span></div>
+      {(overview || view === 'summary') && <>
+        {Number(report.current.orders) === 0 && <div className="report-zero-notice" role="status"><ShoppingBag size={20} aria-hidden="true" /><div><strong>Chưa có đơn hàng trong kỳ này</strong><span>Chọn khoảng ngày khác hoặc đổi phạm vi nhà hàng để xem thêm dữ liệu.</span></div></div>}
+        <div className="admin-kpis">
+          <Metric featured label="Doanh thu món" value={report.current.revenue} previous={report.previous.revenue} money icon={CircleDollarSign} description="Tiền món của đơn tạo trong kỳ, hiện hoàn tất và đã thanh toán. Không gồm phí giao hàng." context="Không gồm phí giao hàng" />
+          <Metric label="Tổng đơn hàng" value={report.current.orders} previous={report.previous.orders} icon={ShoppingBag} description="Số đơn được tạo trong kỳ, gồm mọi trạng thái." context="Bao gồm tất cả trạng thái" />
+          <Metric label="Giá trị đơn trung bình" value={report.current.average} previous={report.previous.average} money icon={Receipt} description="Tổng thu gồm phí giao chia cho số đơn hoàn tất và đã thanh toán." context="Gồm phí giao · Chỉ đơn hoàn tất, đã trả" />
+          <Metric label="Hoàn tất & đã trả" value={report.current.completed} previous={report.previous.completed} icon={CheckCircle2} description="Số đơn tạo trong kỳ, hiện hoàn tất và đã thanh toán. Đây là các đơn được tính vào doanh thu." context="Số đơn được tính vào doanh thu" />
+          <Metric label={partner ? 'Khách đặt trong kỳ' : 'Khách hàng mới'} value={report.current.customers} previous={report.previous.customers} icon={UserRoundPlus} description={partner ? 'Số khách riêng biệt đã đặt trong kỳ, theo phạm vi quán đã chọn.' : 'Số tài khoản khách được tạo trong kỳ.'} context={`${number.format(report.current.totalCustomers)} tổng khách hàng hiện có`} />
+          <Metric label="Tỷ lệ hủy / từ chối" value={report.current.cancellationRate} previous={report.previous.cancellationRate} points icon={CircleX} description="Số đơn hủy hoặc bị từ chối chia cho toàn bộ đơn tạo trong kỳ. Giảm là tín hiệu tích cực." context={`${number.format(report.current.cancelled)} trên ${number.format(report.current.orders)} đơn trong kỳ`} />
         </div>
-        {report.latest.length ? <OrderTable items={report.latest} area={area} /> : <p className="muted">Chưa có đơn trong kỳ đã chọn.</p>}
-      </section>
-    </>}</DataState>
+        <SectionHeading title="Xu hướng kinh doanh" description="Theo dõi doanh thu món và lượng đơn qua từng kỳ." />
+        {overview ? <div className="report-overview"><StatisticsCharts report={report} range={filters} interactive /><Attention attention={report.attention} admin={user.role === 'ADMIN'} /></div> : <StatisticsCharts report={report} range={filters} />}
+        {!overview && <ReportHighlights report={report} onView={chooseView} />}
+        {overview ? <><Breakdown report={report} /><RecentOrders report={report} area={area} /></> : <PeriodTable report={report} displayDate={displayDate} />}
+      </>}
+      {!overview && view === 'orders' && <>
+        <SectionHeading title="Đơn hàng & thanh toán" description={`${number.format(report.current.orders)} đơn tạo trong kỳ · ${number.format(report.current.cancelled)} đơn hủy hoặc bị từ chối`} />
+        <Breakdown report={report} /><Settlement report={report} /><RecentOrders report={report} area={area} />
+      </>}
+      {!overview && view === 'products' && <ProductInsights report={report} partner={partner} />}
+      {!overview && partner && view === 'summary' && <Attention attention={report.attention} partner />}
+      <ReportGuide partner={partner} />
+    </div>}</DataState>
   </div>;
 }

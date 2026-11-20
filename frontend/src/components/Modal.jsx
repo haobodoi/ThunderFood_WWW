@@ -12,7 +12,11 @@ export default function Modal({ title, children, footer, onClose }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const panel = panelRef.current;
-    panel?.querySelector('[autofocus], button:not(:disabled), input:not(:disabled)')?.focus();
+    if (panel && !panel.contains(document.activeElement)) {
+      const initial = panel.querySelector('[autofocus], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled)')
+        || panel.querySelector('button:not(:disabled)') || panel;
+      initial.focus();
+    }
 
     const handleKey = (event) => {
       if (event.key === 'Escape' && onCloseRef.current) {
@@ -23,10 +27,17 @@ export default function Modal({ title, children, footer, onClose }) {
       const focusable = [...panel.querySelectorAll(
         'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
       )].filter((element) => element.getClientRects().length);
-      if (!focusable.length) return;
+      if (!focusable.length) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (!focusable.includes(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault(); last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault(); first.focus();
@@ -43,7 +54,7 @@ export default function Modal({ title, children, footer, onClose }) {
   return (
     <div className="modal" role="presentation">
       <div className="modal__backdrop" onClick={onClose} />
-      <div className="modal__panel" ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className="modal__panel" ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
         <div className="modal__head">
           <h2 id={titleId}>{title}</h2>
           <button type="button" className="icon-btn icon-btn--ghost" onClick={onClose}

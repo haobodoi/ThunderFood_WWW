@@ -49,7 +49,10 @@ function Catalog({ restaurant }) {
   </>;
 }
 export default function AdminCatalogPage() {
-  const { state } = useLocation();
-  const [restaurant, setRestaurant] = useState(() => state?.restaurant ?? null);
+  const { state, key } = useLocation();
+  return <CatalogPage key={key} initialRestaurant={state?.restaurant ?? null} />;
+}
+function CatalogPage({ initialRestaurant }) {
+  const [restaurant, setRestaurant] = useState(initialRestaurant);
   return <div className="admin-page"><Head title="Món ăn & danh mục" description="Quản lý thực đơn từng quán. Đơn hàng cũ luôn giữ tên và giá đã đặt." /><RestaurantPicker value={restaurant} onChange={setRestaurant} />{restaurant ? <Catalog key={restaurant.id} restaurant={restaurant} /> : <div className="admin-state">Chọn một quán để quản lý thực đơn.</div>}</div>;
 }
