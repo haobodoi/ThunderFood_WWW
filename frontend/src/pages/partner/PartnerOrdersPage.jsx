@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import { partnerOrderApi } from '../../api/orderApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { NEXT_ACTION, ORDER_STATUS, PAYMENT_METHOD, awaitingTransfer } from '../../utils/orderUtils.js';
@@ -17,19 +19,24 @@ import {
 
 function OrderActions({ order, reload }) {
   const [busy, setBusy] = useState(false);
+  const [updated, setUpdated] = useState(false);
   const [error, setError] = useState('');
   const [reason, setReason] = useState('');
   const [modal, setModal] = useState(null);
+  const locked = busy || updated;
   const run = async operation => {
+    if (locked) return;
     setBusy(true);
     setError('');
     try {
       await operation();
+      setUpdated(true);
       setModal(null);
-      reload();
+      await reload();
     } catch (e) {
       setError(getErrorMessage(e));
       setModal(null);
+    } finally {
       setBusy(false);
     }
   };
@@ -51,7 +58,7 @@ function OrderActions({ order, reload }) {
       {transfer && <button
         type="button"
         className="btn btn--primary btn--sm"
-        disabled={busy}
+        disabled={locked}
         onClick={() => setModal('payment')}
       >
         Đã nhận tiền
@@ -59,7 +66,7 @@ function OrderActions({ order, reload }) {
       {order.orderStatus === 'PENDING' && order.paymentMethod === 'COD' && <button
         type="button"
         className="btn btn--primary btn--sm"
-        disabled={busy}
+        disabled={locked}
         onClick={() => run(() => partnerOrderApi.updateStatus(id, 'CONFIRMED'))}
       >
         Nhận đơn
@@ -67,7 +74,7 @@ function OrderActions({ order, reload }) {
       {next && <button
         type="button"
         className="btn btn--primary btn--sm"
-        disabled={busy}
+        disabled={locked}
         onClick={() => run(() => partnerOrderApi.updateStatus(id, next.status))}
       >
         {next.label}
@@ -75,7 +82,7 @@ function OrderActions({ order, reload }) {
       {refundable && <button
         type="button"
         className="btn btn--primary btn--sm"
-        disabled={busy}
+        disabled={locked}
         onClick={() => setModal('refund')}
       >
         Đã hoàn tiền
@@ -95,15 +102,16 @@ function OrderActions({ order, reload }) {
             rows={2}
             value={reason}
             onChange={e => setReason(e.target.value)}
-            disabled={busy}
+            disabled={locked}
           />
         </label>
-        <button className="btn btn--danger btn--sm" disabled={busy || reason.trim().length < 5}>
+        <button className="btn btn--danger btn--sm" disabled={locked || reason.trim().length < 5}>
           Xác nhận từ chối
         </button>
       </form>
     </details>}
     {error && <Alert type="error">{error}</Alert>}
+    {updated && <p className="muted" role="status">Đã lưu thay đổi. Đang chờ tải lại trạng thái đơn.</p>}
     <ConfirmModal
       open={modal === 'payment'}
       title="Xác nhận đã nhận tiền"
@@ -130,35 +138,40 @@ function OrderActions({ order, reload }) {
 }
 
 export default function PartnerOrdersPage() {
-  const [status, setStatus] = useState(() => {
-    const requested = new URLSearchParams(window.location.search).get('status');
-    return Object.hasOwn(ORDER_STATUS, requested) ? requested : '';
-  });
-  const [page, setPage] = useState(0);
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('status');
+  const status = Object.hasOwn(ORDER_STATUS, requested) ? requested : '';
+  const requestedPage = Number(params.get('page'));
+  const page = Number.isInteger(requestedPage) && requestedPage >= 0 && requestedPage <= 10000 ? requestedPage : 0;
+  const identity = `${status}:${page}`;
+  const currentIdentity = useRef(identity);
+  currentIdentity.current = identity;
+  const [result, setResult] = useState({ identity: null, data: null, error: '', loading: true });
+  const { data, error, loading } = result.identity === identity ? result : { data: null, error: '', loading: true };
+  const setPage = next => setParams({ ...(status ? { status } : {}), ...(next ? { page: next } : {}) });
   const [fresh, setFresh] = useState(null);
   const [newOrder, setNewOrder] = useState(false);
   const sequence = useRef(0);
   // Tải lại không ẩn danh sách, để lý do từ chối đang gõ hoặc hộp xác nhận đang mở không bị mất.
   const load = useCallback(async () => {
     const request = ++sequence.current;
+    setResult(previous => previous.identity === identity
+      ? { ...previous, loading: !previous.data, error: '' }
+      : { identity, data: null, error: '', loading: true });
     try {
       const result = await partnerOrderApi.list(status, page);
-      if (request === sequence.current) {
-        setData(result);
-        setError('');
+      if (request === sequence.current && currentIdentity.current === identity) {
+        setResult({ identity, data: result, error: '', loading: false });
       }
     } catch (e) {
-      if (request === sequence.current) setError(getErrorMessage(e));
-    } finally {
-      if (request === sequence.current) setLoading(false);
+      if (request === sequence.current && currentIdentity.current === identity) {
+        setResult(previous => ({ ...previous, error: getErrorMessage(e), loading: false }));
+      }
     }
-  }, [status, page]);
+  }, [status, page, identity]);
   useEffect(() => {
-    setLoading(true);
     load();
+    return () => { ++sequence.current; };
   }, [load]);
   const live = useOrderEvents('partner', event => {
     load();
@@ -168,14 +181,14 @@ export default function PartnerOrdersPage() {
   });
   const showNewest = () => {
     setNewOrder(false);
-    setStatus('');
-    setPage(0);
+    setParams({});
   };
 
   return <div className="commerce-page">
     <div className="commerce-row commerce-wrap">
       <h1>Đơn hàng của quán</h1>
       <LiveStatus live={live} />
+      <button type="button" className="btn btn--outline" disabled={loading} onClick={load}><RefreshCw size={16} /> Làm mới</button>
     </div>
     {newOrder && <Alert type="info" title="Có đơn hàng mới">
       <button type="button" className="btn btn--outline btn--sm" onClick={showNewest}>Xem đơn mới</button>
@@ -183,8 +196,7 @@ export default function PartnerOrdersPage() {
     <div className="commerce-filters">
       <label>Trạng thái
         <select value={status} onChange={e => {
-          setStatus(e.target.value);
-          setPage(0);
+          setParams(e.target.value ? { status: e.target.value } : {});
         }}>
           <option value="">Tất cả</option>
           {Object.entries(ORDER_STATUS).map(([value, meta]) => <option key={value} value={value}>
@@ -193,7 +205,7 @@ export default function PartnerOrdersPage() {
         </select>
       </label>
     </div>
-    {error && <Alert type="error">{error}</Alert>}
+    {error && <Alert type="error">{error} <button type="button" className="btn btn--outline btn--sm" onClick={load}>Thử lại</button></Alert>}
     {loading && <p role="status">Đang tải…</p>}
     {!loading && !error && !data?.items.length && <p>Chưa có đơn hàng nào.</p>}
     {!loading && data?.items.map(order => <article

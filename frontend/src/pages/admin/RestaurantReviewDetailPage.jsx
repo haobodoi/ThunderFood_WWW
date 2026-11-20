@@ -11,6 +11,7 @@ import RestaurantSummary from '../../components/RestaurantSummary.jsx';
 import Modal from '../../components/Modal.jsx';
 import ConfirmModal from '../../components/ConfirmModal.jsx';
 import Icon from '../../components/Icon.jsx';
+import { Head, Toast } from './AdminShared.jsx';
 
 export default function RestaurantReviewDetailPage() {
   const { id } = useParams();
@@ -71,7 +72,7 @@ export default function RestaurantReviewDetailPage() {
   if (!registration && !error) return <FullPageLoader text="Đang tải hồ sơ..." />;
 
   return (
-    <div className="page page--wide">
+    <div className="admin-page">
       <Link to="/admin/restaurants" className="back-link">
         <Icon name="arrowLeft" size={16} />
         Danh sách hồ sơ
@@ -81,18 +82,19 @@ export default function RestaurantReviewDetailPage() {
 
       {registration && (
         <>
-          <div className="page__head page__head--row">
-            <div>
-              <h1>{registration.restaurantName}</h1>
-              <p className="muted">
-                Chủ quán: <strong>{registration.ownerName}</strong> · {registration.ownerEmail} · {registration.ownerPhone}
-              </p>
-              <p className="muted">Gửi duyệt lúc {formatDateTime(registration.submittedAt)}</p>
-            </div>
+          <Head title={registration.restaurantName} description={'Gửi duyệt lúc ' + formatDateTime(registration.submittedAt)}>
             <StatusLabel status={registration.status} />
-          </div>
+          </Head>
+          <section className="admin-panel">
+            <h2>Chủ hồ sơ</h2>
+            <dl className="admin-definition">
+              <dt>Họ tên</dt><dd>{registration.ownerName}</dd>
+              <dt>Email</dt><dd>{registration.ownerEmail}</dd>
+              <dt>Điện thoại</dt><dd>{registration.ownerPhone}</dd>
+            </dl>
+          </section>
 
-          {notice && <Alert type="success">{notice}</Alert>}
+          {notice && <Toast message={notice} onClose={() => setNotice('')} />}
           {registration.status === 'REJECTED' && registration.statusReason && (
             <Alert type="error" title="Lý do từ chối">
               {registration.statusReason}

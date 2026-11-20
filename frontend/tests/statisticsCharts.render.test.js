@@ -17,7 +17,7 @@ const report = rows => ({ ...range, series: rows });
 test('renders two equal-layout cards with the requested names', () => {
   const html = render({ report: report([]) });
   assert.equal((html.match(/statistics-card"/g) || []).length, 2);
-  assert.ok(html.includes('Doanh thu gộp theo kỳ') && html.includes('Số đơn theo kỳ'));
+  assert.ok(html.includes('Doanh thu món theo kỳ') && html.includes('Số đơn theo kỳ'));
   assert.equal((html.match(/Không có dữ liệu trong khoảng/g) || []).length, 2);
 });
 test('loading and error are separate states and errors expose retry', () => {

@@ -1,3 +1,9 @@
+import { createContext, useContext } from 'react';
+import { Zap, House, Store, UserRound, UtensilsCrossed, Search, Clock3, LockKeyhole, LogOut, Eye, EyeOff, ChevronDown, ChevronLeft, ChevronRight, Menu, Check, CircleCheck, CircleX, CirclePause, CircleAlert, Plus, Minus, ShieldCheck, Image, Camera, Trash2, Pencil, X, ArrowLeft, File, MapPin, Landmark, ArrowRight, Star, ShoppingBag, Filter, Sparkles, Flame, Phone, ExternalLink, Compass } from 'lucide-react';
+
+export const EnterpriseIcons = createContext(false);
+const LUCIDE_ICONS = { bolt: Zap, home: House, store: Store, user: UserRound, utensils: UtensilsCrossed, search: Search, clock: Clock3, lock: LockKeyhole, logout: LogOut, eye: Eye, eyeOff: EyeOff, chevronDown: ChevronDown, chevronLeft: ChevronLeft, chevronRight: ChevronRight, menu: Menu, check: Check, checkCircle: CircleCheck, xCircle: CircleX, pauseCircle: CirclePause, alert: CircleAlert, plus: Plus, minus: Minus, shield: ShieldCheck, image: Image, camera: Camera, trash: Trash2, edit: Pencil, x: X, arrowLeft: ArrowLeft, file: File, mapPin: MapPin, bank: Landmark, arrowRight: ArrowRight, star: Star, shoppingBag: ShoppingBag, filter: Filter, sparkles: Sparkles, flame: Flame, phone: Phone, externalLink: ExternalLink, compass: Compass };
+
 const PATHS = {
   bolt: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
   home: (
@@ -214,6 +220,9 @@ const PATHS = {
 };
 
 export default function Icon({ name, size = 20, className = '', strokeWidth = 2, fill = 'none' }) {
+  const enterprise = useContext(EnterpriseIcons);
+  const LucideIcon = LUCIDE_ICONS[name];
+  if (enterprise && LucideIcon) return <LucideIcon className={`icon ${className}`} size={size} strokeWidth={strokeWidth} fill={fill} aria-hidden="true" />;
   return (
     <svg
       className={`icon ${className}`}

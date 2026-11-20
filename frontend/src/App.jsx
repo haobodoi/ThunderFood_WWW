@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import PublicLayout from './layouts/PublicLayout.jsx';
 import DashboardLayout from './layouts/DashboardLayout.jsx';
@@ -14,7 +15,6 @@ import MyRestaurantsPage from './pages/partner/MyRestaurantsPage.jsx';
 import RestaurantRegisterPage from './pages/partner/RestaurantRegisterPage.jsx';
 import RestaurantDetailPage from './pages/customer/RestaurantDetailPage.jsx';
 import RestaurantMenuPage from './pages/partner/RestaurantMenuPage.jsx';
-import AdminHomePage from './pages/admin/AdminHomePage.jsx';
 import AdminOrdersPage, { AdminOrderDetailPage } from './pages/admin/AdminOrdersPage.jsx';
 import AdminCatalogPage from './pages/admin/AdminCatalogPage.jsx';
 import AdminUsersPage, { AdminUserDetailPage } from './pages/admin/AdminUsersPage.jsx';
@@ -30,6 +30,10 @@ import OrderReviewPage from './pages/customer/OrderReviewPage.jsx';
 import PolicyChatPage from './pages/customer/PolicyChatPage.jsx';
 import PartnerOrdersPage from './pages/partner/PartnerOrdersPage.jsx';
 import { ROLES } from './utils/roleUtils.js';
+
+const AdminHomePage = lazy(() => import('./pages/admin/AdminHomePage.jsx'));
+const AdminReviewReportsPage = lazy(() => import('./pages/admin/AdminReviewReportsPage.jsx'));
+const loading = <p role="status">Đang tải trang…</p>;
 
 export default function App() {
   return (
@@ -63,7 +67,7 @@ export default function App() {
         <Route element={<ProtectedRoute roles={[ROLES.RESTAURANT_PARTNER]} />}>
           <Route element={<DashboardLayout area="partner" />}>
             <Route path="/partner" element={<MyRestaurantsPage />} />
-            <Route path="/partner/statistics" element={<AdminHomePage area="partner" />} />
+            <Route path="/partner/statistics" element={<Suspense fallback={loading}><AdminHomePage area="partner" /></Suspense>} />
             <Route path="/partner/orders" element={<PartnerOrdersPage />} />
             <Route path="/partner/reviews" element={<ReviewManagementPage area="partner" />} />
             <Route path="/partner/restaurants/:restaurantId/menu" element={<RestaurantMenuPage />} />
@@ -74,7 +78,8 @@ export default function App() {
 
         <Route element={<ProtectedRoute roles={[ROLES.ADMIN, ROLES.STAFF]} />}>
           <Route element={<DashboardLayout area="admin" />}>
-            <Route path="/admin" element={<AdminHomePage />} />
+            <Route path="/admin" element={<Suspense fallback={loading}><AdminHomePage /></Suspense>} />
+            <Route path="/admin/analytics" element={<Suspense fallback={loading}><AdminHomePage analytics /></Suspense>} />
             <Route path="/admin/orders" element={<AdminOrdersPage />} />
             <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />
             <Route path="/admin/catalog" element={<AdminCatalogPage />} />
@@ -84,7 +89,7 @@ export default function App() {
             <Route path="/admin/activity" element={<AdminActivityPage />} />
             <Route path="/admin/stores" element={<AdminStoresPage />} />
             <Route path="/admin/complaints" element={<AdminComplaintsPage />} />
-            <Route path="/admin/review-reports" element={<ReviewManagementPage area="admin" />} />
+            <Route path="/admin/review-reports" element={<Suspense fallback={loading}><AdminReviewReportsPage /></Suspense>} />
             <Route path="/admin/restaurants" element={<RestaurantReviewListPage />} />
             <Route path="/admin/restaurants/:id" element={<RestaurantReviewDetailPage />} />
             </Route>

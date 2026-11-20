@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import './styles/global.css';
 import './styles/commerce.css';
 import './styles/admin.css';
+import './styles/enterprise.css';
 import { CartProvider } from './context/CartContext.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
