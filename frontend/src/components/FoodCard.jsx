@@ -14,7 +14,7 @@ const APPROVAL_META = {
 };
 
 export default function FoodCard({
-  item, isPartner = false, quantityInCart = 0, orderable = true, onEdit, onDelete,
+  item, isPartner = false, quantityInCart = 0, orderable = true, cartBusy = false, onEdit, onDelete,
   onToggleAvailability, toggleLoading = false, onAddToCart, onClick,
 }) {
   const isAvailable = Boolean(item.available);
@@ -79,7 +79,7 @@ export default function FoodCard({
           <div className="food-card__footer">
             <span className="food-card__price">{formatVND(item.price)}</span>
             <button type="button" className={'btn btn--sm food-card__add' + (quantityInCart ? ' btn--outline food-card__add--selected' : ' btn--primary')}
-              disabled={!isAvailable || !orderable} onClick={() => onAddToCart?.(item)}>
+              disabled={!isAvailable || !orderable || cartBusy} onClick={() => onAddToCart?.(item)}>
               <Icon name="plus" size={14} />
               <span>{!isAvailable ? 'Tạm hết' : !orderable ? 'Tạm đóng' : quantityInCart ? 'Đã chọn (' + quantityInCart + ')' : 'Thêm món'}</span>
             </button>

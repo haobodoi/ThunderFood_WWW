@@ -24,6 +24,7 @@ import RestaurantReviewDetailPage from './pages/admin/RestaurantReviewDetailPage
 import CartPage from './pages/customer/CartPage.jsx';
 import ReviewManagementPage from './pages/ReviewManagementPage.jsx';
 import CheckoutPage from './pages/customer/CheckoutPage.jsx';
+import MultiCheckoutPage from './pages/customer/MultiCheckoutPage.jsx';
 import OrdersPage from './pages/customer/OrdersPage.jsx';
 import OrderDetailPage from './pages/customer/OrderDetailPage.jsx';
 import OrderReviewPage from './pages/customer/OrderReviewPage.jsx';
@@ -52,6 +53,7 @@ export default function App() {
           <Route element={<ProtectedRoute roles={[ROLES.CUSTOMER]} />}>
             <Route path="/customer" element={<CustomerHomePage />} />
             <Route path="/customer/cart" element={<CartPage />} />
+            <Route path="/customer/checkout/all" element={<MultiCheckoutPage />} />
             <Route path="/customer/checkout/:cartId" element={<CheckoutPage />} />
             <Route path="/customer/orders" element={<OrdersPage />} />
             <Route path="/customer/orders/:id" element={<OrderDetailPage />} />

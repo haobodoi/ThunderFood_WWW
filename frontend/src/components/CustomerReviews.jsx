@@ -5,6 +5,7 @@ import { reviewApi } from '../api/customerApi.js';
 import { getErrorMessage } from '../api/baseApi.js';
 import Alert from './Alert.jsx';
 import Modal from './Modal.jsx';
+import UserAvatar from './UserAvatar.jsx';
 
 export function reviewTime(value) {
   // Giờ từ server là LocalDateTime theo giờ nghiệp vụ, không kèm múi giờ; gắn +07:00 để không đọc nhầm theo giờ máy người xem.
@@ -12,16 +13,20 @@ export function reviewTime(value) {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
-export function ReviewCard({ review, children }) {
-  return <article className="commerce-review">
-    <div className="commerce-row commerce-wrap">
-      <strong>{review.authorName || 'Đánh giá của bạn'}</strong>
+export function ReviewCard({ review, children, className = '' }) {
+  return <article className={`commerce-review ${className}`}>
+    <div className="commerce-review__head">
+      <div className="commerce-review__author">
+        <UserAvatar name={review.authorName || 'Khách hàng'} url={review.authorAvatarUrl} className="avatar commerce-review__avatar" />
+        <div><strong>{review.authorName || 'Đánh giá của bạn'}</strong>
+          <small>Đã mua hàng · {reviewTime(review.createdAt)}{review.editedAt ? ' · Đã chỉnh sửa' : ''}</small>
+        </div>
+      </div>
       <span className="commerce-stars" aria-label={`${review.rating} trên 5 sao`}>
         {'★'.repeat(review.rating)}
         {'☆'.repeat(5 - review.rating)}
       </span>
     </div>
-    <small>Đã mua hàng · {reviewTime(review.createdAt)}{review.editedAt ? ' · Đã chỉnh sửa' : ''}</small>
     <p className="commerce-text">{review.content}</p>
     <div className="commerce-images">
       {review.images?.map(i => <a key={i.imageId} href={i.url} target="_blank" rel="noreferrer">
@@ -125,22 +130,25 @@ export default function CustomerReviews({ restaurantId }) {
     finally { if (alive.current) setBusy(false); }
   };
   const summary = data?.summary;
+  const hasReviews = Number(summary?.reviewCount) > 0;
   return <section className="container commerce-page" aria-label="Đánh giá nhà hàng">
     <h2>Đánh giá từ khách hàng</h2>
     {summary && <div className="commerce-summary"><strong>{Number(summary.reviewCount) ? `${Number(summary.averageRating).toFixed(1)} / 5.0` : 'Chưa có đánh giá'}</strong><span>{summary.reviewCount} lượt đánh giá đã mua hàng</span><div>{[5, 4, 3, 2, 1].map(n => <span key={n}>{n}★: {summary[`stars${n}`]}　</span>)}</div></div>}
-    <div className="commerce-filters">
-      <div className="commerce-star-filter" aria-label="Lọc theo số sao"><span>Số sao</span><button type="button" className={!stars ? 'is-active' : ''} onClick={() => { setStars(''); setPage(0); }}>Tất cả</button>{[5, 4, 3, 2, 1].map(n => <button type="button" key={n} className={Number(stars) === n ? 'is-active' : ''} onClick={() => { setStars(String(n)); setPage(0); }}>{n}★</button>)}</div>
-      <label>Sắp xếp <select value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}><option value="newest">Mới nhất</option><option value="highest">Điểm cao</option><option value="lowest">Điểm thấp</option></select></label>
-      <label><input type="checkbox" checked={photos} onChange={e => { setPhotos(e.target.checked); setPage(0); }} /> Có ảnh</label>
-      <button className="btn btn--outline btn--sm" disabled={loading} onClick={() => setReload(n => n + 1)}>Tải lại</button>
-    </div>
     {error && <Alert type="error">{error}</Alert>}
-    {loading ? <p role="status">Đang tải đánh giá…</p> : !error && <>
-      {!data?.items.length && <p>Chưa có đánh giá phù hợp.</p>}
-      {data?.items.map(review => <ReviewCard key={review.reviewId} review={review}>
-        {user?.role === 'CUSTOMER' && !review.own && <ReportButton reviewId={review.reviewId} />}
-      </ReviewCard>)}
-      <Pagination page={page} total={data?.total || 0} setPage={setPage} />
+    {hasReviews && <>
+      <div className="commerce-filters">
+        <div className="commerce-star-filter" aria-label="Lọc theo số sao"><button type="button" className={!stars ? 'is-active' : ''} onClick={() => { setStars(''); setPage(0); }}>Tất cả</button>{[5, 4, 3, 2, 1].map(n => <button type="button" key={n} className={Number(stars) === n ? 'is-active' : ''} onClick={() => { setStars(String(n)); setPage(0); }}>{n}★</button>)}</div>
+        <label>Sắp xếp <select value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}><option value="newest">Mới nhất</option><option value="highest">Điểm cao</option><option value="lowest">Điểm thấp</option></select></label>
+        <label><input type="checkbox" checked={photos} onChange={e => { setPhotos(e.target.checked); setPage(0); }} /> Có ảnh</label>
+        <button className="btn btn--outline btn--sm" disabled={loading} onClick={() => setReload(n => n + 1)}>Tải lại</button>
+      </div>
+      {loading ? <p role="status">Đang tải đánh giá…</p> : !error && <>
+        {!data?.items.length && <p>Chưa có đánh giá phù hợp.</p>}
+        {data?.items.map(review => <ReviewCard key={review.reviewId} review={review}>
+          {user?.role === 'CUSTOMER' && !review.own && <ReportButton reviewId={review.reviewId} />}
+        </ReviewCard>)}
+        <Pagination page={page} total={data?.total || 0} setPage={setPage} />
+      </>}
     </>}
     {!user && <p><Link to="/login" state={{ from: `/restaurants/${restaurantId}` }}>Đăng nhập</Link> để xem quyền đánh giá sau khi mua hàng.</p>}
   </section>;
