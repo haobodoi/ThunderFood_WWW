@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext.jsx';
 import { formatVND } from './FoodCard.jsx';
 import Alert from './Alert.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import Icon from './Icon.jsx';
 
 function CartItemImage({ line }) {
@@ -22,7 +23,7 @@ function CartItemImage({ line }) {
   );
 }
 
-function CartLine({ cart, line }) {
+function CartLine({ cart, line, requestRemoval }) {
   const state = useCart();
   const [note, setNote] = useState(line.note);
   const [error, setError] = useState('');
@@ -50,9 +51,9 @@ function CartLine({ cart, line }) {
               className="icon-btn"
               disabled={disabled}
               aria-label={`Giảm ${line.itemName}`}
-              onClick={() => run(() => line.quantity === 1
-                ? state.remove(cart, line)
-                : state.change(cart, line, line.quantity - 1, line.note))}
+              onClick={() => line.quantity === 1
+                ? requestRemoval(line)
+                : run(() => state.change(cart, line, line.quantity - 1, line.note))}
             >
               −
             </button>
@@ -66,7 +67,7 @@ function CartLine({ cart, line }) {
               +
             </button>
           </div>
-          <button className="btn btn--ghost btn--sm" disabled={disabled} onClick={() => run(() => state.remove(cart, line))}>Xóa món</button>
+          <button className="btn btn--danger btn--sm" disabled={disabled} onClick={() => requestRemoval(line)}>Xóa món</button>
         </div>
         <label className="commerce-field">Ghi chú cho món
           <textarea maxLength={300} value={note} onChange={e => setNote(e.target.value)} disabled={disabled} rows={2} />
@@ -86,16 +87,37 @@ function CartLine({ cart, line }) {
 export default function CartContents({ cart }) {
   const state = useCart();
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [pending, setPending] = useState(null);
+  const [confirming, setConfirming] = useState(false);
   if (!cart?.items.length) return <p>Giỏ quán này chưa có món.</p>;
-  const clear = async () => {
-    if (!window.confirm(`Xóa tất cả món của ${cart.restaurantName}?`)) return;
-    try { await state.clear(cart); } catch (e) { setError(e.response?.data?.message || e.message); }
+  const confirmRemoval = async () => {
+    if (!pending) return;
+    setConfirming(true);
+    setError('');
+    try {
+      if (pending.type === 'cart') {
+        await state.clear(cart);
+        setNotice(`Đã xóa các món của ${cart.restaurantName}.`);
+      } else {
+        await state.remove(cart, pending.line);
+        setNotice(`Đã xóa ${pending.line.itemName} khỏi giỏ.`);
+      }
+      setPending(null);
+    } catch (e) {
+      setError(e.response?.data?.message || e.message);
+    } finally {
+      setConfirming(false);
+    }
   };
+  const lineToRemove = pending?.line;
   return <section className="commerce-cart">
     <h2>
       <Link to={`/restaurants/${cart.restaurantId}`}>{cart.restaurantName}</Link>
     </h2>
-    {cart.items.map(line => <CartLine key={`${line.cartItemId}:${line.note}`} cart={cart} line={line} />)}
+    {notice && <Alert type="success">{notice}</Alert>}
+    {cart.items.map(line => <CartLine key={`${line.cartItemId}:${line.note}`} cart={cart} line={line}
+      requestRemoval={lineToRemove => setPending({ type: 'line', line: lineToRemove })} />)}
     <div className="commerce-row commerce-total"><strong>Tạm tính món khả dụng</strong><strong>{formatVND(cart.subtotal)}</strong></div>
     <p>Chưa gồm phí giao hàng. Giỏ hàng không giữ món; giá và tình trạng phục vụ có thể thay đổi.</p>
     <div className="tf-order-actions">
@@ -105,10 +127,21 @@ export default function CartContents({ cart }) {
       >
         Đặt hàng
       </Link>}
-      <button className="btn btn--outline" disabled={state.busy || state.loading} onClick={clear}>
+      <button className="btn btn--danger" disabled={state.busy || state.loading} onClick={() => setPending({ type: 'cart' })}>
         Xóa giỏ quán này
       </button>
     </div>
     {error && <Alert type="error">{error}</Alert>}
+    <ConfirmModal
+      open={Boolean(pending)}
+      title={pending?.type === 'cart' ? 'Xóa giỏ hàng của quán?' : 'Xóa món khỏi giỏ?'}
+      message={pending?.type === 'cart'
+        ? `Tất cả món của ${cart.restaurantName} sẽ bị xóa khỏi giỏ.`
+        : `${lineToRemove?.itemName || 'Món này'} sẽ bị xóa khỏi giỏ.`}
+      confirmText={pending?.type === 'cart' ? 'Xóa giỏ hàng' : 'Xóa món'}
+      loading={confirming}
+      onConfirm={confirmRemoval}
+      onCancel={() => setPending(null)}
+    />
   </section>;
 }

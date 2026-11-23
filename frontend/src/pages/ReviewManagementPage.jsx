@@ -13,14 +13,14 @@ function ReviewActions({ review, partner, reload }) {
   const [error, setError] = useState('');
   const action = async fn => { setBusy(true); setError(''); try { await fn(); reload(); } catch (e) { setError(getErrorMessage(e)); if (e.response?.status === 409) reload(); } finally { setBusy(false); } };
   const replyVersion = review.replyVersion ?? review.replies?.[0]?.version ?? 0;
-  return <div className="commerce-compose">
+  return <div className={`commerce-compose managed-review__actions${partner ? ' managed-review__actions--partner' : ''}`}>
     {partner ? <>
       <form className="form" onSubmit={e => {
         e.preventDefault();
         action(() => reviewApi.reply(review.reviewId, { content: reply, version: replyVersion }));
       }}>
-        <label className="commerce-field">Phản hồi của quán<textarea required maxLength={1000} value={reply} onChange={e => setReply(e.target.value)} /></label>
-        <button className="btn btn--primary" disabled={busy}>Lưu phản hồi</button>
+        <label className="commerce-field">{review.replies?.length ? 'Cập nhật phản hồi của quán' : 'Phản hồi của quán'}<textarea required maxLength={1000} value={reply} onChange={e => setReply(e.target.value)} placeholder="Cảm ơn khách hàng và nêu rõ cách quán sẽ hỗ trợ." /></label>
+        <button className="btn btn--primary" disabled={busy}>{busy ? 'Đang lưu…' : review.replies?.length ? 'Cập nhật phản hồi' : 'Gửi phản hồi'}</button>
       </form>
       {review.replies?.length > 0 && <button
         className="btn btn--outline"
@@ -30,7 +30,7 @@ function ReviewActions({ review, partner, reload }) {
       >
         Xóa phản hồi
       </button>}
-      <ReportButton reviewId={review.reviewId} partner />
+      <div className="managed-review__tools"><ReportButton reviewId={review.reviewId} partner /></div>
     </> : <>
       {review.status === 'HIDDEN' && <Alert type="warning">Đánh giá đang bị ẩn bởi quản trị viên. Chỉnh sửa không tự công khai lại.</Alert>}
       {review.editable ? <>
@@ -99,14 +99,15 @@ export default function ReviewManagementPage({ area = 'customer' }) {
     {error && <Alert type="error">{error}</Alert>}
     {loading ? <p role="status">Đang tải…</p> : !error && <>
       {!data?.items.length && <p>Chưa có dữ liệu.</p>}
-      {data?.items.map(row => <div key={`${row.reviewId}:${row.version}:${revision}`}>
-          <h2>
-            <Link to={`/restaurants/${row.restaurantId}`}>{row.restaurantName}</Link>
-          </h2>
-          <ReviewCard review={row}>
+      {data?.items.map(row => <section className={`managed-review${area === 'partner' ? ' managed-review--partner' : ''}`} key={`${row.reviewId}:${row.version}:${revision}`}>
+          <div className="managed-review__heading">
+            <div><span>{area === 'partner' ? 'Đánh giá dành cho quán' : 'Đánh giá của bạn tại'}</span><h2><Link to={`/restaurants/${row.restaurantId}`}>{row.restaurantName}</Link></h2></div>
+            {area === 'partner' && <span className="managed-review__status">{row.replies?.length ? 'Đã phản hồi' : 'Chưa phản hồi'}</span>}
+          </div>
+          <ReviewCard review={row} className={area === 'partner' ? 'commerce-review--partner' : ''}>
             <ReviewActions review={row} partner={area === 'partner'} reload={reload} />
           </ReviewCard>
-        </div>)}
+        </section>)}
       <Pagination page={page} total={data?.total || 0} setPage={setPage} />
     </>}
   </main>;

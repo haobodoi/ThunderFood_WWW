@@ -1,4 +1,5 @@
-import { ROLE_LABEL, initialsOf } from '../utils/roleUtils.js';
+import { ROLE_LABEL } from '../utils/roleUtils.js';
+import UserAvatar from './UserAvatar.jsx';
 
 export default function AccountInfoCard({ user }) {
   const rows = [
@@ -11,7 +12,7 @@ export default function AccountInfoCard({ user }) {
   return (
     <section className="account-card">
       <div className="account-card__head">
-        <span className="avatar avatar--xl">{initialsOf(user.fullName)}</span>
+        <UserAvatar name={user.fullName} url={user.avatarUrl} className="avatar avatar--xl" />
         <div className="account-card__title">
           <strong>Thông tin tài khoản</strong>
           <span className="muted">Bạn đang đăng nhập bằng tài khoản này</span>

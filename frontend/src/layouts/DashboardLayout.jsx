@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, ShoppingBag, Store, UtensilsCrossed, UsersRound, ShieldCheck, MessageSquareWarning, ScrollText, ChartNoAxesCombined, Plus, Menu, X, PanelLeftClose, PanelLeftOpen, ChevronRight, ChevronDown, LogOut, House } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { initialsOf, ROLE_LABEL } from '../utils/roleUtils.js';
+import { ROLE_LABEL } from '../utils/roleUtils.js';
 import Logo from '../components/Logo.jsx';
 import Alert from '../components/Alert.jsx';
+import UserAvatar from '../components/UserAvatar.jsx';
 import { EnterpriseIcons } from '../components/Icon.jsx';
 import { getErrorMessage } from '../api/baseApi.js';
 
@@ -108,7 +109,7 @@ export default function DashboardLayout({ area }) {
         <a className="dash__skip" href="#admin-main">Đến nội dung chính</a>
         <button type="button" className="enterprise-icon-button dash__menu-btn" onClick={() => setSidebarOpen(true)} aria-controls="dashboard-sidebar" aria-expanded={sidebarOpen} aria-label="Mở menu"><Menu size={20} /></button>
         <div className="dash__context" aria-label={`Vị trí hiện tại: ${area === 'admin' ? 'Quản trị' : 'Đối tác'}, ${currentPage}`}><span>{area === 'admin' ? 'Quản trị' : 'Đối tác'}</span><ChevronRight size={15} /><strong>{currentPage}</strong></div>
-        <div className="dash__topbar-actions"><div className="enterprise-account" ref={accountRef}><button type="button" className="enterprise-account__trigger" ref={accountTrigger} aria-label="Menu tài khoản" aria-expanded={accountOpen} onClick={() => setAccountOpen(value => !value)}><span className="enterprise-avatar">{initialsOf(user.fullName)}</span><span className="enterprise-account__name">{user.fullName}<small>{ROLE_LABEL[user.role]}</small></span><ChevronDown size={16} /></button>{accountOpen && <div className="enterprise-account__menu"><div className="enterprise-account__info"><strong>{user.fullName}</strong><small>{user.email}</small></div><Link to="/"><House size={16} /> Về trang chủ</Link><button type="button" disabled={loggingOut} onClick={handleLogout}><LogOut size={16} /> {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button></div>}</div></div>
+        <div className="dash__topbar-actions"><div className="enterprise-account" ref={accountRef}><button type="button" className="enterprise-account__trigger" ref={accountTrigger} aria-label="Menu tài khoản" aria-expanded={accountOpen} onClick={() => setAccountOpen(value => !value)}><UserAvatar name={user.fullName} url={user.avatarUrl} className="enterprise-avatar" /><span className="enterprise-account__name">{user.fullName}<small>{ROLE_LABEL[user.role]}</small></span><ChevronDown size={16} /></button>{accountOpen && <div className="enterprise-account__menu"><div className="enterprise-account__info"><strong>{user.fullName}</strong><small>{user.email}</small></div><Link to="/"><House size={16} /> Về trang chủ</Link><button type="button" disabled={loggingOut} onClick={handleLogout}><LogOut size={16} /> {loggingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button></div>}</div></div>
       </header>
       <main className="dash__content" id="admin-main" tabIndex={-1}>{logoutError && <Alert type="error">{logoutError}</Alert>}<Outlet /></main>
     </div>

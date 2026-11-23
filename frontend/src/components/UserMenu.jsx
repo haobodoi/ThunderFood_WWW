@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ROLE_LABEL, homePathFor, initialsOf } from '../utils/roleUtils.js';
+import { ROLE_LABEL, homePathFor } from '../utils/roleUtils.js';
 import Icon from './Icon.jsx';
+import UserAvatar from './UserAvatar.jsx';
 
 export default function UserMenu() {
   const { user, logout } = useAuth();
@@ -42,7 +43,7 @@ export default function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="avatar">{initialsOf(user.fullName)}</span>
+        <UserAvatar name={user.fullName} url={user.avatarUrl} />
         <span className="user-menu__name">{user.fullName}</span>
         <Icon name="chevronDown" size={16} />
       </button>

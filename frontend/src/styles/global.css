@@ -387,7 +387,10 @@ textarea {
   font-weight: 800;
   font-size: 13.5px;
   flex-shrink: 0;
+  overflow: hidden;
 }
+
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .avatar--lg {
   width: 38px;
@@ -4045,6 +4048,7 @@ select.field__input {
 .food-card__footer, .food-card__partner-row { flex-wrap: wrap; }
 .food-card__price { white-space: normal; overflow-wrap: anywhere; }
 .food-card__add--selected { color: var(--tf-orange-600); border-color: var(--tf-orange-500); }
+.food-card__add { justify-content: center; min-width: 124px; }
 .food-card__action { height: 30px; padding: 0 10px; font-size: 12px; }
 .food-card__icon-action { width: 30px; height: 30px; }
 .tf-toast {

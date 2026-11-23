@@ -231,7 +231,7 @@ export default function RestaurantDetailPage() {
                   </div>
                   <div className="tf-food-grid">
                     {cat.items.map((item) => (
-                      <FoodCard key={item.id} item={item} orderable={isOpen && !cartState.busy && !cartState.loading} quantityInCart={selectedItems[item.id]?.qty || 0}
+                      <FoodCard key={item.id} item={item} orderable={isOpen} cartBusy={cartState.busy || cartState.loading} quantityInCart={selectedItems[item.id]?.qty || 0}
                         onClick={() => { setViewingItem(item); setModalQty(1); setModalNote(''); setCartError(''); }}
                         onAddToCart={() => addToCart(item)} />
                     ))}

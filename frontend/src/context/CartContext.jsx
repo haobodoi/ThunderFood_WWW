@@ -4,6 +4,18 @@ import { cartApi } from '../api/customerApi.js';
 import { getErrorMessage } from '../api/baseApi.js';
 
 const CartContext = createContext(null);
+
+function keepCartOrder(previous, incoming) {
+  const received = new Map(incoming.map(cart => [cart.cartId, cart]));
+  const ordered = previous.flatMap(cart => {
+    const next = received.get(cart.cartId);
+    if (!next) return [];
+    received.delete(cart.cartId);
+    return [next];
+  });
+  return [...ordered, ...received.values()];
+}
+
 export function CartProvider({ children }) {
   const { user } = useAuth();
   const identity = user?.role === 'CUSTOMER' ? user.id : null;
@@ -22,7 +34,13 @@ export function CartProvider({ children }) {
     setLoading(true);
     try {
       const carts = await cartApi.list();
-      if (actor.current === owner && request === sequence.current) { setSnapshot({ owner, carts }); setError(''); }
+      if (actor.current === owner && request === sequence.current) {
+        setSnapshot(previous => ({
+          owner,
+          carts: previous.owner === owner ? keepCartOrder(previous.carts, carts) : carts,
+        }));
+        setError('');
+      }
     } catch (err) {
       if (actor.current === owner && request === sequence.current) {
         setSnapshot(previous => previous.owner === owner ? previous : { owner, carts: [] });
@@ -50,7 +68,10 @@ export function CartProvider({ children }) {
       const cart = await operation();
       if (actor.current === owner) setSnapshot(previous => ({
         owner,
-        carts: [...previous.carts.filter(c => c.cartId !== cart.cartId), cart]
+        carts: keepCartOrder(previous.carts, [
+          ...previous.carts.filter(existing => existing.cartId !== cart.cartId),
+          cart,
+        ]),
       }));
       channel.current?.postMessage('changed');
       return cart;
