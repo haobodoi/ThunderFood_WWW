@@ -23,6 +23,10 @@ function imageError(file) {
 
 export default function OrderReviewPage() {
   const { id } = useParams();
+  return <OrderReview key={id} id={id} />;
+}
+
+function OrderReview({ id }) {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [rating, setRating] = useState(5);
@@ -96,38 +100,36 @@ export default function OrderReviewPage() {
     });
   };
 
-  const uploadQueuedImages = async currentReview => {
-    let latest = currentReview;
-    for (const image of queuedImages) {
-      await reviewApi.upload(latest.reviewId, latest.version, image.file);
-      removeQueuedImage(image.id);
-      latest = await reviewApi.forOrder(id);
-    }
-    return latest;
-  };
-
   const submit = async event => {
     event.preventDefault();
-    if (!order || !isReviewable(order)) return;
+    if (busy || reviewLoadError || !isReviewable(order)) return;
     setBusy(true); setSubmitError(''); setSuccess('');
-    let savedReview = review;
     try {
       if (review) {
         await reviewApi.edit(review.reviewId, { rating, content, version: review.version });
-        savedReview = await reviewApi.forOrder(id);
       } else {
         await reviewApi.create({ orderId: order.orderId, rating, content });
+      }
+      let savedReview = await reviewApi.forOrder(id);
+      for (const image of queuedImages) {
+        if (!alive.current) return;
+        await reviewApi.upload(savedReview.reviewId, savedReview.version, image.file);
+        removeQueuedImage(image.id);
         savedReview = await reviewApi.forOrder(id);
       }
-      savedReview = await uploadQueuedImages(savedReview);
       if (alive.current) {
         setReview(savedReview);
         setSuccess('Đã lưu đánh giá. Bạn vẫn có thể chỉnh sửa hoặc thêm ảnh trong 7 ngày.');
       }
     } catch (requestError) {
       if (alive.current) {
-        if (savedReview) setReview(savedReview);
         setSubmitError(getErrorMessage(requestError, 'Không thể lưu đánh giá. Ảnh chưa tải vẫn được giữ lại để bạn thử lại.'));
+        try {
+          const latest = await reviewApi.forOrder(id);
+          if (alive.current) setReview(latest);
+        } catch (reloadError) {
+          if (alive.current) setReviewLoadError(getErrorMessage(reloadError, 'Không thể đồng bộ lại đánh giá.'));
+        }
       }
     } finally {
       if (alive.current) setBusy(false);
@@ -154,7 +156,11 @@ export default function OrderReviewPage() {
       <section className="commerce-compose order-review-page__form">
         <h2>Chia sẻ trải nghiệm</h2>
         {isReviewable(order) ? review?.editable === false ? <Alert type="warning" title="Đánh giá đã hết hạn sửa">Đánh giá này chỉ được chỉnh sửa hoặc thêm ảnh trong 7 ngày sau khi gửi.</Alert> : <form className="form" onSubmit={submit}>
-          {reviewLoadError && <Alert type="warning">{reviewLoadError}</Alert>}
+          {reviewLoadError && <Alert type="warning">{reviewLoadError} <button type="button" className="btn btn--outline btn--sm" onClick={async () => {
+            setBusy(true);
+            await load();
+            if (alive.current) setBusy(false);
+          }}>Tải lại đánh giá</button></Alert>}
           {success && <Alert type="success">{success}</Alert>}
           <p>Hãy chia sẻ cảm nhận tổng quan về đồ ăn và trải nghiệm tại <strong>{order.restaurantName}</strong>.</p>
           <RatingFields {...{ rating, setRating, content, setContent }} />
@@ -170,7 +176,7 @@ export default function OrderReviewPage() {
           </div>}
           <p className="muted">{review ? 'Bạn có thể chỉnh sửa đánh giá và ảnh trong 7 ngày sau khi gửi.' : 'Ảnh đã chọn sẽ được tải lên cùng lúc với đánh giá của bạn.'}</p>
           {submitError && <Alert type="error">{submitError}</Alert>}
-          <button className="btn btn--primary" disabled={busy}>{busy ? 'Đang lưu…' : review ? 'Lưu chỉnh sửa' : 'Gửi đánh giá'}</button>
+          <button className="btn btn--primary" disabled={busy || Boolean(reviewLoadError)}>{busy ? 'Đang lưu…' : review ? 'Lưu chỉnh sửa' : 'Gửi đánh giá'}</button>
           <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => navigate('/customer/orders')}>Về đơn hàng</button>
         </form> : <><Alert type="warning" title="Đơn chưa đủ điều kiện đánh giá">Chỉ đơn đã hoàn tất và có trạng thái thanh toán thành công mới có thể gửi đánh giá.</Alert><Link className="btn btn--outline" to={`/customer/orders/${order.orderId}`}>Xem chi tiết đơn</Link></>}
       </section>

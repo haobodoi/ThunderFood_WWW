@@ -28,3 +28,6 @@ export const NEXT_ACTION = {
 
 export const awaitingTransfer = order =>
   order.paymentMethod === 'ONLINE' && order.orderStatus === 'PENDING' && order.paymentStatus === 'UNPAID';
+
+export const needsRefund = order =>
+  ['REJECTED', 'CANCELLED'].includes(order.orderStatus) && order.paymentStatus === 'PAID';

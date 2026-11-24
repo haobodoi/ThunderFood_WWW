@@ -2,7 +2,7 @@
 
 Backend dùng **Spring Boot 3.5.6 (Java 21) + Spring Security + Spring Data JPA + MariaDB**, frontend dùng **React 18 + Vite**.
 
-**Bản cài mới đầy đủ:** [backend/database/thunderfood_final.sql](backend/database/thunderfood_final.sql) gộp schema + V5 + dữ liệu mẫu lớn (20.001 đơn / 60.002 dòng món). Chỉ cần import một file SQL. Hướng dẫn và tài khoản: [FINAL_SETUP.md](FINAL_SETUP.md). Thống kê đối tác: `/partner/statistics`, có lọc quán sở hữu, khoảng ngày và CSV.
+**Bản cài mới đầy đủ** gộp schema, migration V5–V6 và dữ liệu mẫu lớn (20.001 đơn / 60.002 dòng món). Chỉ cần import [thunderfood_final.sql](backend/database/thunderfood_final.sql). Xem hướng dẫn và tài khoản trong [FINAL_SETUP.md](FINAL_SETUP.md). Thống kê đối tác ở `/partner/statistics` hỗ trợ lọc quán, khoảng ngày và CSV.
 
 Đã có:
 - **Tài khoản:** đăng ký, đăng nhập (email hoặc số điện thoại), đăng xuất, phân quyền theo 3 vai trò.
@@ -75,7 +75,7 @@ Thanh Run có sẵn: **Backend** (dùng DB trong `application.properties`), **Ba
 
 **Yêu cầu:** JDK 21, Maven (hoặc IntelliJ), Node.js 18+, MariaDB 10.6+.
 
-1. **Cài mới:** chạy `backend/database/thunderfood_final.sql` trong HeidiSQL/DBeaver hoặc MariaDB CLI. File không xóa database; nếu `thunderfood` đã tồn tại, dừng tại lỗi đầu tiên. DB đang dùng chỉ cần migration V5, không import lại dữ liệu demo.
+1. **Cài mới.** Chạy `backend/database/thunderfood_final.sql` trong HeidiSQL, DBeaver hoặc MariaDB CLI. Nếu `thunderfood` đã tồn tại, áp dụng các migration còn thiếu theo thứ tự V5 rồi V6.
 2. **Backend:** cấu hình `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` theo MariaDB đang dùng, rồi chạy `ThunderFoodApplication`. Với DB Docker mẫu ở 3307, chọn cấu hình **Backend (DB Docker)**.
    Ảnh tải lên được lưu trong thư mục `uploads/`, nằm trong thư mục làm việc của backend.
 3. **Frontend:**
@@ -163,14 +163,14 @@ API chính: `/api/customer/carts`, `/api/customer/reviews`, `/api/partner/review
 
 Chi tiết schema và quy tắc: [backend/database/thunderfood_mariadb_v4_NOTES.md](backend/database/thunderfood_mariadb_v4_NOTES.md).
 
-## Đặt hàng và thanh toán VietQR
+## Đặt hàng và thanh toán VietQR / SePay
 
-Dùng các bảng `orders`, `order_items`, `payments` đã có trong schema v4, không cần import lại DB.
+DB đã cài cần chạy [migration V6](backend/database/migrations/V6__sepay.sql) một lần. Cài mới dùng `backend/database/thunderfood_final.sql`.
 
 - Khách bấm **Đặt hàng** ở giỏ (`/customer/checkout/:cartId`), nhập thông tin giao hàng, chọn VietQR hoặc thanh toán khi nhận hàng. Theo dõi đơn ở `/customer/orders`.
 - Giá, phí giao và tổng tiền do server tính. Client gửi `version` của giỏ để bấm hai lần chỉ tạo một đơn, và `expectedTotal` để chặn đặt hàng khi giá vừa đổi so với màn hình đang xem. Món không khả dụng không vào đơn và được giữ lại trong giỏ.
 - Mã VietQR (chuẩn EMVCo của NAPAS, `VietQrUtil`) có sẵn số tiền và nội dung là mã đơn bỏ dấu gạch. Tiền chuyển thẳng vào tài khoản ngân hàng quán khai lúc đăng ký. Quán dùng ngân hàng nằm ngoài danh sách `BANK_BINS` thì khách chỉ chọn được thanh toán khi nhận hàng.
-- **Hệ thống không tự biết tiền đã về**, vì không kết nối với ngân hàng. Quán đối soát trong tài khoản của mình rồi bấm **Đã nhận tiền** ở `/partner/orders`; đơn chuyển sang đã thanh toán và đã xác nhận.
+- Với tài khoản đã liên kết SePay, giao dịch vào khớp mã đơn, số tiền, ngân hàng và số tài khoản sẽ tự chuyển đơn sang **Đã thanh toán** và **Đã xác nhận**. Tài khoản khác và đơn VietQR tạo trước khi bật SePay vẫn đối soát bằng nút **Đã nhận tiền** ở `/partner/orders`.
 - Luồng đơn: `PENDING → CONFIRMED → PREPARING → DELIVERING → COMPLETED`. Khách tự hủy được khi đơn còn `PENDING` và chưa thanh toán. Quán từ chối được khi `PENDING` hoặc `CONFIRMED`; đơn đã trả tiền mà bị từ chối thì quán hoàn tiền ngoài hệ thống rồi bấm **Đã hoàn tiền**. Đơn COD được tính đã thanh toán lúc hoàn tất.
 - Đơn `COMPLETED` mở quyền đánh giá theo đúng quy tắc của phần đánh giá.
 - Trang đơn của khách và của quán tự cập nhật qua Server-Sent Events (`OrderEvents`). Sự kiện chỉ mang mã đơn, phát sau khi transaction commit; trình duyệt nhận được thì tải lại qua API thường. Danh sách kết nối nằm trong bộ nhớ nên chỉ đúng khi chạy một instance backend. Proxy phía trước phải không đệm phản hồi, backend đã gửi sẵn header `X-Accel-Buffering: no` cho Nginx.
@@ -182,9 +182,48 @@ Dùng các bảng `orders`, `order_items`, `payments` đã có trong schema v4, 
 | `GET /api/customer/orders` · `GET /api/customer/orders/{id}` | CUSTOMER | Danh sách · chi tiết, kèm `qr` khi còn chờ chuyển khoản |
 | `POST /api/customer/orders/{id}/cancel` (`{reason}`) | CUSTOMER | Hủy đơn |
 | `GET /api/customer/orders/events` · `GET /api/partner/orders/events` | CUSTOMER · RESTAURANT_PARTNER | Luồng SSE báo đơn của mình vừa đổi |
-| `GET /api/partner/orders?status=&page=` | RESTAURANT_PARTNER | Đơn của các quán mình sở hữu |
+| `GET /api/partner/orders?status=&page=&refunds=` | RESTAURANT_PARTNER | Đơn của các quán mình sở hữu, có thể lọc các đơn cần hoàn tiền |
 | `PATCH /api/partner/orders/{id}/status` (`{status, reason}`) | RESTAURANT_PARTNER | Chuyển bước, từ chối kèm lý do |
 | `POST /api/partner/orders/{id}/confirm-payment` · `/refund` | RESTAURANT_PARTNER | Xác nhận đã nhận tiền · đã hoàn tiền |
+| `POST /api/webhooks/sepay` | Chữ ký HMAC của SePay | Nhận thông báo giao dịch ngân hàng |
+
+### Bật xác nhận qua SePay
+
+1. Chạy [migration V6](backend/database/migrations/V6__sepay.sql) trên DB đang dùng. Với Docker Compose và volume đã có dữ liệu, có thể chạy từ thư mục gốc:
+
+   ```bash
+   docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD"' < backend/database/migrations/V6__sepay.sql
+   ```
+
+2. Liên kết tài khoản nhận tiền của từng quán trong SePay. Luồng này dùng giao dịch vào tài khoản chính. Kiểm tra loại kết nối ngân hàng hỗ trợ nhận giao dịch đó. [Tài khoản ngân hàng và webhook SePay](https://developer.sepay.vn/vi/sepay-webhooks/tai-khoan-ngan-hang)
+3. Trong SePay, tạo webhook cho **Có tiền vào**, định dạng **JSON**, xác thực **HMAC-SHA256**, URL công khai `https://<tên-miền>/api/webhooks/sepay`. Chọn nhóm tài khoản đã liên kết. Nếu tạo qua API, dùng `bank_account_ids` (kể cả chỉ một phần tử) hoặc `bank_mode=all` để SePay gửi HMAC. Tắt **Chỉ gửi khi có mã thanh toán** để webhook vẫn tới khi SePay chưa trích mã `TF` ra trường `code`. [Cấu hình webhook](https://docs.sepay.vn/tich-hop-webhooks.html), [API webhook](https://docs.sepay.vn/oauth2/api-webhooks.html)
+4. Đặt `SEPAY_WEBHOOK_SECRET` bằng khóa HMAC của webhook. Đặt `SEPAY_BANK_ACCOUNTS` bằng danh sách `BIN:SỐ_TÀI_KHOẢN` cách nhau bằng dấu phẩy, ví dụ định dạng `970422:0123456789`. Giữ khóa trong `.env` hoặc secret của môi trường triển khai. Khởi động lại backend. Để trống hai biến để dùng VietQR đối soát thủ công.
+5. Thử bằng **Test mode** với backend và DB thử nghiệm tách riêng. Nút **Gửi thử** trên SePay cũng kiểm tra được webhook có tới endpoint. [Test mode của SePay](https://developer.sepay.vn/vi/sepay-webhooks/test-mode/bat-dau-nhanh)
+
+Khi nhận tiền cho đơn đã hủy hoặc bị từ chối, hệ thống ghi nhận đã thanh toán và đưa vào danh sách **Cần hoàn tiền**. Quán chuyển khoản hoàn tiền rồi ghi nhận kết quả trong ứng dụng. Giao dịch thiếu hoặc thừa tiền, chuyển hai lần, sai mã hoặc sai tài khoản cần đối soát ở SePay.
+
+### Chạy SePay mock trên máy local
+
+Từ thư mục gốc, chạy Docker Compose với cấu hình mock:
+
+```bash
+docker compose -p thunderfood-sepay-mock -f docker-compose.yml -f docker-compose.sepay-mock.yml up -d --build
+```
+
+1. Mở `http://127.0.0.1:15173` và đăng nhập `customer@example.com` với mật khẩu `123456`.
+2. Đặt món ở **Bếp Nhà Bình - Cơm gà - Lê Lợi** hoặc dùng giỏ mẫu của quán này. Chọn **Chuyển khoản VietQR**.
+3. Ở trang chi tiết đơn, quét QR bằng trình đọc mã hoặc sao chép **Mã chuyển khoản**. Thay giá trị `code` bằng mã vừa lấy rồi gửi qua API:
+
+   ```bash
+   curl -X POST http://127.0.0.1:15173/api/webhooks/sepay/mock \
+     -H 'Authorization: Apikey thunderfood-local' \
+     -H 'Content-Type: application/json' \
+     -d '{"code":"TF20261124J4A92G"}'
+   ```
+
+   Giữ trang chi tiết đơn mở để xem trạng thái tự chuyển sang **Đã thanh toán** và **Đã xác nhận**. Có thể đăng nhập `partner@example.com` với cùng mật khẩu để xem đơn ở kênh đối tác.
+
+Profile `sepay-mock` dùng DB demo riêng ở `127.0.0.1:13318`. QR demo chứa mã chuyển khoản dạng văn bản. Backend lấy số tiền từ đơn và chỉ xử lý đơn SePay mô phỏng. Đặt `SEPAY_MOCK_TOKEN` để đổi API key mặc định của stack local.
 
 ### Kiểm thử tích hợp trên DB riêng
 
@@ -199,3 +238,5 @@ python backend/tests/customer_features_smoke.py --reset-disposable-db
 Script kiểm tra datadir và cổng trước khi reset schema thử nghiệm. Bao gồm kiểm tra xung đột ghi đồng thời, ownership, CSRF, giới hạn số lượng, điều kiện đơn hàng, ảnh và kiểm duyệt. `MARIADB_CLIENT` cho phép cấu hình đường dẫn CLI; script mặc định đường dẫn MariaDB 12.2 trên Windows.
 
 Đặt hàng và thanh toán có script riêng, cùng cách chuẩn bị: `python backend/tests/order_payment_smoke.py --reset-disposable-db`. Unit test của chuỗi VietQR chạy bằng `mvn test` trong `backend/`.
+
+Để kiểm tra webhook SePay trên DB riêng, khởi động backend với khóa thử nghiệm trong `SEPAY_WEBHOOK_SECRET` và `SEPAY_BANK_ACCOUNTS=970422:0123456789`. Chạy `python backend/tests/sepay_smoke.py --reset-disposable-db` với cùng khóa thử nghiệm. Script ký payload theo định dạng của SePay và kiểm tra cập nhật qua API thật.

@@ -60,6 +60,10 @@ public class PaymentEntity {
         return transactionCode;
     }
 
+    public String getProvider() {
+        return provider;
+    }
+
     /** Chỉ ghi paidAt khi thanh toán thành công, để hoàn tiền không làm mất thời điểm đã trả. */
     public void record(PaymentRecordStatusEnum status, String responseCode, LocalDateTime now) {
         this.status = status;

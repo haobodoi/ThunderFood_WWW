@@ -73,8 +73,9 @@ public class OrderController {
     @GetMapping("/api/partner/orders")
     public PageResponse<PartnerOrder> partnerOrders(@AuthenticationPrincipal UserDetailsDto user,
                                                     @RequestParam(required = false) OrderStatusEnum status,
+                                                    @RequestParam(defaultValue = "false") boolean refunds,
                                                     @RequestParam(defaultValue = "0") int page) {
-        return service.partnerOrders(user.getId(), status, page);
+        return service.partnerOrders(user.getId(), status, refunds, page);
     }
 
     @PatchMapping("/api/partner/orders/{id}/status")

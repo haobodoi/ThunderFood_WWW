@@ -70,6 +70,7 @@ def run():
     assert DB_PORT in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
     sql((ROOT / 'backend/database/migrations/V5__admin.sql').read_text(encoding='utf-8'))
+    sql((ROOT / 'backend/database/migrations/V6__sepay.sql').read_text(encoding='utf-8'))
     # Full-day fixture makes service-hour tests independent of execution time.
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")
     anon = Session()

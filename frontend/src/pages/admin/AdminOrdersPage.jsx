@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { adminApi } from '../../api/adminApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
-import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, NEXT_ACTION, awaitingTransfer } from '../../utils/orderUtils.js';
+import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, NEXT_ACTION, awaitingTransfer, needsRefund } from '../../utils/orderUtils.js';
 import { OrderStatus, PaymentStatus, OrderLines, OrderTotals, OrderProgress } from '../../components/OrderParts.jsx';
 import Modal from '../../components/Modal.jsx';
 import Alert from '../../components/Alert.jsx';
@@ -14,7 +14,7 @@ const ORDER_VIEWS = [
   { label: 'Tất cả', status: '', payment: '' },
   { label: 'Chờ xác nhận', status: 'PENDING', payment: '' },
   { label: 'Đang giao', status: 'DELIVERING', payment: '' },
-  { label: 'Cần hoàn tiền', status: 'REJECTED', payment: 'PAID' },
+  { label: 'Cần hoàn tiền', status: '', payment: '', refunds: 'true' },
 ];
 
 export default function AdminOrdersPage() {
@@ -36,17 +36,18 @@ export default function AdminOrdersPage() {
     <section className="admin-panel order-filters">
       <div className="tabs" role="group" aria-label="Lọc nhanh đơn hàng">
         {ORDER_VIEWS.map(view => {
-          const active = (filters.status || '') === view.status && (filters.payment || '') === view.payment;
+          const active = (filters.status || '') === view.status && (filters.payment || '') === view.payment
+            && (filters.refunds || '') === (view.refunds || '');
           return <button key={view.label} type="button" className={'tabs__item' + (active ? ' is-active' : '')}
-            aria-pressed={active} onClick={() => change({ status: view.status, payment: view.payment })}>{view.label}</button>;
+            aria-pressed={active} onClick={() => change({ status: view.status, payment: view.payment, refunds: view.refunds })}>{view.label}</button>;
         })}
       </div>
       <div className="admin-filters">
         <Search value={filters.q || ''} label="Mã đơn / khách hàng" onChange={q => change({ q })} />
-        <Field label="Trạng thái đơn"><select value={filters.status || ''} onChange={event => change({ status: event.target.value })}>
+        <Field label="Trạng thái đơn"><select value={filters.status || ''} onChange={event => change({ status: event.target.value, refunds: '' })}>
           <option value="">Tất cả</option>{Object.entries(ORDER_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
         </select></Field>
-        <Field label="Thanh toán"><select value={filters.payment || ''} onChange={event => change({ payment: event.target.value })}>
+        <Field label="Thanh toán"><select value={filters.payment || ''} onChange={event => change({ payment: event.target.value, refunds: '' })}>
           <option value="">Tất cả</option>{Object.entries(PAYMENT_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
         </select></Field>
         <Field label="Từ ngày"><input type="date" max={filters.to || undefined} value={filters.from || ''} onChange={event => change({ from: event.target.value })} /></Field>
@@ -81,9 +82,13 @@ export function AdminOrderDetailPage() {
       {awaitingTransfer(o) && user.role === 'ADMIN' && <button className="btn btn--primary" onClick={() => begin({ path: 'confirm-payment', label: 'Xác nhận đã nhận tiền', financial: true })}>Đã nhận tiền VietQR</button>}
       {NEXT_ACTION[o.orderStatus] && <button className="btn btn--primary" onClick={() => begin({ path: 'status', ...NEXT_ACTION[o.orderStatus] })}>{NEXT_ACTION[o.orderStatus].label}</button>}
       {['PENDING', 'CONFIRMED'].includes(o.orderStatus) && <button className="btn btn--outline" onClick={() => begin({ path: 'status', status: 'REJECTED', label: 'Từ chối / hủy đơn', requiredReason: true })}>Từ chối / hủy đơn</button>}
-      {o.orderStatus === 'REJECTED' && o.paymentStatus === 'PAID' && user.role === 'ADMIN' && <button className="btn btn--primary" onClick={() => begin({ path: 'refund', label: 'Xác nhận đã hoàn tiền', financial: true })}>Đã hoàn tiền</button>}
+      {needsRefund(o) && user.role === 'ADMIN' && <button className="btn btn--primary" onClick={() => begin({ path: 'refund', label: 'Xác nhận đã hoàn tiền', financial: true })}>Đã hoàn tiền</button>}
       <button className="btn btn--outline" onClick={() => begin({ path: 'notes', label: 'Thêm ghi chú nội bộ', requiredReason: true })}>Thêm ghi chú</button></div>{awaitingTransfer(o) && <p className="muted">Chuyển khoản trực tiếp tới quán. Quản trị viên hoặc chủ quán xác nhận sau khi đối soát.</p>}{o.cancelReason && <p>Lý do kết thúc: {o.cancelReason}</p>}</section>
-    <div className="admin-grid"><section className="admin-panel"><h2>Khách hàng & giao hàng</h2><dl className="admin-definition"><dt>Người nhận</dt><dd>{o.recipientName}</dd><dt>Điện thoại</dt><dd>{o.recipientPhone}</dd><dt>Địa chỉ</dt><dd>{o.deliveryAddress}</dd><dt>Quán</dt><dd>{o.restaurantName}</dd><dt>Thời gian đặt</dt><dd>{formatDateTime(o.createdAt)}</dd><dt>Ghi chú khách</dt><dd>{o.note || 'Không có'}</dd></dl>{user.role === 'ADMIN' && <Link className="admin-link" to={`/admin/users/${o.customerId}`}>Xem tài khoản và lịch sử đơn →</Link>}</section><section className="admin-panel"><h2>Món trong đơn</h2><OrderLines items={o.items} /><OrderTotals subtotal={o.subtotal} fee={o.deliveryFee} total={o.totalAmount} /><p className="muted">Giảm giá: chưa áp dụng trong hệ thống hiện tại.</p>{o.payments.map((p,i) => <p key={i}>Đối soát {p.provider}: <strong>{p.transactionCode || '—'}</strong></p>)}</section></div>
+    <div className="admin-grid"><section className="admin-panel"><h2>Khách hàng & giao hàng</h2><dl className="admin-definition"><dt>Người nhận</dt><dd>{o.recipientName}</dd><dt>Điện thoại</dt><dd>{o.recipientPhone}</dd><dt>Địa chỉ</dt><dd>{o.deliveryAddress}</dd><dt>Quán</dt><dd>{o.restaurantName}</dd><dt>Thời gian đặt</dt><dd>{formatDateTime(o.createdAt)}</dd><dt>Ghi chú khách</dt><dd>{o.note || 'Không có'}</dd></dl>{user.role === 'ADMIN' && <Link className="admin-link" to={`/admin/users/${o.customerId}`}>Xem tài khoản và lịch sử đơn →</Link>}</section><section className="admin-panel"><h2>Món trong đơn</h2><OrderLines items={o.items} /><OrderTotals subtotal={o.subtotal} fee={o.deliveryFee} total={o.totalAmount} /><p className="muted">Giảm giá: chưa áp dụng trong hệ thống hiện tại.</p>{o.payments.map((payment, i) => <p key={i}>
+      Đối soát {payment.provider === 'SEPAY_MOCK' ? 'SePay mô phỏng' : payment.provider}: <strong>{payment.transactionCode || '—'}</strong>
+      {payment.sepayTransactionId > 0 && <> · Giao dịch SePay #{payment.sepayTransactionId}</>}
+      {payment.bankReference && <> · Tham chiếu ngân hàng {payment.bankReference}</>}
+    </p>)}</section></div>
     <div className="admin-grid"><section className="admin-panel"><h2>Lịch sử trạng thái</h2>{o.history.length ? <ol className="admin-timeline">{o.history.map((h,i) => <li key={i}><strong>{ORDER_STATUS[h.toStatus]?.label} · {PAYMENT_STATUS[h.toPayment]?.label}</strong><small>{formatDateTime(h.createdAt)}</small>{h.reason && <p>{h.reason}</p>}</li>)}</ol> : <p>Đơn cũ chưa có lịch sử trước migration V5.</p>}</section><section className="admin-panel"><h2>Hoạt động & ghi chú nội bộ</h2>{o.notes.length ? <ol className="admin-timeline">{o.notes.map(n => <li key={n.id}><strong>{n.actor || 'Tài khoản không còn tồn tại'}</strong><small>{formatDateTime(n.createdAt)}</small><p>{n.detail}</p></li>)}</ol> : <p>Chưa có ghi chú.</p>}</section></div>
   </>}</DataState>{action && <Modal title={action.label} onClose={busy ? undefined : () => setAction(null)}><form onSubmit={submit} className="admin-form">{error && <Alert type="error">{error}</Alert>}<p>{action.financial ? 'Chỉ xác nhận khi đã kiểm tra tiền thực tế trong tài khoản ngân hàng của quán. Hệ thống ghi nhận kết quả đối soát, không thực hiện chuyển tiền.' : 'Xác nhận thao tác trên đơn ' + o.orderCode + '. Trạng thái sẽ được lưu vào lịch sử.'}</p><Field label={action.requiredReason ? 'Nội dung / lý do (5–500 ký tự)' : 'Ghi chú đối soát / lý do (tùy chọn)'}><textarea required={action.requiredReason} minLength={action.requiredReason ? 5 : undefined} maxLength={500} rows={3} value={reason} onChange={e => setReason(e.target.value)} /></Field><div className="admin-actions"><button className="btn btn--outline" type="button" disabled={busy} onClick={() => setAction(null)}>Quay lại</button><button className="btn btn--primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Xác nhận'}</button></div></form></Modal>}</div>;
 }

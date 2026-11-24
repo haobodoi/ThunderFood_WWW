@@ -30,15 +30,18 @@ public class OrderEvents {
 
     public SseEmitter subscribe(long userId) {
         var emitter = new SseEmitter(STREAM_TIMEOUT_MS);
-        var mine = streams.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());
-        emitter.onCompletion(() -> mine.remove(emitter));
+        emitter.onCompletion(() -> remove(userId, emitter));
         emitter.onTimeout(emitter::complete);
-        emitter.onError(error -> mine.remove(emitter));
-        mine.add(emitter);
-        while (mine.size() > MAX_STREAMS_PER_USER)
-            mine.removeFirst().complete();
+        emitter.onError(error -> remove(userId, emitter));
+        SseEmitter oldest = null;
+        synchronized (streams) {
+            var mine = streams.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());
+            if (mine.size() >= MAX_STREAMS_PER_USER) oldest = mine.removeFirst();
+            mine.add(emitter);
+        }
+        if (oldest != null) oldest.complete();
         // Gửi ngay một dòng để header đi qua proxy, EventSource biết đã kết nối.
-        send(mine, emitter, SseEmitter.event().comment("connected"));
+        send(userId, emitter, SseEmitter.event().comment("connected"));
         return emitter;
     }
 
@@ -49,7 +52,7 @@ public class OrderEvents {
         for (long userId : List.of(event.customerId(), event.partnerId())) {
             var mine = streams.get(userId);
             if (mine == null) continue;
-            mine.forEach(emitter -> send(mine, emitter,
+            mine.forEach(emitter -> send(userId, emitter,
                     SseEmitter.event().name("order").data(data, MediaType.APPLICATION_JSON)));
         }
     }
@@ -57,17 +60,24 @@ public class OrderEvents {
     /** Giữ kết nối qua proxy và dọn các kết nối đã chết. */
     @Scheduled(fixedDelay = HEARTBEAT_MS)
     public void heartbeat() {
-        streams.values().forEach(mine -> mine.forEach(
-                emitter -> send(mine, emitter, SseEmitter.event().comment("ping"))));
+        streams.forEach((userId, mine) -> mine.forEach(
+                emitter -> send(userId, emitter, SseEmitter.event().comment("ping"))));
     }
 
-    private static void send(List<SseEmitter> mine,
-                             SseEmitter emitter,
-                             SseEmitter.SseEventBuilder event) {
+    private void remove(long userId, SseEmitter emitter) {
+        synchronized (streams) {
+            var mine = streams.get(userId);
+            if (mine == null) return;
+            mine.remove(emitter);
+            if (mine.isEmpty()) streams.remove(userId);
+        }
+    }
+
+    private void send(long userId, SseEmitter emitter, SseEmitter.SseEventBuilder event) {
         try {
             emitter.send(event);
         } catch (IOException | IllegalStateException closed) {
-            mine.remove(emitter);
+            remove(userId, emitter);
             emitter.complete();
         }
     }

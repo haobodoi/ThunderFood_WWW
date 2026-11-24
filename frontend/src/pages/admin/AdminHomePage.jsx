@@ -66,7 +66,7 @@ function Attention({ attention, partner, admin }) {
   const orders = partner ? '/partner/orders' : '/admin/orders';
   const tasks = [
     { label: 'Đơn chờ xác nhận', count: attention.pending, icon: ClipboardList, to: orders + '?status=PENDING' },
-    { label: 'Đơn cần hoàn tiền', count: attention.refunds, icon: Wallet, to: orders + (partner ? '?status=REJECTED' : '?status=REJECTED&payment=PAID') },
+    { label: 'Đơn cần hoàn tiền', count: attention.refunds, icon: Wallet, to: orders + '?refunds=true' },
   ];
   if (admin) tasks.push(
     { label: 'Hồ sơ chờ duyệt', count: attention.restaurants, icon: Store, to: '/admin/restaurants' },

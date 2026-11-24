@@ -2,8 +2,10 @@ package vn.edu.iuh.fit.thunderfood.util;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /** Dựng chuỗi VietQR (chuẩn EMVCo của NAPAS) cho lệnh chuyển nhanh 24/7 đến số tài khoản. */
 public final class VietQrUtil {
@@ -38,12 +40,22 @@ public final class VietQrUtil {
             Map.entry("Nam A Bank", "970428"),
             Map.entry("Bac A Bank", "970409")
     );
+    private static final Map<String, String> GATEWAY_BINS = BANK_BINS.entrySet().stream()
+            .collect(Collectors.toUnmodifiableMap(entry -> gatewayKey(entry.getKey()), Map.Entry::getValue));
 
     private VietQrUtil() {
     }
 
     public static Optional<String> binOf(String bankName) {
         return bankName == null ? Optional.empty() : Optional.ofNullable(BANK_BINS.get(bankName.trim()));
+    }
+
+    public static Optional<String> binOfGateway(String gateway) {
+        return Optional.ofNullable(GATEWAY_BINS.get(gatewayKey(gateway)));
+    }
+
+    private static String gatewayKey(String gateway) {
+        return gateway.replace(" ", "").toLowerCase(Locale.ROOT);
     }
 
     /** VND không có phần lẻ; QR chỉ hợp lệ với số tiền dương, nguyên và vừa trường 54. */

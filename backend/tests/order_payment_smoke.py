@@ -83,6 +83,7 @@ def run():
     assert DB_PORT in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
     sql((ROOT / 'backend/database/migrations/V5__admin.sql').read_text(encoding='utf-8'))
+    sql((ROOT / 'backend/database/migrations/V6__sepay.sql').read_text(encoding='utf-8'))
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")
     anon = Session()
     customer = Session('customer@example.com')
@@ -108,10 +109,20 @@ def run():
     customer.call('POST', '/customer/orders', body(preview, paymentMethod='BITCOIN'), expected=400)
     check(sql('USE thunderfood; SELECT COUNT(*) FROM orders;') == '1' and customer.call('GET', f"/customer/carts/{preview['cartId']}")['version'] == preview['version'], 'rejected checkouts create no order and leave the cart untouched')
 
+    expected_lines = [{'id': line['id'], 'lineTotal': line['lineTotal']} for line in preview['items']]
+    sql(f'USE thunderfood; UPDATE menu_items SET price=price+1000 WHERE item_id={ITEM}; UPDATE menu_items SET price=price-1000 WHERE item_id={OTHER_ITEM};')
+    changed = customer.call('GET', f"/customer/orders/checkout?cartId={preview['cartId']}")
+    check(changed['totalAmount'] == preview['totalAmount'] and changed['version'] == preview['version'], 'fixture changes line prices while keeping the total and cart version')
+    customer.call('POST', '/customer/orders', body(preview, expectedLines=expected_lines), expected=400)
+    duplicate = {'id': changed['items'][0]['id'], 'lineTotal': changed['items'][0]['lineTotal']}
+    customer.call('POST', '/customer/orders', body(changed, expectedLines=[duplicate] * 2), expected=400)
+    sql(f'USE thunderfood; UPDATE menu_items SET price=price-1000 WHERE item_id={ITEM}; UPDATE menu_items SET price=price+1000 WHERE item_id={OTHER_ITEM};')
+    check(sql('USE thunderfood; SELECT COUNT(*) FROM orders;') == '1', 'changed or duplicate lines do not create an order')
+
     other_tab = Session('customer@example.com')
     def race(session):
         try:
-            return session.call('POST', '/customer/orders', body(preview), expected=201)
+            return session.call('POST', '/customer/orders', body(preview, expectedLines=expected_lines), expected=201)
         except AssertionError as error:
             assert error.args[0][2] == 409, error
             return None
