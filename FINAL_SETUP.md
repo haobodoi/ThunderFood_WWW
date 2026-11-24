@@ -4,7 +4,7 @@
 
 File cần chạy: **`backend/database/thunderfood_final.sql`**.
 
-File đã chứa schema v4, migration quản trị V5, vai trò STAFF, trigger lịch sử đơn/snapshot danh mục và toàn bộ dữ liệu mẫu. Không cần chạy thêm v4 hoặc V5 sau đó. File không có DROP DATABASE, không tự ghi đè DB đang có. Nếu `thunderfood` đã tồn tại, import sẽ dừng ở lệnh CREATE DATABASE; không bật tùy chọn bỏ qua lỗi/`--force`. Với DB đang làm việc, giữ nguyên dữ liệu và chỉ chạy migration V5 nếu chưa có. Muốn thử toàn bộ dữ liệu mẫu, dùng MariaDB riêng hoặc môi trường Docker mới.
+File đã chứa schema v4, migration quản trị V5, migration SePay V6, vai trò STAFF, trigger lịch sử đơn/snapshot danh mục và toàn bộ dữ liệu mẫu. File dừng ở lệnh `CREATE DATABASE` nếu `thunderfood` đã tồn tại. Với DB đang làm việc, chạy các migration còn thiếu theo thứ tự V5 rồi V6. Xem [cách bật SePay](README.md#bật-xác-nhận-qua-sepay).
 
 Từ thư mục gốc dự án, mở MariaDB CLI:
 
@@ -82,7 +82,7 @@ API: `GET /api/partner/statistics/dashboard`, `/dashboard/export`, `/restaurants
 python backend/database/build_final_sql.py
 ```
 
-Nguồn gồm `thunderfood_mariadb_v4.sql`, `migrations/V5__admin.sql`, `seeds/statistics_demo.sql`. Người cài đặt chỉ cần file `thunderfood_final.sql` đã tạo; không cần Python.
+Nguồn gồm `thunderfood_mariadb_v4.sql`, `migrations/V5__admin.sql`, `migrations/V6__sepay.sql` và `seeds/statistics_demo.sql`. Cài đặt mới dùng file `thunderfood_final.sql` đã tạo.
 
 Kiểm thử tích hợp trên DB riêng `.test-runtime/mariadb`, cổng 13317, API 18081, theo hướng dẫn trong `ADMIN_HANDOVER.md`:
 

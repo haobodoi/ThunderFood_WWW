@@ -1,5 +1,7 @@
 package vn.edu.iuh.fit.thunderfood.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -10,6 +12,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import vn.edu.iuh.fit.thunderfood.dto.CartResponses.CartLine;
 import vn.edu.iuh.fit.thunderfood.dto.CustomerRequests.*;
 import vn.edu.iuh.fit.thunderfood.dto.OrderResponses.*;
+import vn.edu.iuh.fit.thunderfood.dto.SepayTransfer;
 import vn.edu.iuh.fit.thunderfood.entity.OrderEntity;
 import vn.edu.iuh.fit.thunderfood.entity.RestaurantEntity;
 import vn.edu.iuh.fit.thunderfood.enums.OrderPaymentStatusEnum;
@@ -23,25 +26,30 @@ import vn.edu.iuh.fit.thunderfood.exception.ResourceNotFoundException;
 import vn.edu.iuh.fit.thunderfood.repository.CartRepository;
 import vn.edu.iuh.fit.thunderfood.repository.OrderRepository;
 import vn.edu.iuh.fit.thunderfood.repository.RestaurantRepository;
+import vn.edu.iuh.fit.thunderfood.repository.SepayPaymentRepository;
+import vn.edu.iuh.fit.thunderfood.repository.SepayPaymentRepository.Recipient;
 import vn.edu.iuh.fit.thunderfood.util.InputNormalizerUtil;
 import vn.edu.iuh.fit.thunderfood.util.VietQrUtil;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import static vn.edu.iuh.fit.thunderfood.enums.OrderStatusEnum.*;
 import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.*;
 
 /**
  * Luồng đơn: PENDING -> CONFIRMED -> PREPARING -> DELIVERING -> COMPLETED; PENDING -> CANCELLED (khách);
- * PENDING/CONFIRMED -> REJECTED (quán). Đơn VietQR chỉ rời PENDING khi quán xác nhận đã nhận tiền,
- * vì chuyển khoản thẳng vào tài khoản quán nên hệ thống không nhận được tín hiệu từ ngân hàng.
+ * PENDING/CONFIRMED -> REJECTED (quán). Đơn VietQR được xác nhận qua SePay hoặc khi quán đối soát.
  */
 @Service
 @Transactional
 public class OrderService {
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
     private static final String PARTNER_ROLE = "RESTAURANT_PARTNER", CUSTOMER_ROLE = "CUSTOMER";
+    private static final String SEPAY = "SEPAY", SEPAY_MOCK = "SEPAY_MOCK";
+    private static final Recipient MOCK_RECIPIENT = new Recipient("970422", "MB Bank", "0000000000", null);
     private static final String CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
     private static final int PAGE_SIZE = 10;
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
@@ -56,6 +64,8 @@ public class OrderService {
     private final CartService carts;
     private final OrderEvents events;
     private final ApplicationEventPublisher publisher;
+    private final SepayConfiguration sepay;
+    private final SepayPaymentRepository sepayPayments;
 
     public OrderService(OrderRepository orders,
                         RestaurantRepository restaurants,
@@ -63,7 +73,9 @@ public class OrderService {
                         CustomerRules rules,
                         CartService carts,
                         OrderEvents events,
-                        ApplicationEventPublisher publisher) {
+                        ApplicationEventPublisher publisher,
+                        SepayConfiguration sepay,
+                        SepayPaymentRepository sepayPayments) {
         this.orders = orders;
         this.restaurants = restaurants;
         this.cartRepository = cartRepository;
@@ -71,6 +83,8 @@ public class OrderService {
         this.carts = carts;
         this.events = events;
         this.publisher = publisher;
+        this.sepay = sepay;
+        this.sepayPayments = sepayPayments;
     }
 
     @Transactional(readOnly = true)
@@ -97,7 +111,7 @@ public class OrderService {
                         line.lineTotal(), line.note(), line.available()))
                 .toList();
         return new CheckoutPreview(cartId, cart.version(), restaurant.getRestaurantName(), lines, subtotal,
-                restaurant.getDeliveryFee(), total, qrBin(restaurant, total).isPresent());
+                restaurant.getDeliveryFee(), total, checkoutRecipient(restaurant, total).isPresent());
     }
 
     public CustomerOrder checkout(long customer, Checkout request) {
@@ -121,12 +135,15 @@ public class OrderService {
         var restaurant = restaurant(cart.restaurantId());
         BigDecimal subtotal = cart.subtotal();
         BigDecimal total = subtotal.add(restaurant.getDeliveryFee());
-        if (total.compareTo(request.expectedTotal()) != 0)
+        if (total.compareTo(request.expectedTotal()) != 0 || !matchesPreview(lines, request.expectedLines()))
             throw new BusinessException(
-                    "Giá món hoặc phí giao hàng vừa thay đổi. Vui lòng kiểm tra lại tổng tiền rồi đặt lại.");
-        if (method == PaymentMethodEnum.ONLINE && qrBin(restaurant, total).isEmpty())
+                    "Món khả dụng, giá món hoặc phí giao hàng vừa thay đổi. Vui lòng kiểm tra lại đơn rồi đặt lại.");
+        Recipient recipient = method == PaymentMethodEnum.ONLINE ? checkoutRecipient(restaurant, total).orElse(null) : null;
+        if (method == PaymentMethodEnum.ONLINE && recipient == null)
             throw new BusinessException(
                     "Quán chưa hỗ trợ thanh toán VietQR cho đơn này. Vui lòng chọn thanh toán khi nhận hàng.");
+        boolean simulated = recipient != null && sepay.mockEnabled();
+        boolean automatic = recipient != null && sepay.tracks(recipient);
 
         var now = rules.now();
         String code = "TF-" + now.format(DateTimeFormatter.BASIC_ISO_DATE) + "-" + randomCode();
@@ -135,13 +152,31 @@ public class OrderService {
         for (var line : lines)
             order.addItem(line.itemId(), line.itemName(), line.unitPrice(), line.quantity(), line.lineTotal(),
                     line.note().isEmpty() ? null : line.note());
-        order.addPayment(method == PaymentMethodEnum.ONLINE ? "VIETQR" : "COD", transferContent(code), now);
+        String provider = switch (method) {
+            case COD -> "COD";
+            case ONLINE -> simulated ? SEPAY_MOCK : automatic ? SEPAY : "VIETQR";
+        };
+        order.addPayment(provider, transferContent(code), now);
         orders.save(order);
+        if (automatic || simulated) sepayPayments.register(order.getId(), recipient);
         lockedCart.removeItems(lines.stream().map(CartLine::cartItemId).toList(), now);
         // Ghi ngay để lỗi DB trả về trong request này, trước khi phát sự kiện.
         cartRepository.flush();
         changed(order, true);
-        return CustomerOrder.from(order, qr(order));
+        return CustomerOrder.from(order, simulated ? mockPaymentQr(order)
+                : recipient == null ? null : paymentQr(order, recipient, automatic));
+    }
+
+    private static boolean matchesPreview(List<CartLine> lines, List<ExpectedCheckoutLine> expected) {
+        if (expected == null) return true;
+        if (expected.size() != lines.size()) return false;
+        Map<Long, BigDecimal> current = new HashMap<>();
+        lines.forEach(line -> current.put(line.cartItemId(), line.lineTotal()));
+        for (var line : expected) {
+            var amount = current.remove(line.id());
+            if (amount == null || amount.compareTo(line.lineTotal()) != 0) return false;
+        }
+        return true;
     }
 
     @Transactional(readOnly = true)
@@ -171,8 +206,13 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<PartnerOrder> partnerOrders(long partner, OrderStatusEnum status, int page) {
+    public PageResponse<PartnerOrder> partnerOrders(long partner, OrderStatusEnum status, boolean refunds, int page) {
         rules.actor(partner, PARTNER_ROLE, false);
+        if (refunds) {
+            var result = orders.findByRestaurantOwnerUserIdAndOrderStatusInAndPaymentStatus(
+                    partner, List.of(CANCELLED, REJECTED), OrderPaymentStatusEnum.PAID, page(page));
+            return PageResponse.from(result, PartnerOrder::from);
+        }
         var result = status == null
                 ? orders.findByRestaurantOwnerUserId(partner, page(page))
                 : orders.findByRestaurantOwnerUserIdAndOrderStatus(partner, status, page(page));
@@ -219,8 +259,65 @@ public class OrderService {
                 || order.getOrderStatus() != PENDING
                 || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID)
             throw new BusinessException("Đơn này không ở trạng thái chờ xác nhận thanh toán");
+        acceptPayment(order, "MANUAL");
+    }
+
+    public void reconcileSepay(SepayTransfer transfer) {
+        if (!"in".equals(transfer.transferType()) || (transfer.subAccount() != null && !transfer.subAccount().isBlank())) return;
+        var code = transfer.orderCode();
+        if (code.isEmpty()) return;
+        var order = orders.findWithLockByOrderCode(code.get()).orElse(null);
+        if (order == null || !order.hasPaymentProvider(SEPAY)) return;
+        sepayPayments.findRecipient(order.getId()).ifPresent(recipient -> reconcileSepay(order, recipient, transfer, SEPAY));
+    }
+
+    public MockPaymentResult simulateSepay(String transferCode) {
+        if (!sepay.mockEnabled()) throw notFound();
+        String code = transferCode.replace("-", "").toUpperCase(Locale.ROOT);
+        String orderCode = "TF-" + code.substring(2, 10) + "-" + code.substring(10);
+        var order = orders.findWithLockByOrderCode(orderCode).orElseThrow(OrderService::notFound);
+        if (!order.hasPaymentProvider(SEPAY_MOCK)) throw notFound();
+        if (order.getPaymentStatus() == OrderPaymentStatusEnum.PAID) return MockPaymentResult.from(order);
+        if (order.getOrderStatus() != PENDING || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID) {
+            throw new BusinessException("Đơn này không còn chờ thanh toán mô phỏng");
+        }
+
+        var recipient = sepayPayments.findRecipient(order.getId()).orElseThrow(OrderService::notFound);
+        // Negative IDs keep simulated receipts separate from bank transaction IDs.
+        var transfer = new SepayTransfer(-order.getId(), recipient.bankName(), rules.now(), recipient.accountNumber(), null,
+                code, null, "in", order.getTotalAmount(), "MOCK-" + orderCode);
+        reconcileSepay(order, recipient, transfer, SEPAY_MOCK);
+        if (order.getPaymentStatus() != OrderPaymentStatusEnum.PAID) {
+            throw new BusinessException("Không thể đối soát giao dịch mô phỏng cho đơn này");
+        }
+        return MockPaymentResult.from(order);
+    }
+
+    private void reconcileSepay(OrderEntity order, Recipient recipient, SepayTransfer transfer, String source) {
+        if (!recipient.accountNumber().equals(transfer.accountNumber())
+                || VietQrUtil.binOfGateway(transfer.gateway()).filter(recipient.bankBin()::equals).isEmpty()
+                || transfer.transferAmount().compareTo(order.getTotalAmount()) != 0
+                || transfer.transactionDate().isBefore(order.getCreatedAt().truncatedTo(ChronoUnit.SECONDS))
+                || transfer.transactionDate().isAfter(rules.now().plusMinutes(5))) {
+            log.warn("Giao dịch SePay {} không khớp thông tin thanh toán của đơn {}", transfer.id(), order.getOrderCode());
+            return;
+        }
+
+        boolean pending = order.getOrderStatus() == PENDING && order.getPaymentStatus() == OrderPaymentStatusEnum.UNPAID;
+        boolean late = closedOrder(order) && order.getPaymentStatus() == OrderPaymentStatusEnum.FAILED;
+        if (!pending && !late && order.getPaymentStatus() != OrderPaymentStatusEnum.PAID) return;
+        if (!sepayPayments.recordTransfer(order.getId(), transfer.id(), transfer.referenceCode(), transfer.transactionDate())) return;
+        if (pending) {
+            acceptPayment(order, source);
+        } else if (late) {
+            order.settle(OrderPaymentStatusEnum.PAID, PaymentRecordStatusEnum.SUCCESS, source, rules.now());
+            changed(order, false);
+        }
+    }
+
+    private void acceptPayment(OrderEntity order, String source) {
         var now = rules.now();
-        order.settle(OrderPaymentStatusEnum.PAID, PaymentRecordStatusEnum.SUCCESS, "MANUAL", now);
+        order.settle(OrderPaymentStatusEnum.PAID, PaymentRecordStatusEnum.SUCCESS, source, now);
         order.moveTo(CONFIRMED, now);
         changed(order, false);
     }
@@ -232,11 +329,15 @@ public class OrderService {
     }
 
     private void refund(OrderEntity order) {
-        if (order.getOrderStatus() != REJECTED || order.getPaymentStatus() != OrderPaymentStatusEnum.PAID)
-            throw new BusinessException("Chỉ hoàn tiền được đơn đã thanh toán và bị từ chối");
+        if (!closedOrder(order) || order.getPaymentStatus() != OrderPaymentStatusEnum.PAID)
+            throw new BusinessException("Chỉ hoàn tiền được đơn đã thanh toán và đã hủy hoặc bị từ chối");
         order.settle(OrderPaymentStatusEnum.REFUNDED, PaymentRecordStatusEnum.REFUNDED, "MANUAL",
                 rules.now());
         changed(order, false);
+    }
+
+    private static boolean closedOrder(OrderEntity order) {
+        return order.getOrderStatus() == REJECTED || order.getOrderStatus() == CANCELLED;
     }
 
     /** Admin uses exactly the partner state machine, with a locked row and stale-screen check. */
@@ -284,25 +385,44 @@ public class OrderService {
         return new ResourceNotFoundException("Không tìm thấy đơn hàng");
     }
 
-    /** Mã QR chỉ tồn tại khi khách còn phải trả tiền; quán đổi sang tài khoản không hỗ trợ thì không có mã, đơn vẫn xem được. */
-    private static PaymentQr qr(OrderEntity order) {
+    private PaymentQr qr(OrderEntity order) {
         if (order.getPaymentMethod() != PaymentMethodEnum.ONLINE
                 || order.getOrderStatus() != PENDING
                 || order.getPaymentStatus() != OrderPaymentStatusEnum.UNPAID)
             return null;
-        var restaurant = order.getRestaurant();
-        var bin = qrBin(restaurant, order.getTotalAmount());
-        if (bin.isEmpty()) return null;
-        String account = restaurant.getBankAccountNumber(), content = transferContent(order.getOrderCode());
-        return new PaymentQr(VietQrUtil.payload(bin.get(), account, order.getTotalAmount(), content),
-                restaurant.getBankName(), account, restaurant.getBankAccountHolder(), order.getTotalAmount(), content);
+        if (sepay.mockEnabled()) return order.hasPaymentProvider(SEPAY_MOCK) ? mockPaymentQr(order) : null;
+        if (order.hasPaymentProvider(SEPAY_MOCK)) return null;
+        if (order.hasPaymentProvider(SEPAY)) {
+            return sepayPayments.findRecipient(order.getId())
+                    .map(recipient -> paymentQr(order, recipient, sepay.enabled())).orElse(null);
+        }
+        return qrRecipient(order.getRestaurant(), order.getTotalAmount())
+                .map(recipient -> paymentQr(order, recipient, false)).orElse(null);
     }
 
-    private static Optional<String> qrBin(RestaurantEntity restaurant, BigDecimal amount) {
+    private static PaymentQr paymentQr(OrderEntity order, Recipient recipient, boolean automatic) {
+        String content = transferContent(order.getOrderCode());
+        BigDecimal amount = order.getTotalAmount();
+        return new PaymentQr(VietQrUtil.payload(recipient.bankBin(), recipient.accountNumber(), amount, content),
+                recipient.bankName(), recipient.accountNumber(), recipient.accountHolder(), amount, content, automatic, false);
+    }
+
+    private static PaymentQr mockPaymentQr(OrderEntity order) {
+        String content = transferContent(order.getOrderCode());
+        return new PaymentQr(content, null, null, null, order.getTotalAmount(), content, false, true);
+    }
+
+    private Optional<Recipient> checkoutRecipient(RestaurantEntity restaurant, BigDecimal amount) {
+        if (!sepay.mockEnabled()) return qrRecipient(restaurant, amount);
+        return VietQrUtil.isPayableAmount(amount) ? Optional.of(MOCK_RECIPIENT) : Optional.empty();
+    }
+
+    private static Optional<Recipient> qrRecipient(RestaurantEntity restaurant, BigDecimal amount) {
         String account = restaurant.getBankAccountNumber();
         if (account == null || !account.matches("\\d{6,19}") || !VietQrUtil.isPayableAmount(amount))
             return Optional.empty();
-        return VietQrUtil.binOf(restaurant.getBankName());
+        return VietQrUtil.binOf(restaurant.getBankName())
+                .map(bin -> new Recipient(bin, restaurant.getBankName(), account, restaurant.getBankAccountHolder()));
     }
 
     /** Ứng dụng ngân hàng có thể bỏ ký tự đặc biệt, nên nội dung chỉ giữ chữ và số để quán còn đối soát được. */

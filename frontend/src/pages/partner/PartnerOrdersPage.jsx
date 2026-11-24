@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { partnerOrderApi } from '../../api/orderApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
-import { NEXT_ACTION, ORDER_STATUS, PAYMENT_METHOD, awaitingTransfer } from '../../utils/orderUtils.js';
+import { NEXT_ACTION, ORDER_STATUS, PAYMENT_METHOD, awaitingTransfer, needsRefund } from '../../utils/orderUtils.js';
 import { useOrderEvents } from '../../hooks/useOrderEvents.js';
 import { Pagination, reviewTime } from '../../components/CustomerReviews.jsx';
 import { formatVND } from '../../components/FoodCard.jsx';
@@ -43,7 +43,7 @@ function OrderActions({ order, reload }) {
   const id = order.orderId;
   const transfer = awaitingTransfer(order);
   const next = NEXT_ACTION[order.orderStatus];
-  const refundable = order.orderStatus === 'REJECTED' && order.paymentStatus === 'PAID';
+  const refundable = needsRefund(order);
   const rejectable = ['PENDING', 'CONFIRMED'].includes(order.orderStatus);
   return <>
     {transfer && <Alert type="warning" title="Chờ khách chuyển khoản">
@@ -51,7 +51,7 @@ function OrderActions({ order, reload }) {
       số tiền <strong>{formatVND(order.totalAmount)}</strong>, nội dung <strong>{order.transferContent}</strong>.
     </Alert>}
     {refundable && <Alert type="warning" title="Cần hoàn tiền cho khách">
-      Đơn đã thanh toán {formatVND(order.totalAmount)} nhưng bị từ chối.
+      Quán đã nhận {formatVND(order.totalAmount)} cho đơn đã hủy hoặc bị từ chối.
       Liên hệ khách qua {order.recipientPhone} để hoàn tiền.
     </Alert>}
     <div className="tf-order-actions">
@@ -141,14 +141,17 @@ export default function PartnerOrdersPage() {
   const [params, setParams] = useSearchParams();
   const requested = params.get('status');
   const status = Object.hasOwn(ORDER_STATUS, requested) ? requested : '';
+  const refunds = params.get('refunds') === 'true';
   const requestedPage = Number(params.get('page'));
   const page = Number.isInteger(requestedPage) && requestedPage >= 0 && requestedPage <= 10000 ? requestedPage : 0;
-  const identity = `${status}:${page}`;
+  const identity = `${refunds}:${status}:${page}`;
   const currentIdentity = useRef(identity);
   currentIdentity.current = identity;
   const [result, setResult] = useState({ identity: null, data: null, error: '', loading: true });
   const { data, error, loading } = result.identity === identity ? result : { data: null, error: '', loading: true };
-  const setPage = next => setParams({ ...(status ? { status } : {}), ...(next ? { page: next } : {}) });
+  const setPage = next => setParams({
+    ...(refunds ? { refunds: 'true' } : status ? { status } : {}), ...(next ? { page: next } : {}),
+  });
   const [fresh, setFresh] = useState(null);
   const [newOrder, setNewOrder] = useState(false);
   const sequence = useRef(0);
@@ -159,7 +162,7 @@ export default function PartnerOrdersPage() {
       ? { ...previous, loading: !previous.data, error: '' }
       : { identity, data: null, error: '', loading: true });
     try {
-      const result = await partnerOrderApi.list(status, page);
+      const result = await partnerOrderApi.list(status, page, refunds);
       if (request === sequence.current && currentIdentity.current === identity) {
         setResult({ identity, data: result, error: '', loading: false });
       }
@@ -168,7 +171,7 @@ export default function PartnerOrdersPage() {
         setResult(previous => ({ ...previous, error: getErrorMessage(e), loading: false }));
       }
     }
-  }, [status, page, identity]);
+  }, [status, page, refunds, identity]);
   useEffect(() => {
     load();
     return () => { ++sequence.current; };
@@ -177,7 +180,7 @@ export default function PartnerOrdersPage() {
     load();
     if (!event) return;
     setFresh(event.orderId);
-    if (event.created && (page > 0 || !['', 'PENDING'].includes(status))) setNewOrder(true);
+    if (event.created && (refunds || page > 0 || !['', 'PENDING'].includes(status))) setNewOrder(true);
   });
   const showNewest = () => {
     setNewOrder(false);
@@ -195,10 +198,12 @@ export default function PartnerOrdersPage() {
     </Alert>}
     <div className="commerce-filters">
       <label>Trạng thái
-        <select value={status} onChange={e => {
-          setParams(e.target.value ? { status: e.target.value } : {});
+        <select value={refunds ? 'refunds' : status} onChange={e => {
+          const value = e.target.value;
+          setParams(value === 'refunds' ? { refunds: 'true' } : value ? { status: value } : {});
         }}>
           <option value="">Tất cả</option>
+          <option value="refunds">Cần hoàn tiền</option>
           {Object.entries(ORDER_STATUS).map(([value, meta]) => <option key={value} value={value}>
             {meta.label}
           </option>)}

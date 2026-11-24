@@ -15,6 +15,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import vn.edu.iuh.fit.thunderfood.controller.SepayMockController;
+import vn.edu.iuh.fit.thunderfood.controller.SepayWebhookController;
 import vn.edu.iuh.fit.thunderfood.handler.SecurityHandler;
 import vn.edu.iuh.fit.thunderfood.service.MyUserDetailsService;
 
@@ -48,15 +51,19 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, SecurityHandler handlers, vn.edu.iuh.fit.thunderfood.repository.UserRepository users) throws Exception {
+        var sepayWebhook = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, SepayWebhookController.PATH);
+        var sepayMock = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, SepayMockController.PATH);
         http
                 .addFilterBefore(new LiveAccountFilter(users), org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(sepayWebhook, sepayMock)
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(auth -> auth
                         // Luồng SSE đã qua kiểm tra quyền lúc mở; dispatch ASYNC khi đóng luồng không có request mới.
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(sepayWebhook, sepayMock).permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/auth/me").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()

@@ -103,20 +103,23 @@ public class AdminQueryService {
         result.put("slowItems",rows("SELECT m.item_id AS itemId,m.item_name AS name,r.restaurant_name AS restaurantName,COALESCE(s.quantity,0) AS quantity FROM menu_items m JOIN restaurants r ON r.restaurant_id=m.restaurant_id LEFT JOIN (SELECT i.item_id,SUM(i.quantity) AS quantity"+sold+"GROUP BY i.item_id) s ON s.item_id=m.item_id WHERE m.is_deleted=0 AND m.approval_status='APPROVED' AND m.created_at<:until"+scope.menu()+" ORDER BY quantity,m.item_id LIMIT 10",p));
         result.put("latest",rows("SELECT "+ORDER_COLUMNS+" FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE o.created_at>=:from AND o.created_at<:until"+scope.orders()+" ORDER BY o.created_at DESC,o.order_id DESC LIMIT 8",p));
         if(scope.owner()==null) {
-        result.put("attention",one("SELECT (SELECT COUNT(*) FROM orders WHERE order_status='PENDING') AS pending,(SELECT COUNT(*) FROM orders WHERE order_status='REJECTED' AND payment_status='PAID') AS refunds,(SELECT COUNT(*) FROM restaurants WHERE status='PENDING') AS restaurants,(SELECT COUNT(*) FROM review_reports WHERE status IN ('OPEN','PROCESSING')) AS reports",Map.of()));
+        result.put("attention",one("SELECT (SELECT COUNT(*) FROM orders WHERE order_status='PENDING') AS pending,(SELECT COUNT(*) FROM orders o WHERE "+REFUND_REQUIRED+") AS refunds,(SELECT COUNT(*) FROM restaurants WHERE status='PENDING') AS restaurants,(SELECT COUNT(*) FROM review_reports WHERE status IN ('OPEN','PROCESSING')) AS reports",Map.of()));
         } else {
-            result.put("attention",one("SELECT (SELECT COUNT(*) FROM orders o WHERE o.order_status='PENDING'"+scope.orders()+") AS pending,(SELECT COUNT(*) FROM orders o WHERE o.order_status='REJECTED' AND o.payment_status='PAID'"+scope.orders()+") AS refunds",p));
+            result.put("attention",one("SELECT (SELECT COUNT(*) FROM orders o WHERE o.order_status='PENDING'"+scope.orders()+") AS pending,(SELECT COUNT(*) FROM orders o WHERE "+REFUND_REQUIRED+scope.orders()+") AS refunds",p));
         }
         result.put("scope",scope.owner()==null?"admin":"partner");
         result.put("restaurantId",scope.restaurant());
         if(scope.owner()!=null) result.put("byRestaurant",rows("SELECT r.restaurant_id AS id,r.restaurant_name AS name,COUNT(*) AS orders,COALESCE(SUM(CASE WHEN "+ELIGIBLE+" THEN o.subtotal ELSE 0 END),0) AS revenue FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE o.created_at>=:from AND o.created_at<:until"+scope.orders()+" GROUP BY r.restaurant_id,r.restaurant_name ORDER BY revenue DESC,r.restaurant_id",p));
         return result;
     }
-    public PageResponse<Map<String,Object>> orders(String q, String status, String payment, LocalDate from, LocalDate to, Long customer, int page, String sort) {
+    private static final String REFUND_REQUIRED = "o.order_status IN ('REJECTED','CANCELLED') AND o.payment_status='PAID'";
+
+    public PageResponse<Map<String,Object>> orders(String q, String status, String payment, boolean refunds, LocalDate from, LocalDate to, Long customer, int page, String sort) {
         Map<String,Object> p=new HashMap<>(); p.put("q",keyword(q));
         String where=" WHERE (o.order_code LIKE :q ESCAPE '!' OR o.recipient_name LIKE :q ESCAPE '!' OR o.recipient_phone LIKE :q ESCAPE '!' OR EXISTS(SELECT 1 FROM users u WHERE u.user_id=o.customer_id AND (u.full_name LIKE :q ESCAPE '!' OR u.email LIKE :q ESCAPE '!')))";
         if(status!=null&&!status.isEmpty()){ validate(status,Set.of("PENDING","CONFIRMED","PREPARING","DELIVERING","COMPLETED","CANCELLED","REJECTED")); where+=" AND o.order_status=:status";p.put("status",status); }
         if(payment!=null&&!payment.isEmpty()){validate(payment,Set.of("UNPAID","PAID","FAILED","REFUNDED"));where+=" AND o.payment_status=:payment";p.put("payment",payment);}
+        if(refunds) where+=" AND "+REFUND_REQUIRED;
         if(from!=null&&to!=null&&to.isBefore(from)) throw new BusinessException("Ngày kết thúc phải sau ngày bắt đầu");
         if(from!=null){where+=" AND o.created_at>=:from";p.put("from",from.atStartOfDay());}
         if(to!=null){where+=" AND o.created_at<:until";p.put("until",to.plusDays(1).atStartOfDay());}
@@ -130,7 +133,12 @@ public class AdminQueryService {
         row.put("items",rows("SELECT order_item_id AS id,item_id AS itemId,item_name AS itemName,unit_price AS unitPrice,quantity,line_total AS lineTotal,note FROM order_items WHERE order_id=:id ORDER BY order_item_id",p));
         row.put("history",rows("SELECT from_status AS fromStatus,to_status AS toStatus,from_payment AS fromPayment,to_payment AS toPayment,reason,created_at AS createdAt FROM order_history WHERE order_id=:id ORDER BY id",p));
         row.put("notes",rows("SELECT a.id,u.full_name AS actor,a.detail,a.created_at AS createdAt FROM admin_activity_logs a LEFT JOIN users u ON u.user_id=a.actor_id WHERE a.target=CONCAT('order:',:id) ORDER BY a.id DESC",p));
-        row.put("payments",rows("SELECT provider,transaction_code AS transactionCode,amount,payment_status AS status FROM payments WHERE order_id=:id ORDER BY payment_id",p));
+        row.put("payments",rows("""
+                SELECT p.provider,p.transaction_code AS transactionCode,p.amount,p.payment_status AS status,
+                       s.sepay_transaction_id AS sepayTransactionId,s.bank_reference AS bankReference
+                FROM payments p LEFT JOIN sepay_payments s ON s.order_id=p.order_id AND p.provider IN ('SEPAY','SEPAY_MOCK')
+                WHERE p.order_id=:id ORDER BY p.payment_id
+                """,p));
         return row;
     }
     public PageResponse<Map<String,Object>> users(String q,String role,String status,int page) {

@@ -28,6 +28,7 @@ def run():
     migration = (ROOT / 'backend/database/migrations/V5__admin.sql').read_text(encoding='utf-8')
     sql(migration)
     sql(migration)
+    sql((ROOT / 'backend/database/migrations/V6__sepay.sql').read_text(encoding='utf-8'))
     check(sql("USE thunderfood; SELECT COUNT(*) FROM roles WHERE role_code='STAFF'") == '1', 'V5 is repeatable without duplicating roles')
     admin = Session('admin@thunderfood.vn')
     customer = Session('customer@example.com')

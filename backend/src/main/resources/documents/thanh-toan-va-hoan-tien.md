@@ -6,11 +6,11 @@
 - Quán chỉ hỗ trợ VietQR khi ngân hàng của quán nằm trong danh sách ngân hàng được hỗ trợ. Nếu không, khách chỉ chọn được thanh toán khi nhận hàng.
 
 ## Đối soát VietQR
-- ThunderFood không kết nối với ngân hàng, nên hệ thống không tự biết tiền đã về.
-- Quán tự đối soát trong tài khoản ngân hàng của mình, rồi bấm "Đã nhận tiền" trên trang quản lý đơn. Lúc đó đơn chuyển sang đã thanh toán và đã xác nhận.
+- Với tài khoản liên kết SePay, đơn được xác nhận tự động khi giao dịch khớp mã đơn, số tiền và tài khoản nhận.
+- Với tài khoản đối soát thủ công, quán kiểm tra giao dịch trong ngân hàng rồi bấm "Đã nhận tiền" trên trang quản lý đơn.
 
 ## Hoàn tiền
-- Hoàn tiền chỉ áp dụng cho đơn đã thanh toán nhưng bị từ chối.
+- Hoàn tiền áp dụng cho đơn đã nhận tiền và đã hủy hoặc bị từ chối, kể cả khi giao dịch tới sau lúc đóng đơn.
 - Việc hoàn tiền được thực hiện ngoài hệ thống bởi quán, sau đó quán bấm "Đã hoàn tiền" trên ThunderFood.
 - Hiện không có hoàn tiền một phần.
 

@@ -131,6 +131,6 @@ Thành phần chính:
 - Frontend: `pages/admin/Admin*`, danh sách/chi tiết duyệt quán, `api/adminApi.js`, `styles/admin.css`, routing, sidebar theo quyền; tái sử dụng form/modal và các component đơn hàng.
 - Migration, Docker init, unit/integration tests và cấu hình DB theo biến môi trường.
 
-Giả định: ThunderFood là nền tảng nhiều quán; phí giao theo quán; nhân viên vận hành được xử lý đơn và thực đơn nhưng xác nhận tiền ngân hàng cần ADMIN hoặc chủ quán theo luồng sẵn có. Tất cả xác nhận/hoàn tiền VietQR là ghi nhận đối soát thủ công; chưa có tích hợp ngân hàng, webhook hoặc tự động chuyển/hoàn tiền. Không có hoàn tiền một phần hay hoàn đơn COMPLETED trong nghiệp vụ hiện tại.
+ThunderFood là nền tảng nhiều quán, mỗi quán quy định phí giao. ADMIN và chủ quán có quyền đối soát tiền thủ công. Tài khoản đã liên kết có thể xác nhận thanh toán tự động qua [SePay Webhooks](README.md#bật-xác-nhận-qua-sepay). Chủ quán chuyển khoản hoàn tiền rồi ghi nhận kết quả trên ứng dụng.
 
 Nguồn đối chiếu cơ chế filter/phân quyền: [Spring Security 6.5 — Authorize HTTP Requests](https://docs.spring.io/spring-security/reference/6.5/servlet/authorization/authorize-http-requests.html).

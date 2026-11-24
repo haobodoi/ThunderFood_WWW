@@ -1,0 +1,32 @@
+name: thunderfood-sepay-mock
+
+services:
+  db:
+    environment:
+      MARIADB_ROOT_PASSWORD: sepay-local-only
+    volumes:
+      - ./backend/database/seeds/sepay_mock.sql:/docker-entrypoint-initdb.d/02-sepay-mock.sql:ro
+    ports: !override
+      - "127.0.0.1:13318:3306"
+
+  qdrant:
+    profiles: [optional-rag]
+
+  backend:
+    depends_on: !override
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: sepay-mock
+      SPRING_DATASOURCE_PASSWORD: sepay-local-only
+      AI_RAG_ENABLED: "false"
+      ANTHROPIC_API_KEY: ""
+      DEEPSEEK_API_KEY: ""
+      QDRANT_HOST: localhost
+      SEPAY_WEBHOOK_SECRET: ""
+      SEPAY_BANK_ACCOUNTS: ""
+      SEPAY_MOCK_TOKEN: ${SEPAY_MOCK_TOKEN:-thunderfood-local}
+
+  frontend:
+    ports: !override
+      - "127.0.0.1:15173:80"

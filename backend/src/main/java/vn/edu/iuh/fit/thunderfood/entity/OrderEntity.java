@@ -134,6 +134,10 @@ public class OrderEntity {
         payments.add(new PaymentEntity(this, provider, transactionCode, totalAmount, now));
     }
 
+    public boolean hasPaymentProvider(String provider) {
+        return payments.stream().anyMatch(payment -> provider.equals(payment.getProvider()));
+    }
+
     public void moveTo(OrderStatusEnum status, LocalDateTime now) {
         orderStatus = status;
         updatedAt = now;

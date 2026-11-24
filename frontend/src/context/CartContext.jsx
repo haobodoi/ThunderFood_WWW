@@ -29,6 +29,7 @@ export function CartProvider({ children }) {
   const channel = useRef(null);
   const refresh = useCallback(async () => {
     const owner = identity;
+    if (actor.current !== owner) return;
     const request = ++sequence.current;
     if (!owner) { setSnapshot({ owner: null, carts: [] }); setError(''); setLoading(false); return; }
     setLoading(true);
@@ -59,6 +60,10 @@ export function CartProvider({ children }) {
     return () => { window.removeEventListener('focus', focus); channel.current?.close(); channel.current = null; };
   }, [refresh]);
   const carts = snapshot.owner === identity ? snapshot.carts : [];
+  const refreshAfterCheckout = () => {
+    channel.current?.postMessage('changed');
+    return refresh();
+  };
   const mutate = async operation => {
     if (!identity) throw new Error('Vui lòng đăng nhập bằng tài khoản khách hàng.');
     if (lock.current || loading || error || snapshot.owner !== identity) throw new Error('Giỏ chưa đồng bộ. Vui lòng tải lại giỏ và thử lại.');
@@ -76,12 +81,12 @@ export function CartProvider({ children }) {
       channel.current?.postMessage('changed');
       return cart;
     } catch (err) {
-      if (actor.current === owner) { await refresh(); setError(getErrorMessage(err, err.message)); }
+      if (actor.current === owner) await refresh();
       throw err;
     } finally { lock.current = false; setBusy(false); }
   };
   const find = restaurant => carts.find(c => String(c.restaurantId) === String(restaurant));
-  return <CartContext.Provider value={{ carts, loading: loading || (Boolean(identity) && snapshot.owner !== identity), busy, error, refresh,
+  return <CartContext.Provider value={{ carts, loading: loading || (Boolean(identity) && snapshot.owner !== identity), busy, error, refresh, refreshAfterCheckout,
     count: carts.reduce((n, c) => n + Number(c.quantity), 0), find,
     add: (item, quantity, note = '') => mutate(() => cartApi.add({ itemId: item.id, quantity, note, version: find(item.restaurantId)?.version ?? 0 })),
     change: (cart, line, quantity, note) => mutate(() => cartApi.change(cart.cartId, line.cartItemId, {

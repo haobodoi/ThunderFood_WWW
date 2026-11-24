@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { orderApi } from '../../api/orderApi.js';
 import { getErrorMessage, getFieldErrors } from '../../api/baseApi.js';
@@ -11,8 +11,12 @@ import { OrderLines, OrderTotals } from '../../components/OrderParts.jsx';
 
 export default function CheckoutPage() {
   const { cartId } = useParams();
+  return <Checkout key={cartId} cartId={cartId} />;
+}
+
+function Checkout({ cartId }) {
   const { user } = useAuth();
-  const { refresh } = useCart();
+  const { refreshAfterCheckout } = useCart();
   const navigate = useNavigate();
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -27,19 +31,28 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const active = useRef(false);
+  const submittingRef = useRef(false);
+  const loadSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const request = ++loadSequence.current;
     try {
-      setPreview(await orderApi.preview(cartId));
-      setLoadError('');
+      const result = await orderApi.preview(cartId);
+      if (request === loadSequence.current) {
+        setPreview(result);
+        setLoadError('');
+      }
     } catch (e) {
-      setLoadError(getErrorMessage(e));
+      if (request === loadSequence.current) setLoadError(getErrorMessage(e));
     } finally {
-      setLoading(false);
+      if (request === loadSequence.current) setLoading(false);
     }
   }, [cartId]);
   useEffect(() => {
+    active.current = true;
     load();
+    return () => { active.current = false; ++loadSequence.current; };
   }, [load]);
 
   if (loading) return <main className="container commerce-page">
@@ -56,24 +69,22 @@ export default function CheckoutPage() {
   const update = event => setForm(previous => ({ ...previous, [event.target.name]: event.target.value }));
   const submit = async event => {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setError('');
     setFieldErrors({});
     try {
-      const order = await orderApi.checkout({
-        ...form,
-        cartId: preview.cartId,
-        version: preview.version,
-        expectedTotal: preview.totalAmount,
-        paymentMethod: chosen
-      });
-      await refresh();
-      navigate(`/customer/orders/${order.orderId}`, { replace: true });
+      const order = await orderApi.checkout(preview, { ...form, paymentMethod: chosen });
+      await refreshAfterCheckout();
+      if (active.current) navigate(`/customer/orders/${order.orderId}`, { replace: true });
     } catch (e) {
+      if (!active.current) return;
       setError(getErrorMessage(e));
       setFieldErrors(getFieldErrors(e));
       // Tổng tiền hoặc giỏ có thể vừa đổi: hiện số mới để khách xem lại, không tự gửi lại.
       await load();
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -145,7 +156,7 @@ export default function CheckoutPage() {
         <OrderTotals subtotal={preview.subtotal} fee={preview.deliveryFee} total={preview.totalAmount} />
         {error && <Alert type="error">{error}</Alert>}
         <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>
-          {submitting ? 'Đang đặt hàng…' : chosen === 'ONLINE' ? 'Đặt hàng và lấy mã QR' : 'Đặt hàng'}
+          {submitting ? 'Đang đặt hàng…' : chosen === 'ONLINE' ? 'Đặt hàng và thanh toán' : 'Đặt hàng'}
         </button>
         <Link className="btn btn--ghost btn--block" to="/customer/cart">Quay lại giỏ hàng</Link>
       </aside>

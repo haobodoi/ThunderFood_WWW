@@ -56,7 +56,16 @@ public final class OrderResponses {
                             String accountNumber,
                             String accountHolder,
                             BigDecimal amount,
-                            String content) {}
+                            String content,
+                            boolean automatic,
+                            boolean simulated) {}
+
+    public record MockPaymentResult(boolean success, String orderCode, String orderStatus, String paymentStatus) {
+        public static MockPaymentResult from(OrderEntity order) {
+            return new MockPaymentResult(true, order.getOrderCode(), order.getOrderStatus().name(),
+                    order.getPaymentStatus().name());
+        }
+    }
 
     public record OrderSummary(long orderId,
                                String orderCode,

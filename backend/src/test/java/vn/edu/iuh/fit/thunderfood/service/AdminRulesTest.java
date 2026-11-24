@@ -29,7 +29,9 @@ class AdminRulesTest {
         order.addPayment("COD","TFTEST",now);
         org.springframework.test.util.ReflectionTestUtils.setField(order,"id",1L);
         when(repository.findWithLockById(1L)).thenReturn(Optional.of(order));
-        service=new OrderService(repository,mock(RestaurantRepository.class),mock(CartRepository.class),rules,mock(CartService.class),mock(OrderEvents.class),mock(ApplicationEventPublisher.class));
+        service=new OrderService(repository,mock(RestaurantRepository.class),mock(CartRepository.class),rules,
+                mock(CartService.class),mock(OrderEvents.class),mock(ApplicationEventPublisher.class),
+                mock(SepayConfiguration.class),mock(SepayPaymentRepository.class));
     }
     private void action(OrderStatusEnum target){service.administer(1,"status",order.getOrderStatus(),order.getPaymentStatus(),new OrderStatus(target,"Lý do hợp lệ"));}
     @Test void codOnlySettlesAtCompletion(){

@@ -38,8 +38,8 @@ public class AdminController {
     }
 
     @GetMapping("/orders")
-    public PageResponse<Map<String, Object>> orders(@RequestParam(defaultValue = "") String q, @RequestParam(required = false) String status, @RequestParam(required = false) String payment, @RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) Long customer, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "newest") String sort) {
-        return query.orders(q, status, payment, from, to, customer, page, sort);
+    public PageResponse<Map<String, Object>> orders(@RequestParam(defaultValue = "") String q, @RequestParam(required = false) String status, @RequestParam(required = false) String payment, @RequestParam(defaultValue = "false") boolean refunds, @RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) Long customer, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "newest") String sort) {
+        return query.orders(q, status, payment, refunds, from, to, customer, page, sort);
     }
 
     @GetMapping("/orders/{id}")

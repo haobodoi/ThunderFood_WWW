@@ -39,6 +39,8 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-123456}
       APP_UPLOAD_DIR: /app/uploads
+      SEPAY_WEBHOOK_SECRET: ${SEPAY_WEBHOOK_SECRET:-}
+      SEPAY_BANK_ACCOUNTS: ${SEPAY_BANK_ACCOUNTS:-}
       TZ: Asia/Ho_Chi_Minh
     volumes:
       - uploads:/app/uploads

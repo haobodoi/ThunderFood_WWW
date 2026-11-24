@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { orderApi } from '../../api/orderApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
-import { PAYMENT_METHOD, awaitingTransfer } from '../../utils/orderUtils.js';
+import { PAYMENT_METHOD, awaitingTransfer, needsRefund } from '../../utils/orderUtils.js';
 import { useOrderEvents } from '../../hooks/useOrderEvents.js';
 import { reviewTime } from '../../components/CustomerReviews.jsx';
 import Alert from '../../components/Alert.jsx';
@@ -58,6 +58,10 @@ function CancelOrder({ order, onDone }) {
 
 export default function OrderDetailPage() {
   const { id } = useParams();
+  return <OrderDetail key={id} id={id} />;
+}
+
+function OrderDetail({ id }) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
   const sequence = useRef(0);
@@ -75,6 +79,7 @@ export default function OrderDetailPage() {
   }, [id]);
   useEffect(() => {
     load();
+    return () => { ++sequence.current; };
   }, [load]);
   const live = useOrderEvents('customer', event => {
     if (!event || String(event.orderId) === String(id)) load();
@@ -112,7 +117,7 @@ export default function OrderDetailPage() {
       Quán hiện chưa nhận được thanh toán VietQR. Vui lòng gọi {order.restaurantPhone} hoặc hủy đơn rồi đặt lại
       với thanh toán khi nhận hàng.
     </Alert>}
-    {order.orderStatus === 'REJECTED' && order.paymentStatus === 'PAID' && <Alert type="warning">
+    {needsRefund(order) && <Alert type="warning">
       Đơn đã thanh toán nên quán cần hoàn tiền cho bạn. Liên hệ quán qua {order.restaurantPhone}.
     </Alert>}
     <div className="tf-checkout">
@@ -124,7 +129,11 @@ export default function OrderDetailPage() {
         <p className="muted">Đặt lúc {reviewTime(order.createdAt)}</p>
         {order.orderStatus === 'PENDING' && order.paymentStatus === 'UNPAID' && <CancelOrder
           order={order}
-          onDone={setOrder}
+          onDone={updated => {
+            ++sequence.current;
+            setOrder(updated);
+            setError('');
+          }}
         />}
       </section>
       <aside className="tf-checkout__summary">

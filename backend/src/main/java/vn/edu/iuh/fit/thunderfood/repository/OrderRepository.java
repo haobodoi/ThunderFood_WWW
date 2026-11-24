@@ -9,9 +9,11 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.edu.iuh.fit.thunderfood.entity.OrderEntity;
+import vn.edu.iuh.fit.thunderfood.enums.OrderPaymentStatusEnum;
 import vn.edu.iuh.fit.thunderfood.enums.OrderStatusEnum;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +22,9 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<OrderEntity> findWithLockById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<OrderEntity> findWithLockByOrderCode(String orderCode);
 
     Optional<OrderEntity> findByIdAndCustomerId(Long id, Long customerId);
 
@@ -33,6 +38,10 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
     Page<OrderEntity> findByRestaurantOwnerUserIdAndOrderStatus(Long ownerUserId,
                                                                 OrderStatusEnum status,
                                                                 Pageable pageable);
+
+    @EntityGraph(attributePaths = "restaurant")
+    Page<OrderEntity> findByRestaurantOwnerUserIdAndOrderStatusInAndPaymentStatus(
+            Long ownerUserId, Collection<OrderStatusEnum> statuses, OrderPaymentStatusEnum payment, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<OrderEntity> findWithLockByIdAndCustomerId(Long id, Long customerId);
