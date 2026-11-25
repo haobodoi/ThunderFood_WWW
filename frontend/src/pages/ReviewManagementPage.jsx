@@ -93,7 +93,7 @@ export default function ReviewManagementPage({ area = 'customer' }) {
     load(page).then(result => { if (active) setData(result); }).catch(e => { if (active) setError(getErrorMessage(e)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [area, page, revision]);
-  return <main className={area === 'customer' ? 'container commerce-page' : 'commerce-page'}>
+  return <div className={area === 'customer' ? 'container commerce-page' : 'commerce-page'}>
     <div className="commerce-row"><h1>{area === 'partner' ? 'Đánh giá về quán' : 'Đánh giá của tôi'}</h1><button className="btn btn--outline" disabled={loading} onClick={reload}>Tải lại</button></div>
     {area === 'customer' && location.state?.notice && <Alert type="success">{location.state.notice}</Alert>}
     {error && <Alert type="error">{error}</Alert>}
@@ -110,5 +110,5 @@ export default function ReviewManagementPage({ area = 'customer' }) {
         </section>)}
       <Pagination page={page} total={data?.total || 0} setPage={setPage} />
     </>}
-  </main>;
+  </div>;
 }

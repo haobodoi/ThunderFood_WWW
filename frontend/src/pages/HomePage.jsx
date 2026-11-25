@@ -27,7 +27,7 @@ export default function HomePage() {
           <p>Khám phá quán yêu thích, chọn món hợp khẩu vị và thưởng thức theo cách của bạn.</p>
           <form className="home-hero__search" onSubmit={handleSearch}>
             <Icon name="search" size={20} />
-            <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm quán hoặc món ăn" aria-label="Tìm quán hoặc món ăn" />
+            <input id="home-hero-search" name="heroSearch" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm quán hoặc món ăn" aria-label="Tìm quán hoặc món ăn" />
             <button className="btn btn--primary" type="submit">Tìm kiếm</button>
           </form>
           <div className="home-hero__links"><button type="button" className="home-hero__discover" onClick={discover}>Khám phá nhà hàng <Icon name="arrowRight" size={17} /></button><Link to={user ? homePathFor(user) : '/login'}>{user ? 'Tài khoản của tôi' : 'Đăng nhập'}</Link></div>

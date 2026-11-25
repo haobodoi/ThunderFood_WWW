@@ -4,7 +4,7 @@ import { orderApi } from '../../api/orderApi.js';
 import { reviewApi } from '../../api/customerApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { PAYMENT_METHOD } from '../../utils/orderUtils.js';
-import { reviewTime, RatingFields } from '../../components/CustomerReviews.jsx';
+import { reviewTime, RatingFields, ReviewCard } from '../../components/CustomerReviews.jsx';
 import { OrderLines, OrderStatus, PaymentStatus } from '../../components/OrderParts.jsx';
 import Alert from '../../components/Alert.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -144,18 +144,25 @@ function OrderReview({ id }) {
     finally { if (alive.current) setBusy(false); }
   };
 
-  if (error && !order) return <main className="container commerce-page"><Alert type="error">{error}</Alert><Link className="btn btn--outline" to="/customer/orders">Về đơn hàng của tôi</Link></main>;
-  if (!order) return <main className="container commerce-page"><p role="status">Đang tải thông tin đơn hàng…</p></main>;
+  if (error && !order) return <div className="container commerce-page"><Alert type="error">{error}</Alert><Link className="btn btn--outline" to="/customer/orders">Về đơn hàng của tôi</Link></div>;
+  if (!order) return <div className="container commerce-page"><p role="status">Đang tải thông tin đơn hàng…</p></div>;
 
   const imageCount = (review?.images?.length || 0) + queuedImages.length;
-  return <main className="container commerce-page order-review-page">
+  return <div className="container commerce-page order-review-page">
     <Link to={`/customer/orders/${order.orderId}`} className="order-review-page__back">← Quay lại chi tiết đơn hàng</Link>
     <div className="commerce-row commerce-wrap"><div><h1>Đánh giá đồ ăn</h1><p>Đơn {order.orderCode} · hoàn tất lúc {reviewTime(order.completedAt)}</p></div><div className="order-review-page__statuses"><OrderStatus status={order.orderStatus} /><PaymentStatus status={order.paymentStatus} /></div></div>
     <div className="order-review-page__grid">
       <section className="commerce-cart order-review-page__items"><h2>Món bạn đã dùng</h2><p><strong>{order.restaurantName}</strong></p><OrderLines items={order.items} /><p className="muted">{PAYMENT_METHOD[order.paymentMethod]} · Tổng thanh toán: <strong>{Number(order.totalAmount).toLocaleString('vi-VN')} ₫</strong></p></section>
       <section className="commerce-compose order-review-page__form">
-        <h2>Chia sẻ trải nghiệm</h2>
-        {isReviewable(order) ? review?.editable === false ? <Alert type="warning" title="Đánh giá đã hết hạn sửa">Đánh giá này chỉ được chỉnh sửa hoặc thêm ảnh trong 7 ngày sau khi gửi.</Alert> : <form className="form" onSubmit={submit}>
+        <h2>{review?.editable === false ? 'Đánh giá bạn đã gửi' : 'Chia sẻ trải nghiệm'}</h2>
+        {isReviewable(order) ? review?.editable === false ? <div className="order-review-page__readonly">
+          <Alert type="info" title="Đánh giá đã hết hạn sửa">Đánh giá này chỉ được chỉnh sửa hoặc thêm ảnh trong 7 ngày sau khi gửi.</Alert>
+          <ReviewCard review={review} />
+          <div className="tf-order-actions">
+            <Link className="btn btn--outline" to="/customer/reviews">Quản lý đánh giá của tôi</Link>
+            <Link className="btn btn--ghost" to={`/customer/orders/${order.orderId}`}>Về chi tiết đơn</Link>
+          </div>
+        </div> : <form className="form" onSubmit={submit}>
           {reviewLoadError && <Alert type="warning">{reviewLoadError} <button type="button" className="btn btn--outline btn--sm" onClick={async () => {
             setBusy(true);
             await load();
@@ -181,5 +188,5 @@ function OrderReview({ id }) {
         </form> : <><Alert type="warning" title="Đơn chưa đủ điều kiện đánh giá">Chỉ đơn đã hoàn tất và có trạng thái thanh toán thành công mới có thể gửi đánh giá.</Alert><Link className="btn btn--outline" to={`/customer/orders/${order.orderId}`}>Xem chi tiết đơn</Link></>}
       </section>
     </div>
-  </main>;
+  </div>;
 }

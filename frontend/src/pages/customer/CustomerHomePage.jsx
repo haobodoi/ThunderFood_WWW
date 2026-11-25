@@ -13,7 +13,12 @@ export default function CustomerHomePage() {
           <div>
             <h1>Xin chào, {user?.fullName || 'bạn'}!</h1>
             <p>Khám phá thực đơn và chọn món cho bữa ăn hôm nay.</p>
-            <Link className="btn btn--outline" to="/customer/assistant">Hỏi về chính sách</Link>
+            <div className="customer-home__actions">
+              <Link className="btn btn--primary btn--sm" to="/customer/orders">Đơn hàng của tôi</Link>
+              <Link className="btn btn--outline btn--sm" to="/customer/cart">Giỏ hàng</Link>
+              <Link className="btn btn--outline btn--sm" to="/customer/reviews">Đánh giá của tôi</Link>
+              <Link className="btn btn--ghost btn--sm" to="/customer/assistant">Hỏi về chính sách</Link>
+            </div>
           </div>
           <div className="welcome-card__icon"><Icon name="utensils" size={32} /></div>
         </div>

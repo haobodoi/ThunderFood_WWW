@@ -31,7 +31,7 @@ export default function Navbar() {
             Khám phá quán ngon
           </a>
           {user && (
-            <NavLink to={homePathFor(user)} className="navbar__link">
+            <NavLink to={homePathFor(user)} end className="navbar__link">
               {ROLE_LABEL[user.role]}
             </NavLink>
           )}
@@ -39,11 +39,11 @@ export default function Navbar() {
 
         <div className="navbar__actions">
           {user?.role === 'CUSTOMER' && <>
-            <Link className="btn btn--ghost btn--sm navbar__cart-link" to="/customer/cart" aria-label={`Giỏ hàng, ${count} món`}>
+            <NavLink className={({ isActive }) => `btn btn--ghost btn--sm navbar__cart-link${isActive ? ' is-active' : ''}`} to="/customer/cart" aria-label={`Giỏ hàng, ${count} món`}>
               <span>Giỏ hàng</span>
               <span className="navbar__cart-count" aria-hidden="true">{count > 99 ? '99+' : count}</span>
-            </Link>
-            <Link className="btn btn--ghost btn--sm navbar__customer-link" to="/customer/orders">Đơn hàng</Link>
+            </NavLink>
+            <NavLink className={({ isActive }) => `btn btn--ghost btn--sm navbar__customer-link${isActive ? ' is-active' : ''}`} to="/customer/orders">Đơn hàng</NavLink>
           </>}
           {initializing ? (
             <span className="navbar__placeholder" aria-hidden="true" />

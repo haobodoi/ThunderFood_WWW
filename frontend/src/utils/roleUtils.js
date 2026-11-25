@@ -31,7 +31,12 @@ export function canAccessPath(user, path) {
 }
 
 export function initialsOf(name = '') {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
-  return parts[parts.length - 1].charAt(0).toUpperCase();
+  const letterParts = parts.filter((part) => /\p{L}/u.test(part));
+  const meaningful = letterParts.filter((part) => part.toLowerCase() !== 'demo');
+  const pool = meaningful.length ? meaningful : letterParts.length ? letterParts : parts;
+  const target = pool[pool.length - 1];
+  const match = target.match(/\p{L}/u);
+  return (match ? match[0] : target.charAt(0)).toUpperCase();
 }

@@ -35,7 +35,7 @@ export default function OrdersPage() {
   }, [load]);
   const live = useOrderEvents('customer', load);
 
-  return <main className="container commerce-page">
+  return <div className="container commerce-page">
     <div className="commerce-row commerce-wrap">
       <h1>Đơn hàng của tôi</h1>
       <LiveStatus live={live} />
@@ -65,5 +65,5 @@ export default function OrdersPage() {
       </Link>
     </article>)}
     {!loading && <Pagination page={page} total={data?.total || 0} setPage={setPage} />}
-  </main>;
+  </div>;
 }

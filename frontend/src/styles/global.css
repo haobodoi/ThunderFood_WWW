@@ -2467,7 +2467,7 @@ select.field__input {
 .modal {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 120;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3990,12 +3990,12 @@ select.field__input {
 .tf-store-hero__main { align-items: flex-start; flex-wrap: nowrap; min-width: 0; }
 .tf-store-hero__avatar { width: 92px; height: 92px; border-width: 1px; border-radius: 12px; }
 .tf-store-hero__info { min-width: 0; padding-top: 0; }
-.tf-store-hero__heading { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px 14px; }
+.tf-store-hero__heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
 .tf-store-hero__heading h1 {
-  flex: 1 1 240px; min-width: 0; font-size: clamp(22px, 2.5vw, 30px);
+  flex: 0 1 auto; min-width: 0; font-size: clamp(22px, 2.5vw, 30px);
   overflow-wrap: anywhere;
 }
-.tf-store-hero__heading .service-status { flex: none; margin-top: 5px; }
+.tf-store-hero__heading .service-status { flex: none; margin-top: 2px; }
 .tf-store-hero__description { margin-top: 8px; font-size: 14px; max-width: 68ch; color: var(--tf-text-body); }
 .tf-store-hero__contact { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; color: var(--tf-text-muted); font-size: 13px; }
 .tf-store-hero__contact span, .tf-store-hero__contact a { display: inline-flex; align-items: baseline; gap: 6px; overflow-wrap: anywhere; }

@@ -55,13 +55,13 @@ function Checkout({ cartId }) {
     return () => { active.current = false; ++loadSequence.current; };
   }, [load]);
 
-  if (loading) return <main className="container commerce-page">
+  if (loading) return <div className="container commerce-page">
     <p role="status">Đang tải đơn hàng…</p>
-  </main>;
-  if (loadError) return <main className="container commerce-page">
+  </div>;
+  if (loadError) return <div className="container commerce-page">
     <Alert type="error">{loadError}</Alert>
     <Link className="btn btn--outline" to="/customer/cart">Về giỏ hàng</Link>
-  </main>;
+  </div>;
 
   const available = preview.items.filter(line => line.available);
   const skipped = preview.items.filter(line => !line.available);
@@ -89,13 +89,13 @@ function Checkout({ cartId }) {
     }
   };
 
-  if (!available.length) return <main className="container commerce-page">
+  if (!available.length) return <div className="container commerce-page">
     <h1>Đặt hàng</h1>
     <Alert type="warning">Giỏ của {preview.restaurantName} chưa có món nào đặt được lúc này.</Alert>
     <Link className="btn btn--outline" to="/customer/cart">Về giỏ hàng</Link>
-  </main>;
+  </div>;
 
-  return <main className="container commerce-page">
+  return <div className="container commerce-page">
     <h1>Đặt hàng</h1>
     <form className="tf-checkout" onSubmit={submit} noValidate>
       <div className="commerce-cart tf-checkout__form">
@@ -161,5 +161,5 @@ function Checkout({ cartId }) {
         <Link className="btn btn--ghost btn--block" to="/customer/cart">Quay lại giỏ hàng</Link>
       </aside>
     </form>
-  </main>;
+  </div>;
 }
