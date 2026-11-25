@@ -12,10 +12,6 @@ import Icon from '../../components/Icon.jsx';
 const MAX_REVIEW_IMAGES = 5;
 const MAX_IMAGE_BYTES = 1024 * 1024;
 
-function isReviewable(order) {
-  return order?.orderStatus === 'COMPLETED' && order?.paymentStatus === 'PAID';
-}
-
 function imageError(file) {
   return !['image/jpeg', 'image/png'].includes(file.type) || file.size > MAX_IMAGE_BYTES
     ? 'Chỉ nhận ảnh JPG/PNG tối đa 1MB.' : '';
@@ -31,7 +27,9 @@ function OrderReview({ id }) {
   const [order, setOrder] = useState(null);
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
-  const [review, setReview] = useState(null);
+  const [reviewState, setReviewState] = useState(null);
+  const review = reviewState?.review;
+  const canEdit = review ? review.editable : reviewState?.canCreate;
   const [queuedImages, setQueuedImages] = useState([]);
   const [error, setError] = useState('');
   const [reviewLoadError, setReviewLoadError] = useState('');
@@ -41,25 +39,29 @@ function OrderReview({ id }) {
   const alive = useRef(true);
   const queuedRef = useRef([]);
   const imageSequence = useRef(0);
+  const loadSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const request = ++loadSequence.current;
     setError('');
     setReviewLoadError('');
     try {
-      const [result, existing] = await Promise.all([
+      const [result, state] = await Promise.all([
         orderApi.get(id),
-        reviewApi.forOrder(id).catch(reviewError => {
-          if (alive.current) setReviewLoadError(getErrorMessage(reviewError, 'Không thể tải đánh giá đã có.'));
+        reviewApi.orderState(id).catch(reviewError => {
+          if (request === loadSequence.current) setReviewLoadError(getErrorMessage(reviewError, 'Không thể tải thông tin đánh giá.'));
           return null;
         }),
       ]);
-      if (alive.current) {
-        setOrder(result);
-        setReview(existing);
-        if (existing) { setRating(existing.rating); setContent(existing.content); }
+      if (request !== loadSequence.current) return;
+      setOrder(result);
+      setReviewState(state);
+      if (state?.review) {
+        setRating(state.review.rating);
+        setContent(state.review.content);
       }
     } catch (requestError) {
-      if (alive.current) setError(getErrorMessage(requestError, 'Không thể tải đơn hàng để đánh giá.'));
+      if (request === loadSequence.current) setError(getErrorMessage(requestError, 'Không thể tải đơn hàng để đánh giá.'));
     }
   }, [id]);
 
@@ -68,6 +70,7 @@ function OrderReview({ id }) {
     load();
     return () => {
       alive.current = false;
+      ++loadSequence.current;
       queuedRef.current.forEach(image => URL.revokeObjectURL(image.previewUrl));
     };
   }, [load]);
@@ -102,7 +105,7 @@ function OrderReview({ id }) {
 
   const submit = async event => {
     event.preventDefault();
-    if (busy || reviewLoadError || !isReviewable(order)) return;
+    if (busy || reviewLoadError || !canEdit) return;
     setBusy(true); setSubmitError(''); setSuccess('');
     try {
       if (review) {
@@ -118,15 +121,15 @@ function OrderReview({ id }) {
         savedReview = await reviewApi.forOrder(id);
       }
       if (alive.current) {
-        setReview(savedReview);
+        setReviewState({ review: savedReview, canCreate: false, reason: '' });
         setSuccess('Đã lưu đánh giá. Bạn vẫn có thể chỉnh sửa hoặc thêm ảnh trong 7 ngày.');
       }
     } catch (requestError) {
       if (alive.current) {
         setSubmitError(getErrorMessage(requestError, 'Không thể lưu đánh giá. Ảnh chưa tải vẫn được giữ lại để bạn thử lại.'));
         try {
-          const latest = await reviewApi.forOrder(id);
-          if (alive.current) setReview(latest);
+          const latest = await reviewApi.orderState(id);
+          if (alive.current) setReviewState(latest);
         } catch (reloadError) {
           if (alive.current) setReviewLoadError(getErrorMessage(reloadError, 'Không thể đồng bộ lại đánh giá.'));
         }
@@ -156,7 +159,12 @@ function OrderReview({ id }) {
       <section className="commerce-cart order-review-page__items"><h2>Món bạn đã dùng</h2><p><strong>{order.restaurantName}</strong></p><OrderLines items={order.items} /><p className="muted">{PAYMENT_METHOD[order.paymentMethod]} · Tổng thanh toán: <strong>{Number(order.totalAmount).toLocaleString('vi-VN')} ₫</strong></p></section>
       <section className="commerce-compose order-review-page__form">
         <h2>{review?.editable === false ? 'Đánh giá của bạn' : 'Chia sẻ trải nghiệm'}</h2>
-        {isReviewable(order) ? review?.editable === false ? <div className="order-review-page__readonly">
+        {reviewLoadError && <Alert type="warning">{reviewLoadError} <button type="button" className="btn btn--outline btn--sm" disabled={busy} onClick={async () => {
+          setBusy(true);
+          await load();
+          if (alive.current) setBusy(false);
+        }}>Tải lại đánh giá</button></Alert>}
+        {review?.editable === false && <div className="order-review-page__readonly">
           {deleted ? <Alert type="info" title="Đánh giá đã xóa">
             Bạn đã xóa đánh giá này. Mỗi đơn hàng chỉ được đánh giá một lần, kể cả khi đánh giá đã xóa.
           </Alert> : <>
@@ -167,12 +175,8 @@ function OrderReview({ id }) {
             <Link className="btn btn--outline" to="/customer/reviews">Quản lý đánh giá của tôi</Link>
             <Link className="btn btn--ghost" to={`/customer/orders/${order.orderId}`}>Về chi tiết đơn</Link>
           </div>
-        </div> : <form className="form" onSubmit={submit}>
-          {reviewLoadError && <Alert type="warning">{reviewLoadError} <button type="button" className="btn btn--outline btn--sm" onClick={async () => {
-            setBusy(true);
-            await load();
-            if (alive.current) setBusy(false);
-          }}>Tải lại đánh giá</button></Alert>}
+        </div>}
+        {canEdit && <form className="form" onSubmit={submit}>
           {success && <Alert type="success">{success}</Alert>}
           <p>Hãy chia sẻ cảm nhận tổng quan về đồ ăn và trải nghiệm tại <strong>{order.restaurantName}</strong>.</p>
           <RatingFields {...{ rating, setRating, content, setContent }} />
@@ -190,7 +194,12 @@ function OrderReview({ id }) {
           {submitError && <Alert type="error">{submitError}</Alert>}
           <button className="btn btn--primary" disabled={busy || Boolean(reviewLoadError)}>{busy ? 'Đang lưu…' : review ? 'Lưu chỉnh sửa' : 'Gửi đánh giá'}</button>
           <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => navigate('/customer/orders')}>Về đơn hàng</button>
-        </form> : <><Alert type="warning" title="Đơn chưa đủ điều kiện đánh giá">Chỉ đơn đã hoàn tất và có trạng thái thanh toán thành công mới có thể gửi đánh giá.</Alert><Link className="btn btn--outline" to={`/customer/orders/${order.orderId}`}>Xem chi tiết đơn</Link></>}
+        </form>}
+        {submitError && !canEdit && <Alert type="error">{submitError}</Alert>}
+        {reviewState && !review && !reviewState.canCreate && <>
+          <Alert type="warning" title="Đơn chưa đủ điều kiện đánh giá">{reviewState.reason}</Alert>
+          <Link className="btn btn--outline" to={`/customer/orders/${order.orderId}`}>Xem chi tiết đơn</Link>
+        </>}
       </section>
     </div>
   </div>;

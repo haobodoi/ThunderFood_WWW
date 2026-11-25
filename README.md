@@ -165,15 +165,16 @@ Chi tiết schema và quy tắc: [backend/database/thunderfood_mariadb_v4_NOTES.
 
 ## Đặt hàng và thanh toán VietQR / SePay
 
-DB đã cài cần chạy các migration còn thiếu theo thứ tự, hiện gồm [V6](backend/database/migrations/V6__sepay.sql) và [V7](backend/database/migrations/V7__profile_updates.sql). Cài mới dùng `backend/database/thunderfood_final.sql`.
+DB đã cài cần chạy các migration còn thiếu theo thứ tự, hiện gồm [V6](backend/database/migrations/V6__sepay.sql), [V7](backend/database/migrations/V7__profile_updates.sql) và [V8](backend/database/migrations/V8__checkout_requests.sql). Cài mới dùng `backend/database/thunderfood_final.sql`.
 
 - Khách bấm **Đặt hàng** ở giỏ (`/customer/checkout/:cartId`), nhập thông tin giao hàng, chọn VietQR hoặc thanh toán khi nhận hàng. Theo dõi đơn ở `/customer/orders`.
 - Giá, phí giao và tổng tiền do server tính. Client gửi `version` của giỏ để bấm hai lần chỉ tạo một đơn, và `expectedTotal` để chặn đặt hàng khi giá vừa đổi so với màn hình đang xem. Món không khả dụng không vào đơn và được giữ lại trong giỏ.
 - Mã VietQR (chuẩn EMVCo của NAPAS, `VietQrUtil`) có sẵn số tiền và nội dung là mã đơn bỏ dấu gạch. Tiền chuyển thẳng vào tài khoản ngân hàng quán khai lúc đăng ký. Quán dùng ngân hàng nằm ngoài danh sách `BANK_BINS` thì khách chỉ chọn được thanh toán khi nhận hàng.
-- Với tài khoản đã liên kết SePay, giao dịch vào khớp mã đơn, số tiền, ngân hàng và số tài khoản sẽ tự chuyển đơn sang **Đã thanh toán** và **Đã xác nhận**. Tài khoản khác và đơn VietQR tạo trước khi bật SePay vẫn đối soát bằng nút **Đã nhận tiền** ở `/partner/orders`.
+- Với tài khoản đã liên kết SePay, giao dịch vào khớp mã đơn, số tiền, ngân hàng và số tài khoản sẽ tự chuyển đơn sang **Đã thanh toán** và **Đã xác nhận**. Tài khoản khác và đơn VietQR tạo trước khi bật SePay vẫn đối soát bằng nút **Đã nhận tiền** ở `/partner/orders`. Nếu đơn VietQR cũ chưa có bản lưu tài khoản nhận tiền, QR dùng thông tin ngân hàng hiện tại của quán.
+- `POST /api/customer/orders` nhận header `Idempotency-Key` là UUID. Gửi lại cùng header và nội dung dưới cùng tài khoản sẽ trả về đơn đã tạo nếu phản hồi trước bị mất. Mỗi lần đặt đơn mới dùng UUID mới.
 - Luồng đơn: `PENDING → CONFIRMED → PREPARING → DELIVERING → COMPLETED`. Khách tự hủy được khi đơn còn `PENDING` và chưa thanh toán. Quán từ chối được khi `PENDING` hoặc `CONFIRMED`; đơn đã trả tiền mà bị từ chối thì quán hoàn tiền ngoài hệ thống rồi bấm **Đã hoàn tiền**. Đơn COD được tính đã thanh toán lúc hoàn tất.
 - Đơn `COMPLETED` mở quyền đánh giá theo đúng quy tắc của phần đánh giá.
-- Trang đơn của khách và của quán tự cập nhật qua Server-Sent Events (`OrderEvents`). Sự kiện chỉ mang mã đơn, phát sau khi transaction commit; trình duyệt nhận được thì tải lại qua API thường. Danh sách kết nối nằm trong bộ nhớ nên chỉ đúng khi chạy một instance backend. Proxy phía trước phải không đệm phản hồi, backend đã gửi sẵn header `X-Accel-Buffering: no` cho Nginx.
+- Trang đơn của khách và của quán tự cập nhật qua Server-Sent Events (`OrderEvents`). Sự kiện chỉ mang mã đơn, phát sau khi transaction commit; trình duyệt nhận được thì tải lại qua API thường. Danh sách kết nối nằm trong bộ nhớ nên chỉ đúng khi chạy một instance backend. Proxy phía trước phải không đệm phản hồi, backend đã gửi sẵn header `X-Accel-Buffering: no` cho Nginx. Mỗi tài khoản có tối đa 5 kết nối. Khi SSE gián đoạn lâu, trình duyệt tải lại đơn định kỳ cho đến khi kết nối phục hồi.
 
 | API | Quyền | Mô tả |
 |---|---|---|
@@ -192,8 +193,9 @@ DB đã cài cần chạy các migration còn thiếu theo thứ tự, hiện g�
 1. Chạy các migration còn thiếu theo thứ tự trên DB đang dùng. Với Docker Compose và volume đã có dữ liệu, có thể chạy từ thư mục gốc:
 
    ```bash
-   docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD"' < backend/database/migrations/V6__sepay.sql
-   docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD"' < backend/database/migrations/V7__profile_updates.sql
+   docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD" thunderfood' < backend/database/migrations/V6__sepay.sql
+   docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD" thunderfood' < backend/database/migrations/V7__profile_updates.sql
+   docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD" thunderfood' < backend/database/migrations/V8__checkout_requests.sql
    ```
 
 2. Liên kết tài khoản nhận tiền của từng quán trong SePay. Luồng này dùng giao dịch vào tài khoản chính. Kiểm tra loại kết nối ngân hàng hỗ trợ nhận giao dịch đó. [Tài khoản ngân hàng và webhook SePay](https://developer.sepay.vn/vi/sepay-webhooks/tai-khoan-ngan-hang)

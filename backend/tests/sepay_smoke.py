@@ -54,7 +54,7 @@ def run():
     assert '--reset-disposable-db' in sys.argv and SECRET, 'Disposable DB flag and SePay test secret required'
     guard = sql('SELECT @@port, @@datadir;')
     assert DB_PORT in guard and '.test-runtime' in guard, 'Refusing non-disposable DB'
-    for migration in ['thunderfood_mariadb_v4.sql', 'migrations/V5__admin.sql', 'migrations/V6__sepay.sql']:
+    for migration in ['thunderfood_mariadb_v4.sql', 'migrations/V5__admin.sql', 'migrations/V6__sepay.sql', 'migrations/V8__checkout_requests.sql']:
         sql((ROOT / 'backend/database' / migration).read_text(encoding='utf-8'))
     sql("""USE thunderfood;
         UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';

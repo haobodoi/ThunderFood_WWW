@@ -141,6 +141,8 @@ public final class ReviewResponses {
         }
     }
 
+    public record OrderReviewState(ManagedReview review, boolean canCreate, String reason) {}
+
     public record Eligibility(List<EligibleOrder> orders, String reason) {}
     public record CreatedReview(long reviewId) {}
 

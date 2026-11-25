@@ -27,6 +27,12 @@ public class OrderEntity {
     @Column(name = "customer_id", nullable = false, updatable = false)
     private Long customerId;
 
+    @Column(name = "checkout_request_id", length = 36, updatable = false)
+    private String checkoutRequestId;
+
+    @Column(name = "checkout_request_hash", length = 64, updatable = false)
+    private String checkoutRequestHash;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "restaurant_id", nullable = false, updatable = false)
     private RestaurantEntity restaurant;
@@ -119,6 +125,19 @@ public class OrderEntity {
         this.totalAmount = totalAmount;
         this.createdAt = now;
         this.updatedAt = now;
+    }
+
+    public void registerCheckoutRequest(String requestId, String requestHash) {
+        checkoutRequestId = requestId;
+        checkoutRequestHash = requestHash;
+    }
+
+    public boolean matchesCheckoutRequest(String requestHash) {
+        return requestHash.equals(checkoutRequestHash);
+    }
+
+    public boolean isClosed() {
+        return orderStatus == OrderStatusEnum.REJECTED || orderStatus == OrderStatusEnum.CANCELLED;
     }
 
     public void addItem(Long itemId,

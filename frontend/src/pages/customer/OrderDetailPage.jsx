@@ -64,7 +64,7 @@ export default function OrderDetailPage() {
 
 function OrderDetail({ id }) {
   const [order, setOrder] = useState(null);
-  const [existingReview, setExistingReview] = useState(null);
+  const [reviewState, setReviewState] = useState(null);
   const [error, setError] = useState('');
   const sequence = useRef(0);
   const load = useCallback(async () => {
@@ -75,7 +75,13 @@ function OrderDetail({ id }) {
         setOrder(result);
         setError('');
         if (result?.orderStatus === 'COMPLETED' && result?.paymentStatus === 'PAID') {
-          reviewApi.forOrder(id).then(r => { if (request === sequence.current) setExistingReview(r); }).catch(() => {});
+          reviewApi.orderState(id).then(state => {
+            if (request === sequence.current) setReviewState(state);
+          }).catch(() => {
+            if (request === sequence.current) setReviewState(null);
+          });
+        } else {
+          setReviewState(null);
         }
       }
     } catch (e) {
@@ -100,6 +106,7 @@ function OrderDetail({ id }) {
     <p role="status">Đang tải đơn hàng…</p>
   </div>;
 
+  const existingReview = reviewState?.review;
   let reviewLabel = 'Đánh giá đồ ăn';
   if (existingReview?.deletedAt) reviewLabel = 'Xem trạng thái đánh giá';
   else if (existingReview) reviewLabel = existingReview.editable ? 'Chỉnh sửa đánh giá' : 'Xem đánh giá đã gửi';
@@ -151,7 +158,7 @@ function OrderDetail({ id }) {
         <OrderTotals subtotal={order.subtotal} fee={order.deliveryFee} total={order.totalAmount} />
         <p>{PAYMENT_METHOD[order.paymentMethod]}</p>
         <PaymentStatus status={order.paymentStatus} />
-        {order.orderStatus === 'COMPLETED' && order.paymentStatus === 'PAID' && <Link
+        {(existingReview || reviewState?.canCreate) && <Link
           className="btn btn--outline btn--block tf-order-review"
           to={`/customer/orders/${order.orderId}/review`}
         >

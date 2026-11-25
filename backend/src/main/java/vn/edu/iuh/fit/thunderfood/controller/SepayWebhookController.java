@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import vn.edu.iuh.fit.thunderfood.dto.SepayTransfer;
-import vn.edu.iuh.fit.thunderfood.service.OrderService;
+import vn.edu.iuh.fit.thunderfood.service.OrderPaymentService;
 import vn.edu.iuh.fit.thunderfood.service.SepayConfiguration;
 
 import java.io.IOException;
@@ -24,13 +24,13 @@ public class SepayWebhookController {
     public record Result(boolean success) {}
 
     private final SepayConfiguration sepay;
-    private final OrderService orders;
+    private final OrderPaymentService payments;
     private final ObjectMapper json;
     private final Validator validator;
 
-    public SepayWebhookController(SepayConfiguration sepay, OrderService orders, ObjectMapper json, Validator validator) {
+    public SepayWebhookController(SepayConfiguration sepay, OrderPaymentService payments, ObjectMapper json, Validator validator) {
         this.sepay = sepay;
-        this.orders = orders;
+        this.payments = payments;
         this.json = json;
         this.validator = validator;
     }
@@ -52,7 +52,7 @@ public class SepayWebhookController {
             return failure(HttpStatus.BAD_REQUEST);
         }
         if (transfer == null || !validator.validate(transfer).isEmpty()) return failure(HttpStatus.BAD_REQUEST);
-        orders.reconcileSepay(transfer);
+        payments.reconcileSepay(transfer);
         return ResponseEntity.ok(new Result(true));
     }
 

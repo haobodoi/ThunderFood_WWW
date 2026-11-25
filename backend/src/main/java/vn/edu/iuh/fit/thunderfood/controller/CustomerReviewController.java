@@ -47,6 +47,11 @@ public class CustomerReviewController {
         return service.own(user.getId(), "CUSTOMER", page);
     }
 
+    @GetMapping("/api/customer/orders/{orderId}/review-state")
+    public OrderReviewState orderReviewState(@AuthenticationPrincipal UserDetailsDto user, @PathVariable long orderId) {
+        return service.orderReviewState(user.getId(), orderId);
+    }
+
     @GetMapping("/api/customer/orders/{orderId}/review")
     public ResponseEntity<ManagedReview> ownForOrder(@AuthenticationPrincipal UserDetailsDto user,@PathVariable long orderId) {
         var review = service.ownForOrder(user.getId(), orderId);
