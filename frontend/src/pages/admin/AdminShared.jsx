@@ -181,7 +181,7 @@ export function useAdminAttention(enabled = true, refreshKey = '') {
 export function Search({ value, onChange, placeholder = 'Nhập để tìm kiếm', label = 'Tìm kiếm' }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
-  return <form className="admin-search" onSubmit={e => { e.preventDefault(); onChange(draft.trim()); }}><Field label={label}><input type="search" maxLength={150} value={draft} onChange={e => setDraft(e.target.value)} placeholder={placeholder} /></Field><button className="btn btn--outline" type="submit">Tìm</button></form>;
+  return <form className="admin-search" onSubmit={e => { e.preventDefault(); onChange(draft.trim()); }}><Field label={label}><input type="search" name="q" maxLength={150} value={draft} onChange={e => setDraft(e.target.value)} placeholder={placeholder} /></Field><button className="btn btn--outline" type="submit">Tìm</button></form>;
 }
 export function RestaurantPicker({ value, onChange, client = adminApi, path = '/catalog/restaurants', allLabel = 'Chọn quán…' }) {
   const [q, setQ] = useState(''), [page, setPage] = useState(0);

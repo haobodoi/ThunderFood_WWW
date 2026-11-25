@@ -55,15 +55,15 @@ export default function AdminOrdersPage() {
       </div>
       <div className="admin-filters">
         <Search value={filters.q || ''} label="Mã đơn / khách hàng" onChange={q => change({ q })} />
-        <Field label="Trạng thái đơn"><select value={filters.status || ''} onChange={event => change({ status: event.target.value, refunds: '', awaiting: '' })}>
+        <Field label="Trạng thái đơn"><select name="status" value={filters.status || ''} onChange={event => change({ status: event.target.value, refunds: '', awaiting: '' })}>
           <option value="">Tất cả</option>{Object.entries(ORDER_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
         </select></Field>
-        <Field label="Thanh toán"><select value={filters.payment || ''} onChange={event => change({ payment: event.target.value, refunds: '', awaiting: '' })}>
+        <Field label="Thanh toán"><select name="payment" value={filters.payment || ''} onChange={event => change({ payment: event.target.value, refunds: '', awaiting: '' })}>
           <option value="">Tất cả</option>{Object.entries(PAYMENT_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
         </select></Field>
-        <Field label="Từ ngày"><input type="date" max={filters.to || undefined} value={filters.from || ''} onChange={event => change({ from: event.target.value })} /></Field>
-        <Field label="Đến ngày"><input type="date" min={filters.from || undefined} value={filters.to || ''} onChange={event => change({ to: event.target.value })} /></Field>
-        <Field label="Sắp xếp"><select value={filters.sort || 'newest'} onChange={event => change({ sort: event.target.value })}>
+        <Field label="Từ ngày"><input type="date" name="from" max={filters.to || undefined} value={filters.from || ''} onChange={event => change({ from: event.target.value })} /></Field>
+        <Field label="Đến ngày"><input type="date" name="to" min={filters.from || undefined} value={filters.to || ''} onChange={event => change({ to: event.target.value })} /></Field>
+        <Field label="Sắp xếp"><select name="sort" value={filters.sort || 'newest'} onChange={event => change({ sort: event.target.value })}>
           <option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option><option value="total">Tổng tiền giảm dần</option>
         </select></Field>
         {filters.customer && <button type="button" className="btn btn--outline" onClick={() => change({ customer: '' })}>Bỏ lọc khách #{filters.customer}</button>}
@@ -101,5 +101,5 @@ export function AdminOrderDetailPage() {
       {payment.bankReference && <> · Tham chiếu ngân hàng {payment.bankReference}</>}
     </p>)}</section></div>
     <div className="admin-grid"><section className="admin-panel"><h2>Lịch sử trạng thái</h2>{o.history.length ? <ol className="admin-timeline">{o.history.map((h,i) => <li key={i}><strong>{ORDER_STATUS[h.toStatus]?.label} · {PAYMENT_STATUS[h.toPayment]?.label}</strong><small>{formatDateTime(h.createdAt)}</small>{h.reason && <p>{h.reason}</p>}</li>)}</ol> : <p>Đơn cũ chưa có lịch sử trước migration V5.</p>}</section><section className="admin-panel"><h2>Hoạt động & ghi chú nội bộ</h2>{o.notes.length ? <ol className="admin-timeline">{o.notes.map(n => <li key={n.id}><strong>{n.actor || 'Tài khoản không còn tồn tại'}</strong><small>{formatDateTime(n.createdAt)}</small><p>{n.detail}</p></li>)}</ol> : <p>Chưa có ghi chú.</p>}</section></div>
-  </>}</DataState>{action && <Modal title={action.label} onClose={busy ? undefined : () => setAction(null)}><form onSubmit={submit} className="admin-form">{error && <Alert type="error">{error}</Alert>}<p>{action.financial ? 'Chỉ xác nhận khi đã kiểm tra tiền thực tế trong tài khoản ngân hàng của quán. Hệ thống ghi nhận kết quả đối soát, không thực hiện chuyển tiền.' : 'Xác nhận thao tác trên đơn ' + o.orderCode + '. Trạng thái sẽ được lưu vào lịch sử.'}</p><Field label={action.requiredReason ? 'Nội dung / lý do (5–500 ký tự)' : 'Ghi chú đối soát / lý do (tùy chọn)'}><textarea required={action.requiredReason} minLength={action.requiredReason ? 5 : undefined} maxLength={500} rows={3} value={reason} onChange={e => setReason(e.target.value)} /></Field><div className="admin-actions"><button className="btn btn--outline" type="button" disabled={busy} onClick={() => setAction(null)}>Quay lại</button><button className="btn btn--primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Xác nhận'}</button></div></form></Modal>}</div>;
+  </>}</DataState>{action && <Modal title={action.label} onClose={busy ? undefined : () => setAction(null)}><form onSubmit={submit} className="admin-form">{error && <Alert type="error">{error}</Alert>}<p>{action.financial ? 'Chỉ xác nhận khi đã kiểm tra tiền thực tế trong tài khoản ngân hàng của quán. Hệ thống ghi nhận kết quả đối soát, không thực hiện chuyển tiền.' : 'Xác nhận thao tác trên đơn ' + o.orderCode + '. Trạng thái sẽ được lưu vào lịch sử.'}</p><Field label={action.requiredReason ? 'Nội dung / lý do (5–500 ký tự)' : 'Ghi chú đối soát / lý do (tùy chọn)'}><textarea name="reason" required={action.requiredReason} minLength={action.requiredReason ? 5 : undefined} maxLength={500} rows={3} value={reason} onChange={e => setReason(e.target.value)} /></Field><div className="admin-actions"><button className="btn btn--outline" type="button" disabled={busy} onClick={() => setAction(null)}>Quay lại</button><button className="btn btn--primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Xác nhận'}</button></div></form></Modal>}</div>;
 }

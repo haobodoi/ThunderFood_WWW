@@ -1320,8 +1320,8 @@ textarea {
 
 @media (max-width: 360px) {
   .navbar .container { padding-inline: 8px; }
-  .brand-logo__text { display: none; }
-  .brand-logo__mark { width: 30px; }
+  .navbar .brand-logo__text { display: none; }
+  .navbar .brand-logo__mark { width: 30px; }
   .navbar__actions .btn { padding-inline: 3px; font-size: 12px; letter-spacing: -.02em; }
 }
 

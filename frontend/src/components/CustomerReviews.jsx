@@ -62,8 +62,8 @@ export function ReportButton({ reviewId, partner = false, onSuccess }) {
   };
   return <><button className="btn btn--ghost btn--sm" disabled={sent} onClick={() => setOpen(true)}>{sent ? 'Đã gửi báo cáo' : 'Báo cáo vi phạm'}</button>
     {open && <Modal title="Báo cáo đánh giá" onClose={() => !busy && setOpen(false)}><form className="form" onSubmit={submit}>
-      <label className="commerce-field">Lý do<select value={reasonCode} onChange={e => setCode(e.target.value)}><option value="SPAM">Spam</option><option value="ABUSE">Xúc phạm</option><option value="PERSONAL_DATA">Lộ thông tin cá nhân</option><option value="IRRELEVANT">Không liên quan</option><option value="OTHER">Khác</option></select></label>
-      <label className="commerce-field">Mô tả<textarea required minLength={5} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>
+      <label className="commerce-field">Lý do<select name="reasonCode" value={reasonCode} onChange={e => setCode(e.target.value)}><option value="SPAM">Spam</option><option value="ABUSE">Xúc phạm</option><option value="PERSONAL_DATA">Lộ thông tin cá nhân</option><option value="IRRELEVANT">Không liên quan</option><option value="OTHER">Khác</option></select></label>
+      <label className="commerce-field">Mô tả<textarea name="reason" required minLength={5} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /></label>
       {error && <Alert type="error">{error}</Alert>}<p>Báo cáo sẽ được admin xem xét, không tự động ẩn đánh giá.</p>
       <button className="btn btn--primary" disabled={busy}>Gửi báo cáo</button>
     </form></Modal>}
@@ -78,7 +78,7 @@ export function RatingFields({ rating, setRating, content, setContent }) {
         {[1, 2, 3, 4, 5].map(value => <button type="button" key={value} role="radio" aria-checked={rating === value} aria-label={`${value} sao`} className={value <= rating ? 'is-selected' : ''} onClick={() => choose(value)} onPointerDown={() => { setDragging(true); choose(value); }} onPointerEnter={() => dragging && choose(value)} onPointerUp={() => setDragging(false)}>★</button>)}
       </div><small>{rating} / 5 sao · Có thể bấm hoặc rê chuột qua các ngôi sao</small>
     </div>
-    <label className="commerce-field">Cảm nhận về đồ ăn<textarea required minLength={10} maxLength={1000} rows={4} value={content} onChange={e => setContent(e.target.value)} placeholder="Đồ ăn có ngon, vừa khẩu vị và đúng như mong đợi không?" /></label>
+    <label className="commerce-field">Cảm nhận về đồ ăn<textarea name="content" required minLength={10} maxLength={1000} rows={4} value={content} onChange={e => setContent(e.target.value)} placeholder="Đồ ăn có ngon, vừa khẩu vị và đúng như mong đợi không?" /></label>
   </>;
 }
 export default function CustomerReviews({ restaurantId, itemId = null, title = 'Đánh giá từ khách hàng', compact = false }) {
@@ -138,8 +138,11 @@ export default function CustomerReviews({ restaurantId, itemId = null, title = '
     {hasReviews && <>
       <div className="commerce-filters">
         <div className="commerce-star-filter" aria-label="Lọc theo số sao"><button type="button" className={!stars ? 'is-active' : ''} onClick={() => { setStars(''); setPage(0); }}>Tất cả</button>{[5, 4, 3, 2, 1].map(n => <button type="button" key={n} className={Number(stars) === n ? 'is-active' : ''} onClick={() => { setStars(String(n)); setPage(0); }}>{n}★</button>)}</div>
-        <label>Sắp xếp <select value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}><option value="newest">Mới nhất</option><option value="highest">Điểm cao</option><option value="lowest">Điểm thấp</option></select></label>
-        <label><input type="checkbox" checked={photos} onChange={e => { setPhotos(e.target.checked); setPage(0); }} /> Có ảnh</label>
+        <label>Sắp xếp <select name="sort" value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}>
+          <option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option>
+          <option value="highest">Điểm cao</option><option value="lowest">Điểm thấp</option>
+        </select></label>
+        <label><input type="checkbox" name="photos" checked={photos} onChange={e => { setPhotos(e.target.checked); setPage(0); }} /> Có ảnh</label>
         <button className="btn btn--outline btn--sm" disabled={loading} onClick={() => setReload(n => n + 1)}>Tải lại</button>
       </div>
       {loading ? <p role="status">Đang tải đánh giá…</p> : !error && <>

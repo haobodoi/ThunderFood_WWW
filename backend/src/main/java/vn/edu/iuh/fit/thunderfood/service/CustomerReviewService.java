@@ -37,8 +37,9 @@ import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.*;
 public class CustomerReviewService {
     private static final String CUSTOMER_ROLE = "CUSTOMER", PARTNER_ROLE = "RESTAURANT_PARTNER", ADMIN_ROLE = "ADMIN";
     private static final int PAGE_SIZE = 10;
-    /** Sắp xếp ổn định theo created_at + review_id; các cách sắp xếp khác chỉ thêm tiêu chí ở đầu. */
+    /** Dùng mã đánh giá làm tiêu chí phụ khi nhiều dòng trùng thời điểm. */
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+    private static final Sort OLDEST_FIRST = Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
 
     private final CustomerReviewRepository reviews;
     private final ReviewReplyRepository replies;
@@ -109,6 +110,7 @@ public class CustomerReviewService {
             case "highest" -> Sort.by(Sort.Order.desc("rating")).and(NEWEST_FIRST);
             case "lowest" -> Sort.by(Sort.Order.asc("rating")).and(NEWEST_FIRST);
             case "newest" -> NEWEST_FIRST;
+            case "oldest" -> OLDEST_FIRST;
             default -> throw new BusinessException("Cách sắp xếp không hợp lệ");
         };
         var rows = reviews.findPublic(restaurant, stars, photos, itemId, PageRequest.of(page, PAGE_SIZE, order));
