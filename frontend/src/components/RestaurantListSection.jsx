@@ -169,6 +169,7 @@ export default function RestaurantListSection({
                       {restaurant.address && <p className="tf-rest-card__address"><Icon name="mapPin" size={14} /><span>{restaurant.address}</span></p>}
                     </div>
                     <div className="tf-rest-card__footer">
+                      <span className="tf-rest-card__rating"><Icon name="star" size={14} />{Number(restaurant.reviewCount) ? `${Number(restaurant.averageRating).toFixed(1)} (${restaurant.reviewCount})` : 'Chưa có đánh giá'}</span>
                       <span className="tf-rest-card__fee">Phí giao: {formatVND(restaurant.deliveryFee)}</span>
                       <span className="tf-rest-card__cta">Xem thực đơn <Icon name="arrowRight" size={14} /></span>
                     </div>

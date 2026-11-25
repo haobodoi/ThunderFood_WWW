@@ -109,8 +109,8 @@ public final class ReviewResponses {
                                 long version,
                                 LocalDateTime createdAt,
                                 LocalDateTime editedAt,
+                                LocalDateTime deletedAt,
                                 boolean editable,
-                                boolean deleted,
                                 List<ReviewImage> images,
                                 long replyVersion,
                                 List<ReviewReply> replies) {
@@ -127,8 +127,8 @@ public final class ReviewResponses {
                     review.getVersion(),
                     review.getCreatedAt(),
                     review.getEditedAt(),
+                    review.getDeletedAt(),
                     editable,
-                    review.getDeletedAt() != null,
                     ReviewImage.from(review),
                     versionOfReply(review),
                     ReviewReply.from(review));

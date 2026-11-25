@@ -74,10 +74,9 @@ function Checkout({ cartId }) {
     setSubmitting(true);
     setError('');
     setFieldErrors({});
+    let order;
     try {
-      const order = await orderApi.checkout(preview, { ...form, paymentMethod: chosen });
-      await refreshAfterCheckout();
-      if (active.current) navigate(`/customer/orders/${order.orderId}`, { replace: true });
+      order = await orderApi.checkout(preview, { ...form, paymentMethod: chosen });
     } catch (e) {
       if (!active.current) return;
       setError(getErrorMessage(e));
@@ -86,7 +85,10 @@ function Checkout({ cartId }) {
       await load();
       submittingRef.current = false;
       setSubmitting(false);
+      return;
     }
+    if (active.current) navigate(`/customer/orders/${order.orderId}`, { replace: true });
+    void refreshAfterCheckout();
   };
 
   if (!available.length) return <div className="container commerce-page">
@@ -158,7 +160,9 @@ function Checkout({ cartId }) {
         <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>
           {submitting ? 'Đang đặt hàng…' : chosen === 'ONLINE' ? 'Đặt hàng và thanh toán' : 'Đặt hàng'}
         </button>
-        <Link className="btn btn--ghost btn--block" to="/customer/cart">Quay lại giỏ hàng</Link>
+        <button type="button" className="btn btn--ghost btn--block" disabled={submitting} onClick={() => navigate('/customer/cart')}>
+          Quay lại giỏ hàng
+        </button>
       </aside>
     </form>
   </div>;

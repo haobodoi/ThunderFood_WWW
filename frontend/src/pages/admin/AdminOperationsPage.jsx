@@ -21,6 +21,36 @@ const COMPLAINT_STATUS = {
 };
 const OUTCOMES = ['PROCESSING', 'RESOLVED', 'REJECTED'];
 
+// Nhật ký lưu mã hành động kỹ thuật; hiển thị bằng tiếng Việt để quản trị viên đọc nhanh.
+const ACTIONS = {
+  ORDER_status: ['Đổi trạng thái đơn', 'neutral'], 'ORDER_confirm-payment': ['Xác nhận đã nhận tiền', 'success'], ORDER_refund: ['Ghi nhận hoàn tiền', 'warning'], ORDER_NOTE: ['Ghi chú đơn hàng', 'neutral'],
+  ITEM_CREATE: ['Thêm món', 'success'], ITEM_UPDATE: ['Sửa món', 'neutral'], ITEM_DELETE: ['Xóa món', 'danger'], ITEM_VISIBILITY: ['Ẩn / hiện món', 'neutral'],
+  CATEGORY_CREATE: ['Thêm danh mục', 'success'], CATEGORY_UPDATE: ['Sửa danh mục', 'neutral'], CATEGORY_DELETE: ['Xóa danh mục', 'danger'], CATEGORY_VISIBILITY: ['Ẩn / hiện danh mục', 'neutral'],
+  USER_ACCESS: ['Đổi quyền / khóa tài khoản', 'warning'], STAFF_CREATE: ['Tạo tài khoản nội bộ', 'success'],
+  STORE_UPDATE: ['Cấu hình nhà hàng', 'neutral'], RESTAURANT_APPROVE: ['Duyệt hồ sơ quán', 'success'], RESTAURANT_REJECT: ['Từ chối hồ sơ quán', 'danger'],
+  COMPLAINT_UPDATE: ['Xử lý khiếu nại', 'neutral'],
+};
+const TARGETS = {
+  order: ['Đơn hàng', id => '/admin/orders/' + id], user: ['Tài khoản', id => '/admin/users/' + id], restaurant: ['Nhà hàng', id => '/admin/restaurants/' + id],
+  item: ['Món ăn'], category: ['Danh mục'], complaint: ['Khiếu nại', () => '/admin/complaints'],
+};
+function ActionLabel({ action }) {
+  const [label, tone] = ACTIONS[action] ?? [action, 'neutral'];
+  return <Badge tone={tone}>{label}</Badge>;
+}
+function TargetLink({ target }) {
+  const [type, id] = String(target ?? '').split(':');
+  const meta = TARGETS[type];
+  if (!meta || !id) return target || '—';
+  const text = `${meta[0]} #${id}`;
+  return meta[1] ? <Link className="admin-link" to={meta[1](id)}>{text}</Link> : text;
+}
+// Trạng thái nhận đơn thực tế: quán chưa duyệt hoặc bị khóa thì không nhận đơn dù công tắc đang bật.
+function receiving(restaurant) {
+  if (restaurant.status !== 'APPROVED') return ['Không nhận đơn', 'neutral', restaurant.open ? 'Công tắc bật nhưng hồ sơ chưa được duyệt / đã khóa' : null];
+  return restaurant.open ? ['Đang nhận đơn', 'success', null] : ['Tạm ngưng', 'warning', null];
+}
+
 function Refresh({ resource }) {
   return <button type="button" className="btn btn--outline" disabled={resource.loading} onClick={resource.refresh}><RefreshCw size={16} /> Làm mới</button>;
 }
@@ -40,7 +70,7 @@ export function AdminActivityPage() {
       <Table headers={['Thời gian', 'Người thực hiện', 'Hành động', 'Đối tượng', 'Chi tiết']} caption="Nhật ký hoạt động">
         {resource.data?.items.map(entry => <tr key={entry.id}>
           <td>{formatDateTime(entry.createdAt)}</td><td>{entry.actor || 'Tài khoản không còn tồn tại'}</td>
-          <td><Badge>{entry.action}</Badge></td><td>{entry.target}</td>
+          <td><ActionLabel action={entry.action} />{entry.detail && <small className="admin-log-detail">{entry.detail}</small>}</td><td><TargetLink target={entry.target} /></td>
           <td><button type="button" className="btn btn--outline btn--sm" onClick={() => setSelected(entry)} aria-label={'Xem nhật ký #' + entry.id}>Xem</button></td>
         </tr>)}
       </Table>
@@ -50,8 +80,8 @@ export function AdminActivityPage() {
       <dl className="admin-definition">
         <dt>Thời gian</dt><dd>{formatDateTime(selected.createdAt)}</dd>
         <dt>Người thực hiện</dt><dd>{selected.actor || 'Tài khoản không còn tồn tại'}</dd>
-        <dt>Hành động</dt><dd>{selected.action}</dd>
-        <dt>Đối tượng</dt><dd>{selected.target}</dd>
+        <dt>Hành động</dt><dd><ActionLabel action={selected.action} /> <small className="muted">{selected.action}</small></dd>
+        <dt>Đối tượng</dt><dd><TargetLink target={selected.target} /></dd>
         <dt>Nội dung</dt><dd className="commerce-text">{selected.detail || '—'}</dd>
       </dl>
     </Modal>}
@@ -91,13 +121,14 @@ export function AdminStoresPage() {
     <Head title="Quản lý nhà hàng" description="Tra cứu nhà hàng, cấu hình phí giao và quyền nhận đơn."><Refresh resource={resource} /></Head>
     <section className="admin-panel admin-filters"><Search value={query} label="Tên quán" onChange={value => { setQuery(value); setPage(0); }} /></section>
     <DataState resource={resource} empty={resource.data?.items.length === 0}>
-      <Table headers={['Nhà hàng', 'Hồ sơ', 'Nhận đơn thủ công', 'Phí giao', 'Thao tác']} caption="Danh sách nhà hàng">
+      <Table headers={['Nhà hàng', 'Hồ sơ', 'Nhận đơn', 'Phí giao', 'Thao tác']} numeric={['Phí giao']} caption="Danh sách nhà hàng">
         {resource.data?.items.map(restaurant => {
           const [label, tone] = STORE_STATUS[restaurant.status] ?? [restaurant.status, 'neutral'];
+          const [receiveLabel, receiveTone, receiveNote] = receiving(restaurant);
           return <tr key={restaurant.id}>
             <td><Link className="admin-link" to={'/admin/restaurants/' + restaurant.id}>{restaurant.name}</Link></td>
             <td><Badge tone={tone}>{label}</Badge></td>
-            <td><Badge tone={restaurant.open ? 'success' : 'neutral'}>{restaurant.open ? 'Đã bật' : 'Đã tắt'}</Badge></td>
+            <td><Badge tone={receiveTone}>{receiveLabel}</Badge>{receiveNote && <small>{receiveNote}</small>}</td>
             <td data-numeric>{formatVND(restaurant.deliveryFee)}</td>
             <td><RowActions label={'Thao tác với ' + restaurant.name}>
               <button type="button" onClick={() => { setError(''); setEditing(restaurant); }}>Cấu hình nhận đơn</button>
@@ -113,11 +144,11 @@ export function AdminStoresPage() {
     {editing && <Modal title={'Cấu hình ' + editing.name} onClose={busy ? undefined : () => setEditing(null)}>
       <form className="admin-form" onSubmit={save}>
         {error && <Alert type="error">{error}</Alert>}
-        <Field label="Phí giao cố định (VND)"><input type="number" name="deliveryFee" required min="0" max="9999999999.99" step="0.01" defaultValue={editing.deliveryFee} disabled={busy} /></Field>
-        <Field label="Nhận đơn thủ công"><select name="open" defaultValue={editing.open ? 'true' : 'false'} disabled={busy}>
-          <option value="true">Bật · Theo giờ mở cửa</option><option value="false">Tắt nhận đơn</option>
+        <Field label="Phí giao cố định (VND)"><input type="number" name="deliveryFee" required min="0" max="1000000" step="1" inputMode="numeric" defaultValue={Math.round(Number(editing.deliveryFee) || 0)} disabled={busy} /></Field>
+        <Field label="Nhận đơn"><select name="open" defaultValue={editing.open ? 'true' : 'false'} disabled={busy}>
+          <option value="true">Bật · Nhận đơn theo giờ mở cửa</option><option value="false">Tạm ngưng nhận đơn</option>
         </select></Field>
-        <p className="muted">Quán đã duyệt có thể bật nhận đơn. Các đơn tiếp theo sẽ dùng cấu hình mới.</p>
+        <p className="muted">Phí giao nhập theo đồng, tối đa 1.000.000 ₫. Chỉ quán đã duyệt mới bật nhận đơn được. Các đơn tiếp theo sẽ dùng cấu hình mới.</p>
         <button className="btn btn--primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Xác nhận lưu cấu hình'}</button>
       </form>
     </Modal>}

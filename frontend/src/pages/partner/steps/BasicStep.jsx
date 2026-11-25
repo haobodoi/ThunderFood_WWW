@@ -22,7 +22,7 @@ function validate(form, provinces) {
   return errors;
 }
 
-export default function BasicStep({ registration, options, onSaved }) {
+export default function BasicStep({ registration, options, onSaved, api = partnerRestaurantApi }) {
   const basic = registration?.basic;
   const provinces = options?.provinces ?? [];
   const [form, setForm] = useState({
@@ -70,8 +70,8 @@ export default function BasicStep({ registration, options, onSaved }) {
     setSaving(true);
     try {
       const saved = registration
-        ? await partnerRestaurantApi.updateBasic(registration.id, payload)
-        : await partnerRestaurantApi.create(payload);
+        ? await api.updateBasic(registration.id, payload)
+        : await api.create(payload);
       onSaved(saved, 2);
     } catch (error) {
       setErrors(getFieldErrors(error));

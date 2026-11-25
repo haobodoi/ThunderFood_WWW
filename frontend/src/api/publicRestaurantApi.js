@@ -4,6 +4,8 @@ export const publicRestaurantApi = {
   search: (params = {}) =>
     api.get('/restaurants', { params }).then((res) => res.data),
 
+  suggestions: (params = {}) => api.get('/restaurants/suggestions', { params }).then((res) => res.data),
+
   getDetail: (id) =>
     api.get(`/restaurants/${id}`).then((res) => res.data),
 

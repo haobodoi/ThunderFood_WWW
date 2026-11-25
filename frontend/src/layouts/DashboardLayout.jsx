@@ -8,13 +8,14 @@ import Alert from '../components/Alert.jsx';
 import UserAvatar from '../components/UserAvatar.jsx';
 import { EnterpriseIcons } from '../components/Icon.jsx';
 import { getErrorMessage } from '../api/baseApi.js';
+import { useAdminAttention } from '../pages/admin/AdminShared.jsx';
 
 const MENUS = {
   admin: [
     { title: 'Tổng quan', items: [{ label: 'Tổng quan', icon: LayoutDashboard, to: '/admin', end: true }] },
-    { title: 'Vận hành', items: [{ label: 'Đơn hàng', icon: ShoppingBag, to: '/admin/orders' }, { label: 'Nhà hàng', icon: Store, to: '/admin/stores', adminOnly: true }, { label: 'Thực đơn & danh mục', icon: UtensilsCrossed, to: '/admin/catalog', end: true }] },
+    { title: 'Vận hành', items: [{ label: 'Đơn hàng', icon: ShoppingBag, to: '/admin/orders', badge: 'pending', badgeLabel: 'đơn chờ xác nhận' }, { label: 'Nhà hàng', icon: Store, to: '/admin/stores', adminOnly: true }, { label: 'Thực đơn & danh mục', icon: UtensilsCrossed, to: '/admin/catalog', end: true }] },
     { title: 'Người dùng', items: [{ label: 'Tài khoản & phân quyền', icon: UsersRound, to: '/admin/users', adminOnly: true }] },
-    { title: 'Kiểm duyệt', items: [{ label: 'Duyệt nhà hàng', icon: Store, to: '/admin/restaurants', adminOnly: true }, { label: 'Báo cáo đánh giá', icon: ShieldCheck, to: '/admin/review-reports', adminOnly: true }, { label: 'Khiếu nại', icon: MessageSquareWarning, to: '/admin/complaints', adminOnly: true }] },
+    { title: 'Kiểm duyệt', items: [{ label: 'Duyệt nhà hàng', icon: Store, to: '/admin/restaurants', adminOnly: true, badge: 'restaurants', badgeLabel: 'hồ sơ chờ duyệt' }, { label: 'Cập nhật hồ sơ quán', icon: Store, to: '/admin/restaurant-profile-updates', adminOnly: true }, { label: 'Báo cáo đánh giá', icon: ShieldCheck, to: '/admin/review-reports', adminOnly: true, badge: 'reports', badgeLabel: 'báo cáo chưa xử lý' }, { label: 'Khiếu nại', icon: MessageSquareWarning, to: '/admin/complaints', adminOnly: true, badge: 'complaints', badgeLabel: 'khiếu nại chưa xử lý' }] },
     { title: 'Phân tích', items: [{ label: 'Thống kê & báo cáo', icon: ChartNoAxesCombined, to: '/admin/analytics', end: true }] },
     { title: 'Hệ thống', items: [{ label: 'Nhật ký hoạt động', icon: ScrollText, to: '/admin/activity', adminOnly: true }] },
   ],
@@ -34,6 +35,8 @@ export default function DashboardLayout({ area }) {
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 960px)').matches);
+  // Số việc đang chờ hiển thị cạnh menu; làm mới khi chuyển trang và mỗi 60 giây.
+  const attention = useAdminAttention(area === 'admin', location.pathname);
   const accountRef = useRef(null);
   const accountTrigger = useRef(null);
   const groups = MENUS[area].map(group => ({ ...group, items: group.items.filter(item => !item.adminOnly || user.role === 'ADMIN') })).filter(group => group.items.length);
@@ -98,7 +101,9 @@ export default function DashboardLayout({ area }) {
       <nav className="dash__nav" aria-label={area === 'partner' ? 'Kênh đối tác' : 'Trang quản trị'}>
         {groups.map(group => <div className="dash__group" key={group.title}><p className="dash__group-label">{group.title}</p>{group.items.map(item => {
           const ItemIcon = item.icon;
-          return <NavLink key={item.label} to={item.to} end={item.end} className="dash__link" title={collapsed && !mobile ? item.label : undefined}><ItemIcon size={18} /><span>{item.label}</span></NavLink>;
+          const count = item.badge ? Number(attention?.[item.badge] ?? 0) : 0;
+          const badge = count > 0 ? (count > 99 ? '99+' : String(count)) : null;
+          return <NavLink key={item.label} to={item.to} end={item.end} className="dash__link" title={collapsed && !mobile ? item.label + (badge ? ` (${count} ${item.badgeLabel})` : '') : undefined}><ItemIcon size={18} /><span>{item.label}</span>{badge && <span className="dash__badge" aria-label={`${count} ${item.badgeLabel}`}>{badge}</span>}</NavLink>;
         })}</div>)}
       </nav>
       {!mobile && <button type="button" className="dash__collapse" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}>{collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}<span>Thu gọn</span></button>}

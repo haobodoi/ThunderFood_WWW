@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { publicRestaurantApi } from '../../api/publicRestaurantApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { getSmartRestaurantCover } from '../../utils/mediaUtils.js';
@@ -22,6 +22,7 @@ export default function RestaurantDetailPage() {
   const { user } = useAuth();
   const cartState = useCart();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,6 +42,7 @@ export default function RestaurantDetailPage() {
   const [cartToast, setCartToast] = useState('');
   const toastTimer = useRef(null);
   const sectionRefs = useRef({});
+  const requestedItemId = Number(searchParams.get('item')) || null;
 
   useEffect(() => {
     let active = true;
@@ -67,6 +69,16 @@ export default function RestaurantDetailPage() {
       window.clearTimeout(toastTimer.current);
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!data || !requestedItemId) return;
+    const category = (data.menu || []).find(cat => (cat.items || []).some(item => Number(item.id) === requestedItemId));
+    const item = category?.items?.find(row => Number(row.id) === requestedItemId);
+    if (!category || !item) return;
+    setActiveCategory(categoryKey(category));
+    window.setTimeout(() => document.getElementById(`menu-item-${requestedItemId}`)?.scrollIntoView({ behavior: getMotionSafeScrollBehavior(), block: 'center' }), 0);
+    setViewingItem(item);
+  }, [data, requestedItemId]);
 
   const showToast = (message) => {
     window.clearTimeout(toastTimer.current);
@@ -178,6 +190,7 @@ export default function RestaurantDetailPage() {
             </div>
             <div className="tf-store-hero__stats" aria-label="Thông tin nhà hàng">
               <div className="tf-store-stat"><small>Thực đơn</small><strong>{uniqueMenu.reduce((sum, cat) => sum + cat.items.length, 0)} món</strong></div>
+              <div className="tf-store-stat"><small>Đánh giá</small><strong>{Number(restaurant.reviewCount) ? `${Number(restaurant.averageRating).toFixed(1)} ★ · ${restaurant.reviewCount}` : 'Chưa có đánh giá'}</strong></div>
               <div className="tf-store-stat"><small>Phí giao hàng</small><strong>{formatVND(restaurant.deliveryFee)}</strong></div>
             </div>
           </div>
@@ -231,9 +244,11 @@ export default function RestaurantDetailPage() {
                   </div>
                   <div className="tf-food-grid">
                     {cat.items.map((item) => (
-                      <FoodCard key={item.id} item={item} showCategoryTag={false} orderable={isOpen} cartBusy={cartState.busy || cartState.loading} quantityInCart={selectedItems[item.id]?.qty || 0}
+                      <div key={item.id} id={`menu-item-${item.id}`}>
+                      <FoodCard item={item} showCategoryTag={false} orderable={isOpen} cartBusy={cartState.busy || cartState.loading} quantityInCart={selectedItems[item.id]?.qty || 0}
                         onClick={() => { setViewingItem(item); setModalQty(1); setModalNote(''); setCartError(''); }}
                         onAddToCart={() => addToCart(item)} />
+                      </div>
                     ))}
                   </div>
                 </section>
@@ -272,6 +287,7 @@ export default function RestaurantDetailPage() {
               </span>
             </div>
             {viewingItem.description && <p>{viewingItem.description}</p>}
+            <CustomerReviews restaurantId={id} itemId={viewingItem.id} title={`Đánh giá cho ${viewingItem.itemName}`} compact />
             <label className="commerce-field">Ghi chú cho món<textarea maxLength={300} rows={2} value={modalNote} onChange={e => setModalNote(e.target.value)} placeholder="Ví dụ: ít cay, không hành…" /></label>
             {cartError && <Alert type="error">{cartError}</Alert>}
             <div className="tf-item-detail__actions">

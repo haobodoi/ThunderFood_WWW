@@ -1,4 +1,5 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ROLE_LABEL, homePathFor } from '../utils/roleUtils.js';
 import Icon from './Icon.jsx';
@@ -8,7 +9,7 @@ import { useCart } from '../context/CartContext.jsx';
 
 export function Brand({ light = false }) {
   return (
-    <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} onClick={() => window.scrollTo(0, 0)}>
+    <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} aria-label="Trang chủ ThunderFood" onClick={() => window.scrollTo(0, 0)}>
       <Logo size={30} light={light} />
     </Link>
   );
@@ -17,6 +18,24 @@ export function Brand({ light = false }) {
 export default function Navbar() {
   const { user, initializing } = useAuth();
   const { count } = useCart();
+  const location = useLocation();
+  const [homeSection, setHomeSection] = useState('home');
+
+  useEffect(() => {
+    if (location.pathname !== '/') return undefined;
+    if (location.hash === '#explore-restaurants') setHomeSection('explore');
+    else setHomeSection('home');
+    const target = document.getElementById('explore-restaurants');
+    if (!target) return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setHomeSection('explore');
+      else if (entry.boundingClientRect.top > 0) setHomeSection('home');
+    }, { rootMargin: '-24% 0px -58% 0px', threshold: 0 });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [location.pathname, location.hash]);
+  const onHome = () => setHomeSection('home');
+  const onExplore = () => setHomeSection('explore');
 
   return (
     <header className="navbar">
@@ -24,10 +43,10 @@ export default function Navbar() {
         <Brand />
 
         <nav className="navbar__links" aria-label="Điều hướng chính">
-          <NavLink to="/" end className="navbar__link" onClick={() => window.scrollTo(0, 0)}>
+          <Link to="/" className={`navbar__link${location.pathname === '/' && homeSection === 'home' ? ' active' : ''}`} aria-current={location.pathname === '/' && homeSection === 'home' ? 'page' : undefined} onClick={() => { onHome(); window.scrollTo(0, 0); }}>
             Trang chủ
-          </NavLink>
-          <Link to="/#explore-restaurants" className="navbar__link">
+          </Link>
+          <Link to="/#explore-restaurants" className={`navbar__link${location.pathname === '/' && homeSection === 'explore' ? ' active' : ''}`} aria-current={location.pathname === '/' && homeSection === 'explore' ? 'page' : undefined} onClick={onExplore}>
             Khám phá quán ngon
           </Link>
           {user && user.role !== 'CUSTOMER' && (

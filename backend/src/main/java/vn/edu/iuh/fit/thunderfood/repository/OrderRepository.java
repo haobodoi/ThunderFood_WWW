@@ -32,6 +32,9 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
     Page<OrderEntity> findByCustomerId(Long customerId, Pageable pageable);
 
     @EntityGraph(attributePaths = "restaurant")
+    Page<OrderEntity> findByCustomerIdAndOrderStatusIn(Long customerId, Collection<OrderStatusEnum> statuses, Pageable pageable);
+
+    @EntityGraph(attributePaths = "restaurant")
     Page<OrderEntity> findByRestaurantOwnerUserId(Long ownerUserId, Pageable pageable);
 
     @EntityGraph(attributePaths = "restaurant")

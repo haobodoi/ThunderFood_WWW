@@ -139,16 +139,49 @@ export function Pager({ page, total = 0, pageSize = 20, onChange }) {
   }, [page, pages, onChange]);
   return <nav className="admin-pager" aria-label="Phân trang"><span>{total.toLocaleString('vi-VN')} kết quả · Trang {page + 1}/{pages}</span><div className="admin-actions"><button type="button" className="btn btn--outline btn--sm" disabled={page === 0} onClick={() => onChange(page - 1)}>Trước</button><button type="button" className="btn btn--outline btn--sm" disabled={page + 1 >= pages} onClick={() => onChange(page + 1)}>Sau</button></div></nav>;
 }
-export function Table({ headers, children, caption }) {
-  return <div className="tf-admin-table-wrap" role="region" aria-label={caption} tabIndex={0}><table className="tf-admin-table"><caption className="tf-visually-hidden">{caption}</caption><thead><tr>{headers.map(h => <th scope="col" key={h}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div>;
+/**
+ * Bảng quản trị. `numeric` liệt kê tên các cột số liệu (tiền, số lượng): cả tiêu đề và ô
+ * của cột đó được căn phải để số và nhãn cột thẳng hàng với nhau.
+ */
+export function Table({ headers, children, caption, numeric = [] }) {
+  return <div className="tf-admin-table-wrap" role="region" aria-label={caption} tabIndex={0}><table className="tf-admin-table"><caption className="tf-visually-hidden">{caption}</caption><thead><tr>{headers.map(h => <th scope="col" key={h} data-numeric={numeric.includes(h) || undefined}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div>;
 }
+
+/** Thời gian chờ của đơn chưa được quán xác nhận; tính theo giờ Việt Nam như dữ liệu backend trả về. */
+function parseVietnamTime(value) {
+  if (!value) return NaN;
+  const text = String(value);
+  return Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(text) ? text : text.slice(0, 19) + '+07:00');
+}
+export function WaitingTime({ createdAt }) {
+  const minutes = Math.floor((Date.now() - parseVietnamTime(createdAt)) / 60000);
+  if (!Number.isFinite(minutes) || minutes < 0) return null;
+  const label = minutes < 1 ? 'Vừa đặt' : minutes < 60 ? `Chờ ${minutes} phút` : minutes < 1440 ? `Chờ ${Math.floor(minutes / 60)} giờ ${minutes % 60} phút` : `Chờ ${Math.floor(minutes / 1440)} ngày`;
+  const level = minutes >= 15 ? 'late' : minutes >= 5 ? 'soon' : 'ok';
+  return <span className={`admin-wait admin-wait--${level}`} title="Thời gian từ lúc khách đặt, đơn chưa được xác nhận">{label}</span>;
+}
+
 export function OrderTable({ items = [], area = 'admin' }) {
-  return <Table headers={['Mã đơn / Thời gian', 'Khách hàng / Quán', 'Trạng thái', 'Thanh toán', 'Tổng tiền']} caption="Đơn hàng"><>{items.map(o => <tr key={o.orderId}><td>{area === 'partner' ? <strong>{o.orderCode}</strong> : <Link className="admin-link" to={`/admin/orders/${o.orderId}`}>{o.orderCode}</Link>}<small>{formatDateTime(o.createdAt)}</small></td><td>{o.recipientName}<small>{o.restaurantName}</small></td><td><OrderStatus status={o.orderStatus} /></td><td><PaymentStatus status={o.paymentStatus} /><small>{o.paymentMethod === 'COD' ? 'COD' : 'VietQR'}</small></td><td data-numeric>{formatVND(o.totalAmount)}</td></tr>)}</></Table>;
+  return <Table headers={['Mã đơn / Thời gian', 'Khách hàng / Quán', 'Trạng thái', 'Thanh toán', 'Tổng tiền']} numeric={['Tổng tiền']} caption="Đơn hàng"><>{items.map(o => <tr key={o.orderId}><td>{area === 'partner' ? <strong>{o.orderCode}</strong> : <Link className="admin-link" to={`/admin/orders/${o.orderId}`}>{o.orderCode}</Link>}<small>{formatDateTime(o.createdAt)}</small></td><td>{o.recipientName}<small>{o.restaurantName}</small></td><td><OrderStatus status={o.orderStatus} />{o.orderStatus === 'PENDING' && <WaitingTime createdAt={o.createdAt} />}</td><td><PaymentStatus status={o.paymentStatus} /><small>{o.paymentMethod === 'COD' ? 'Tiền mặt (COD)' : 'Chuyển khoản VietQR'}</small></td><td data-numeric><strong className="admin-money">{formatVND(o.totalAmount)}</strong></td></tr>)}</></Table>;
+}
+
+/** Số việc đang chờ xử lý trên toàn hệ thống (đơn chờ, hoàn tiền, hồ sơ, báo cáo, khiếu nại). Tự làm mới mỗi 60 giây. */
+export function useAdminAttention(enabled = true, refreshKey = '') {
+  const [counts, setCounts] = useState(null);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let active = true;
+    const load = () => adminApi.get('/attention').then(data => { if (active) setCounts(data); }).catch(() => { /* badge chỉ là phụ trợ */ });
+    load();
+    const timer = window.setInterval(load, 60000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [enabled, refreshKey]);
+  return counts;
 }
 export function Search({ value, onChange, placeholder = 'Nhập để tìm kiếm', label = 'Tìm kiếm' }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
-  return <form className="admin-search" onSubmit={e => { e.preventDefault(); onChange(draft.trim()); }}><Field label={label}><input type="search" maxLength={150} value={draft} onChange={e => setDraft(e.target.value)} placeholder={placeholder} /></Field><button className="btn btn--outline" type="submit">Tìm</button></form>;
+  return <form className="admin-search" onSubmit={e => { e.preventDefault(); onChange(draft.trim()); }}><Field label={label}><input type="search" name="q" maxLength={150} value={draft} onChange={e => setDraft(e.target.value)} placeholder={placeholder} /></Field><button className="btn btn--outline" type="submit">Tìm</button></form>;
 }
 export function RestaurantPicker({ value, onChange, client = adminApi, path = '/catalog/restaurants', allLabel = 'Chọn quán…' }) {
   const [q, setQ] = useState(''), [page, setPage] = useState(0);

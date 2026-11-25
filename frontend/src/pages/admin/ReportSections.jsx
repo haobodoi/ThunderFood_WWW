@@ -3,7 +3,7 @@ import { ArrowRight, Banknote, CheckCircle2, Info, ShoppingBag, UtensilsCrossed 
 import { Link } from 'react-router-dom';
 import { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from '../../utils/orderUtils.js';
 import { formatChartValue, toChartUnits } from '../../utils/statisticsChart.js';
-import { OrderTable, Table, formatVND } from './AdminShared.jsx';
+import { Badge, OrderTable, Table, formatVND } from './AdminShared.jsx';
 
 const number = new Intl.NumberFormat('vi-VN');
 const percent = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
@@ -57,6 +57,8 @@ export function Ranking({ title, items = [], by = 'quantity', description, switc
   const [metric, setMetric] = useState(by);
   const ranked = [...items].sort((a, b) => Number(b[metric]) - Number(a[metric]));
   const max = Number(ranked[0]?.[metric] ?? 0);
+  // Tỷ trọng trong nhóm đang hiển thị giúp so sánh nhanh mà không phải đọc từng con số lớn.
+  const total = ranked.reduce((sum, item) => sum + Number(item[metric] ?? 0), 0);
   return <section className="admin-panel ranking-panel">
     <SectionHeading title={title} description={description} />
     {switchable && <div className="report-segmented" role="group" aria-label="Sắp xếp món nổi bật">
@@ -65,9 +67,14 @@ export function Ranking({ title, items = [], by = 'quantity', description, switc
     </div>}
     {ranked.length ? <ol className="report-ranking">{ranked.map((item, index) => <li key={item.itemId ?? item.id ?? item.name + index}>
       <span className="report-ranking__position">{String(index + 1).padStart(2, '0')}</span>
-      <div className="report-ranking__item"><div><span>{item.name}</span><strong>{metric === 'revenue' ? formatVND(item.revenue) : number.format(item.quantity) + ' phần'}</strong></div>
+      <div className="report-ranking__item"><div><span>{item.name}{item.restaurantName && <small className="report-ranking__shop">{item.restaurantName}</small>}</span><strong>{metric === 'revenue' ? formatVND(item.revenue) : number.format(item.quantity) + ' phần'}</strong></div>
         <span className="dashboard-bar" aria-hidden="true"><span style={{ width: `${max ? Number(item[metric]) / max * 100 : 0}%` }} /></span>
-        {switchable && <small>{metric === 'quantity' ? formatVND(item.revenue) + ' doanh thu món' : number.format(item.quantity) + ' phần đã bán'}</small>}
+        <small>
+          {metric === 'quantity' ? item.revenue != null && <>{formatVND(item.revenue)} doanh thu món · </>
+            : item.quantity != null ? <>{number.format(item.quantity)} phần đã bán · </>
+              : item.orders != null && <>{number.format(item.orders)} đơn trong kỳ · </>}
+          <span className="report-ranking__share">chiếm {total ? percent.format(Number(item[metric]) / total * 100) : '0,0'}% danh sách</span>
+        </small>
       </div>
     </li>)}</ol> : <div className="report-empty"><UtensilsCrossed size={26} aria-hidden="true" /><strong>Chưa có món bán trong kỳ</strong><span>Chọn khoảng ngày khác để xem hiệu quả thực đơn.</span></div>}
   </section>;
@@ -80,14 +87,25 @@ export function ProductInsights({ report, partner }) {
       <Ranking title="Món ăn nổi bật" items={report.topItems} switchable description="So sánh trong 10 món bán nhiều nhất của kỳ." />
       <Ranking title="Danh mục nổi bật" items={report.topCategories} by="revenue" description="10 danh mục bán nhiều nhất, sắp theo doanh thu món." />
     </div>
-    {partner && <Ranking title="Doanh thu món theo quán" description="So sánh các quán trong phạm vi báo cáo đang chọn." items={report.byRestaurant ?? []} by="revenue" />}
     <section className="admin-panel">
-      <SectionHeading title="Món cần chú ý" description="Tối đa 10 món có số phần bán thấp nhất, bao gồm món chưa bán được." />
-      {report.slowItems.length ? <Table headers={['Món ăn', 'Nhà hàng', 'Số phần đã bán']} caption="Món bán chậm hoặc chưa bán">
-        {report.slowItems.map((item, index) => <tr key={item.itemId ?? item.name + index}><td><strong>{item.name}</strong></td><td>{item.restaurantName}</td>
-          <td data-numeric><span className={Number(item.quantity) === 0 ? 'report-unsold' : ''}>{Number(item.quantity) === 0 ? 'Chưa bán' : number.format(item.quantity) + ' phần'}</span></td></tr>)}
-      </Table> : <p className="report-empty-note">Chưa có món phù hợp với kỳ báo cáo này.</p>}
+      <SectionHeading title="Món bán chậm" description="10 món bán ít nhất trong số món đã có đơn trong kỳ (chỉ món mở bán từ trước kỳ). Tỷ trọng trong quán: món chiếm bao nhiêu % số phần bán của chính quán đó." />
+      {report.slowItems.length ? <Table headers={['Món ăn', 'Nhà hàng', 'Số phần đã bán', 'Doanh thu món', 'Tỷ trọng trong quán']} numeric={['Số phần đã bán', 'Doanh thu món', 'Tỷ trọng trong quán']} caption="Món bán chậm">
+        {report.slowItems.map((item, index) => <tr key={item.itemId ?? item.name + index}>
+          <td><strong>{item.name}</strong>{!Number(item.available) && <small className="report-unsold">Đang tạm hết</small>}</td><td>{item.restaurantName}</td>
+          <td data-numeric>{number.format(item.quantity)} phần<small>{number.format(item.orders ?? 0)} đơn</small></td>
+          <td data-numeric>{formatVND(item.revenue)}</td>
+          <td data-numeric>{item.restaurantShare == null ? '—' : percent.format(Number(item.restaurantShare)) + '%'}</td></tr>)}
+      </Table> : <p className="report-empty-note">Chưa có món nào bán được trong kỳ báo cáo này.</p>}
     </section>
+    <details className="admin-panel report-unsold-panel">
+      <summary><strong>Món chưa có đơn trong kỳ</strong><span className="tab-count" data-urgent={Number(report.unsoldCount) > 0 || undefined}>{number.format(report.unsoldCount ?? 0)}</span></summary>
+      <p className="muted">Món đang hiển thị, mở bán từ trước kỳ nhưng chưa có đơn hoàn tất nào trong kỳ. Tách riêng khỏi danh sách bán chậm để không làm lệch so sánh.</p>
+      {report.unsoldItems?.length ? <Table headers={['Món ăn', 'Nhà hàng', 'Giá bán', 'Trạng thái']} numeric={['Giá bán']} caption="Món chưa có đơn trong kỳ">
+        {report.unsoldItems.map(item => <tr key={item.itemId}><td><strong>{item.name}</strong></td><td>{item.restaurantName}</td><td data-numeric>{formatVND(item.price)}</td>
+          <td>{Number(item.available) ? <Badge tone="warning">Còn bán · chưa có đơn</Badge> : <Badge>Đang tạm hết</Badge>}</td></tr>)}
+      </Table> : <p className="report-empty-note">Tất cả món đang bán đều đã có đơn trong kỳ.</p>}
+      {Number(report.unsoldCount) > (report.unsoldItems?.length ?? 0) && <p className="muted">Hiển thị {number.format(report.unsoldItems.length)} / {number.format(report.unsoldCount)} món.</p>}
+    </details>
   </>;
 }
 
@@ -120,7 +138,7 @@ export function ReportHighlights({ report, onView }) {
 export function PeriodTable({ report, displayDate }) {
   return <details className="admin-panel report-period-table"><summary>Số liệu chi tiết theo kỳ <span>{number.format(report.series.length)} kỳ</span></summary>
     <p className="muted">Theo ngày tạo đơn. Doanh thu món tính trên đơn hoàn tất và đã thanh toán.</p>
-    <Table headers={['Đầu kỳ', 'Số đơn', 'Doanh thu món']} caption="Số liệu chi tiết theo kỳ">
+    <Table headers={['Đầu kỳ', 'Số đơn', 'Doanh thu món']} numeric={['Số đơn', 'Doanh thu món']} caption="Số liệu chi tiết theo kỳ">
       {report.series.map(row => <tr key={row.period}><td>{displayDate(row.period)}</td><td data-numeric>{formatChartValue(toChartUnits(row.orders, false), false)}</td><td data-numeric>{formatChartValue(toChartUnits(row.revenue, true), true)}</td></tr>)}
     </Table>
   </details>;

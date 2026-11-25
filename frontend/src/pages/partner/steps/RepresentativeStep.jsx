@@ -48,7 +48,7 @@ function validate(form) {
   return errors;
 }
 
-export default function RepresentativeStep({ registration, user, onSaved, onBack }) {
+export default function RepresentativeStep({ registration, user, onSaved, onBack, api = partnerRestaurantApi }) {
   const rep = registration.representative;
   const [form, setForm] = useState({
     businessType: rep.businessType ?? 'INDIVIDUAL',
@@ -108,7 +108,7 @@ export default function RepresentativeStep({ registration, user, onSaved, onBack
     };
     setSaving(true);
     try {
-      onSaved(await partnerRestaurantApi.updateRepresentative(registration.id, payload), 3);
+      onSaved(await api.updateRepresentative(registration.id, payload), 3);
     } catch (error) {
       setErrors(getFieldErrors(error));
       setServerError(getErrorMessage(error, 'Không lưu được thông tin, vui lòng thử lại.'));

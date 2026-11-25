@@ -54,8 +54,9 @@ public class OrderController {
 
     @GetMapping("/api/customer/orders")
     public PageResponse<OrderSummary> mine(@AuthenticationPrincipal UserDetailsDto user,
+                                           @RequestParam(defaultValue = "ALL") String group,
                                            @RequestParam(defaultValue = "0") int page) {
-        return service.mine(user.getId(), page);
+        return service.mine(user.getId(), group, page);
     }
 
     @GetMapping("/api/customer/orders/{id}")

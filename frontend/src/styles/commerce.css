@@ -507,5 +507,5 @@ body { background: var(--tf-bg-app); }
 .tf-order-actions--split { justify-content: space-between; align-items: center; }
 .tf-order-actions__primary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .order-review-page__statuses { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
-.order-review-page__readonly { display: grid; gap: 14px; }
+.order-review-page__readonly { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .order-review-page__readonly .commerce-review { margin: 0; }

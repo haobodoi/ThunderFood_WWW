@@ -158,7 +158,8 @@ public class OrderService {
         };
         order.addPayment(provider, transferContent(code), now);
         orders.save(order);
-        if (automatic || simulated) sepayPayments.register(order.getId(), recipient);
+        // Snapshot every online recipient. The partner may later change bank details while this order is still payable.
+        if (recipient != null) sepayPayments.register(order.getId(), recipient);
         lockedCart.removeItems(lines.stream().map(CartLine::cartItemId).toList(), now);
         // Ghi ngay để lỗi DB trả về trong request này, trước khi phát sự kiện.
         cartRepository.flush();
@@ -181,8 +182,21 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public PageResponse<OrderSummary> mine(long customer, int page) {
+        return mine(customer, "ALL", page);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OrderSummary> mine(long customer, String group, int page) {
         rules.actor(customer, CUSTOMER_ROLE, false);
-        return PageResponse.from(orders.findByCustomerId(customer, page(page)), OrderSummary::from);
+        var pageable = page(page);
+        var result = switch (group == null ? "ALL" : group) {
+            case "ALL" -> orders.findByCustomerId(customer, pageable);
+            case "PROCESSING" -> orders.findByCustomerIdAndOrderStatusIn(customer, List.of(PENDING, CONFIRMED, PREPARING, DELIVERING), pageable);
+            case "COMPLETED" -> orders.findByCustomerIdAndOrderStatusIn(customer, List.of(COMPLETED), pageable);
+            case "CLOSED" -> orders.findByCustomerIdAndOrderStatusIn(customer, List.of(CANCELLED, REJECTED), pageable);
+            default -> throw new BusinessException("Nhóm đơn hàng không hợp lệ");
+        };
+        return PageResponse.from(result, OrderSummary::from);
     }
 
     @Transactional(readOnly = true)
@@ -392,12 +406,9 @@ public class OrderService {
             return null;
         if (sepay.mockEnabled()) return order.hasPaymentProvider(SEPAY_MOCK) ? mockPaymentQr(order) : null;
         if (order.hasPaymentProvider(SEPAY_MOCK)) return null;
-        if (order.hasPaymentProvider(SEPAY)) {
-            return sepayPayments.findRecipient(order.getId())
-                    .map(recipient -> paymentQr(order, recipient, sepay.enabled())).orElse(null);
-        }
-        return qrRecipient(order.getRestaurant(), order.getTotalAmount())
-                .map(recipient -> paymentQr(order, recipient, false)).orElse(null);
+        return sepayPayments.findRecipient(order.getId())
+                .map(recipient -> paymentQr(order, recipient, order.hasPaymentProvider(SEPAY) && sepay.enabled()))
+                .orElse(null);
     }
 
     private static PaymentQr paymentQr(OrderEntity order, Recipient recipient, boolean automatic) {

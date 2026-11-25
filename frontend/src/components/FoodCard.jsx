@@ -3,7 +3,8 @@ import Icon from './Icon.jsx';
 export function formatVND(amount) {
   if (amount === null || amount === undefined || amount === '') return 'Chưa cập nhật';
   const value = Number(amount);
-  return Number.isFinite(value) ? value.toLocaleString('vi-VN') + ' ₫' : 'Giá chưa cập nhật';
+  // VND không có đơn vị lẻ: làm tròn để không hiện số thập phân (vd. giá trị đơn trung bình 305.235,35 ₫).
+  return Number.isFinite(value) ? Math.round(value).toLocaleString('vi-VN') + ' ₫' : 'Giá chưa cập nhật';
 }
 
 const APPROVAL_META = {

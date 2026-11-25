@@ -26,6 +26,7 @@ import vn.edu.iuh.fit.thunderfood.repository.RestaurantRepository;
 import vn.edu.iuh.fit.thunderfood.repository.ReviewModerationLogRepository;
 import vn.edu.iuh.fit.thunderfood.repository.ReviewReplyRepository;
 import vn.edu.iuh.fit.thunderfood.repository.ReviewReportRepository;
+import vn.edu.iuh.fit.thunderfood.repository.MenuItemRepository;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -36,8 +37,9 @@ import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.*;
 public class CustomerReviewService {
     private static final String CUSTOMER_ROLE = "CUSTOMER", PARTNER_ROLE = "RESTAURANT_PARTNER", ADMIN_ROLE = "ADMIN";
     private static final int PAGE_SIZE = 10;
-    /** Sắp xếp ổn định theo created_at + review_id; các cách sắp xếp khác chỉ thêm tiêu chí ở đầu. */
+    /** Dùng mã đánh giá làm tiêu chí phụ khi nhiều dòng trùng thời điểm. */
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+    private static final Sort OLDEST_FIRST = Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
 
     private final CustomerReviewRepository reviews;
     private final ReviewReplyRepository replies;
@@ -47,8 +49,9 @@ public class CustomerReviewService {
     private final RestaurantRepository restaurants;
     private final CustomerRules rules;
     private final AdminAuditService audit;
+    private final MenuItemRepository menuItems;
 
-    public CustomerReviewService(CustomerReviewRepository reviews, ReviewReplyRepository replies, ReviewReportRepository reports, ReviewModerationLogRepository logs, OrderRepository orders, RestaurantRepository restaurants, CustomerRules rules, AdminAuditService audit) {
+    public CustomerReviewService(CustomerReviewRepository reviews, ReviewReplyRepository replies, ReviewReportRepository reports, ReviewModerationLogRepository logs, OrderRepository orders, RestaurantRepository restaurants, CustomerRules rules, AdminAuditService audit, MenuItemRepository menuItems) {
         this.reviews = reviews;
         this.replies = replies;
         this.reports = reports;
@@ -57,6 +60,7 @@ public class CustomerReviewService {
         this.restaurants = restaurants;
         this.rules = rules;
         this.audit = audit;
+        this.menuItems = menuItems;
     }
 
     private static ResourceNotFoundException missing() {
@@ -97,19 +101,22 @@ public class CustomerReviewService {
     }
 
     @Transactional(readOnly = true)
-    public PublicReviewPage list(long restaurant, int page, Integer stars, boolean photos, String sort, Long viewer) {
+    public PublicReviewPage list(long restaurant, int page, Integer stars, boolean photos, String sort, Long itemId, Long viewer) {
         publicRestaurant(restaurant); page(page);
+        if (itemId != null && !menuItems.findRestaurantIdById(itemId).filter(id -> id == restaurant).isPresent())
+            throw new BusinessException("Món ăn không thuộc nhà hàng này");
         if (stars != null && (stars < 1 || stars > 5)) throw new BusinessException("Số sao không hợp lệ");
         Sort order = switch (sort) {
             case "highest" -> Sort.by(Sort.Order.desc("rating")).and(NEWEST_FIRST);
             case "lowest" -> Sort.by(Sort.Order.asc("rating")).and(NEWEST_FIRST);
             case "newest" -> NEWEST_FIRST;
+            case "oldest" -> OLDEST_FIRST;
             default -> throw new BusinessException("Cách sắp xếp không hợp lệ");
         };
-        var rows = reviews.findPublic(restaurant, stars, photos, PageRequest.of(page, PAGE_SIZE, order));
-        var summary = reviews.findRatingSummary(restaurant)
-                .map(RatingSummary::from)
-                .orElseGet(RatingSummary::empty);
+        var rows = reviews.findPublic(restaurant, stars, photos, itemId, PageRequest.of(page, PAGE_SIZE, order));
+        var storedSummary = reviews.findFilteredRatingSummary(restaurant, itemId);
+        var summary = storedSummary == null || storedSummary.getReviewCount() == null
+                ? RatingSummary.empty() : RatingSummary.from(storedSummary);
         return new PublicReviewPage(
                 rows.getContent().stream().map(review -> PublicReview.from(review, viewer)).toList(),
                 rows.getTotalElements(),
@@ -178,17 +185,26 @@ public class CustomerReviewService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ManagedReview> own(long actor, String role, int page) {
+    public PageResponse<ManagedReview> own(long actor, String role, int page) { return own(actor, role, page, "ALL"); }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ManagedReview> own(long actor, String role, int page, String replyStatus) {
         rules.actor(actor, role, false);
         page(page);
         var pageable = PageRequest.of(page, PAGE_SIZE, NEWEST_FIRST);
         boolean customer = CUSTOMER_ROLE.equals(role);
         var rows = customer
                 ? reviews.findByCustomerIdAndDeletedAtIsNull(actor, pageable)
-                : reviews.findByRestaurantOwnerUserIdAndStatusAndDeletedAtIsNull(
-                        actor, ReviewStatusEnum.PUBLISHED, pageable);
+                : reviews.findPartnerReviews(actor, parseReplyStatus(replyStatus), pageable);
         return PageResponse.from(rows,
                 review -> ManagedReview.from(review, customer && withinEditWindow(review.getCreatedAt())));
+    }
+
+    private static String parseReplyStatus(String value) {
+        return switch (value == null ? "ALL" : value) {
+            case "ALL", "REPLIED", "UNREPLIED" -> value == null ? "ALL" : value;
+            default -> throw new BusinessException("Bộ lọc phản hồi không hợp lệ");
+        };
     }
 
     public void reply(long partner, long id, Reply request, boolean delete) {

@@ -165,7 +165,7 @@ Chi tiết schema và quy tắc: [backend/database/thunderfood_mariadb_v4_NOTES.
 
 ## Đặt hàng và thanh toán VietQR / SePay
 
-DB đã cài cần chạy [migration V6](backend/database/migrations/V6__sepay.sql) một lần. Cài mới dùng `backend/database/thunderfood_final.sql`.
+DB đã cài cần chạy các migration còn thiếu theo thứ tự, hiện gồm [V6](backend/database/migrations/V6__sepay.sql) và [V7](backend/database/migrations/V7__profile_updates.sql). Cài mới dùng `backend/database/thunderfood_final.sql`.
 
 - Khách bấm **Đặt hàng** ở giỏ (`/customer/checkout/:cartId`), nhập thông tin giao hàng, chọn VietQR hoặc thanh toán khi nhận hàng. Theo dõi đơn ở `/customer/orders`.
 - Giá, phí giao và tổng tiền do server tính. Client gửi `version` của giỏ để bấm hai lần chỉ tạo một đơn, và `expectedTotal` để chặn đặt hàng khi giá vừa đổi so với màn hình đang xem. Món không khả dụng không vào đơn và được giữ lại trong giỏ.
@@ -189,10 +189,11 @@ DB đã cài cần chạy [migration V6](backend/database/migrations/V6__sepay.s
 
 ### Bật xác nhận qua SePay
 
-1. Chạy [migration V6](backend/database/migrations/V6__sepay.sql) trên DB đang dùng. Với Docker Compose và volume đã có dữ liệu, có thể chạy từ thư mục gốc:
+1. Chạy các migration còn thiếu theo thứ tự trên DB đang dùng. Với Docker Compose và volume đã có dữ liệu, có thể chạy từ thư mục gốc:
 
    ```bash
    docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD"' < backend/database/migrations/V6__sepay.sql
+   docker compose exec -T db sh -c 'mariadb --user=root --password="$MARIADB_ROOT_PASSWORD"' < backend/database/migrations/V7__profile_updates.sql
    ```
 
 2. Liên kết tài khoản nhận tiền của từng quán trong SePay. Luồng này dùng giao dịch vào tài khoản chính. Kiểm tra loại kết nối ngân hàng hỗ trợ nhận giao dịch đó. [Tài khoản ngân hàng và webhook SePay](https://developer.sepay.vn/vi/sepay-webhooks/tai-khoan-ngan-hang)

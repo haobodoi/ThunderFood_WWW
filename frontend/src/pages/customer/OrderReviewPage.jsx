@@ -148,22 +148,21 @@ function OrderReview({ id }) {
   if (!order) return <div className="container commerce-page"><p role="status">Đang tải thông tin đơn hàng…</p></div>;
 
   const imageCount = (review?.images?.length || 0) + queuedImages.length;
+  const deleted = Boolean(review?.deletedAt);
   return <div className="container commerce-page order-review-page">
     <Link to={`/customer/orders/${order.orderId}`} className="order-review-page__back">← Quay lại chi tiết đơn hàng</Link>
     <div className="commerce-row commerce-wrap"><div><h1>Đánh giá đồ ăn</h1><p>Đơn {order.orderCode} · hoàn tất lúc {reviewTime(order.completedAt)}</p></div><div className="order-review-page__statuses"><OrderStatus status={order.orderStatus} /><PaymentStatus status={order.paymentStatus} /></div></div>
     <div className="order-review-page__grid">
       <section className="commerce-cart order-review-page__items"><h2>Món bạn đã dùng</h2><p><strong>{order.restaurantName}</strong></p><OrderLines items={order.items} /><p className="muted">{PAYMENT_METHOD[order.paymentMethod]} · Tổng thanh toán: <strong>{Number(order.totalAmount).toLocaleString('vi-VN')} ₫</strong></p></section>
       <section className="commerce-compose order-review-page__form">
-        <h2>{review?.deleted ? 'Đánh giá đã bị xóa' : review?.editable === false ? 'Đánh giá bạn đã gửi' : 'Chia sẻ trải nghiệm'}</h2>
-        {isReviewable(order) ? review?.deleted ? <div className="order-review-page__readonly">
-          <Alert type="warning" title="Đánh giá đã bị xóa">Bạn đã xóa đánh giá cho đơn hàng này. Mỗi đơn hàng chỉ được gửi đánh giá một lần nên không thể tạo lại hoặc chỉnh sửa.</Alert>
-          <div className="tf-order-actions">
-            <Link className="btn btn--outline" to="/customer/reviews">Quản lý đánh giá của tôi</Link>
-            <Link className="btn btn--ghost" to={`/customer/orders/${order.orderId}`}>Về chi tiết đơn</Link>
-          </div>
-        </div> : review?.editable === false ? <div className="order-review-page__readonly">
-          <Alert type="info" title="Đánh giá đã hết hạn sửa">Đánh giá này chỉ được chỉnh sửa hoặc thêm ảnh trong 7 ngày sau khi gửi.</Alert>
-          <ReviewCard review={review} />
+        <h2>{review?.editable === false ? 'Đánh giá của bạn' : 'Chia sẻ trải nghiệm'}</h2>
+        {isReviewable(order) ? review?.editable === false ? <div className="order-review-page__readonly">
+          {deleted ? <Alert type="info" title="Đánh giá đã xóa">
+            Bạn đã xóa đánh giá này. Mỗi đơn hàng chỉ được đánh giá một lần, kể cả khi đánh giá đã xóa.
+          </Alert> : <>
+            <Alert type="info" title="Đánh giá đã hết hạn sửa">Đánh giá này chỉ được chỉnh sửa hoặc thêm ảnh trong 7 ngày sau khi gửi.</Alert>
+            <ReviewCard review={review} />
+          </>}
           <div className="tf-order-actions">
             <Link className="btn btn--outline" to="/customer/reviews">Quản lý đánh giá của tôi</Link>
             <Link className="btn btn--ghost" to={`/customer/orders/${order.orderId}`}>Về chi tiết đơn</Link>
@@ -179,7 +178,7 @@ function OrderReview({ id }) {
           <RatingFields {...{ rating, setRating, content, setContent }} />
           <label className="commerce-field">Thêm ảnh JPG/PNG · tối đa 1MB/ảnh, tối đa 5 ảnh
             <span className={`order-review-page__camera-upload${busy || imageCount >= MAX_REVIEW_IMAGES ? ' is-disabled' : ''}`} title="Chọn ảnh để tải lên">
-              <input className="order-review-page__file-input" type="file" multiple accept="image/jpeg,image/png" aria-label="Chọn ảnh để tải lên" disabled={busy || imageCount >= MAX_REVIEW_IMAGES} onChange={selectImages} />
+              <input className="order-review-page__file-input" type="file" name="reviewImages" multiple accept="image/jpeg,image/png" aria-label="Chọn ảnh để tải lên" disabled={busy || imageCount >= MAX_REVIEW_IMAGES} onChange={selectImages} />
               <Icon name="camera" size={34} />
             </span>
           </label>

@@ -25,6 +25,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     boolean existsByPhone(String phone);
 
+    boolean existsByPhoneAndIdNot(String phone, Long id);
+
     @Transactional
     @Modifying
     @Query("UPDATE UserEntity u SET u.lastLoginAt = :time WHERE u.id = :id")
