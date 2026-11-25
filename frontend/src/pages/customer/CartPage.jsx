@@ -6,7 +6,7 @@ import Alert from '../../components/Alert.jsx';
 export default function CartPage() {
   const { carts, loading, busy, error, refresh } = useCart();
   const nonempty = carts.filter(c => c.items.length);
-  return <main className="container commerce-page">
+  return <div className="container commerce-page">
     <div className="commerce-row"><h1>Giỏ hàng của bạn</h1><button className="btn btn--outline" disabled={loading || busy} onClick={refresh}>Tải lại</button></div>
     <p>Món được lưu riêng theo từng quán.</p>
     {error && <Alert type="error">{error}</Alert>}
@@ -22,5 +22,5 @@ export default function CartPage() {
         Đặt tất cả
       </Link>
     </section>}
-  </main>;
+  </div>;
 }

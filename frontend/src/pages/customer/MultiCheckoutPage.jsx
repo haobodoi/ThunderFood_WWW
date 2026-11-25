@@ -93,8 +93,8 @@ function MultiCheckout({ selection }) {
   const placedOrders = created.length > 0 && <Alert type="success" title={`Đã tạo ${created.length} đơn`}>
     <ul>{created.map(order => <li key={order.orderId}><Link to={`/customer/orders/${order.orderId}`}>{order.restaurantName}</Link></li>)}</ul>
   </Alert>;
-  if (loading) return <main className="container commerce-page"><p role="status">Đang kiểm tra các giỏ hàng…</p></main>;
-  if (loadError || !orderable.length) return <main className="container commerce-page">
+  if (loading) return <div className="container commerce-page"><p role="status">Đang kiểm tra các giỏ hàng…</p></div>;
+  if (loadError || !orderable.length) return <div className="container commerce-page">
     <h1>Đặt tất cả</h1>
     {placedOrders}
     {error && <Alert type="error">{error}</Alert>}
@@ -102,9 +102,9 @@ function MultiCheckout({ selection }) {
       {cartIds.length ? 'Không có món nào có thể đặt lúc này.' : 'Không tìm thấy giỏ hàng để đặt.'}
     </Alert>}
     <Link className="btn btn--outline" to="/customer/cart">Về giỏ hàng</Link>
-  </main>;
+  </div>;
 
-  return <main className="container commerce-page">
+  return <div className="container commerce-page">
     <h1>Đặt tất cả món</h1>
     {placedOrders}
     <p>Mỗi nhà hàng sẽ nhận một đơn riêng, với cùng thông tin giao hàng bên dưới.</p>
@@ -146,5 +146,5 @@ function MultiCheckout({ selection }) {
         <Link className="btn btn--ghost btn--block" to="/customer/cart">Quay lại giỏ hàng</Link>
       </aside>
     </form>
-  </main>;
+  </div>;
 }

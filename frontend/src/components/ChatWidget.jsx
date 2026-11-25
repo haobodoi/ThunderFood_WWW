@@ -305,10 +305,13 @@ export default function ChatWidget() {
   }
 
   const greeting = user?.fullName ? `Xin chào ${user.fullName}!` : 'Xin chào!';
+  const restaurantMatch = pathname.match(/^\/restaurants\/(\d+)$/);
+  const activeRestCart = restaurantMatch ? cart?.find?.(restaurantMatch[1]) : null;
+  const hasFloatingCart = Boolean(activeRestCart && (Number(activeRestCart.quantity || 0) > 0 || activeRestCart.items?.length > 0));
   const style = isMobile ? undefined : { right: position.right, bottom: position.bottom };
 
   return (
-    <div className="tf-chat" ref={containerRef} style={style}>
+    <div className={`tf-chat${hasFloatingCart ? ' tf-chat--above-cart' : ''}`} ref={containerRef} style={style}>
       {open && (
         <section id="tf-chat-panel" className={`tf-chat__panel${expanded ? ' tf-chat__panel--expanded' : ''}`}
           role="dialog" aria-label="Trợ lý ảo ThunderFood">

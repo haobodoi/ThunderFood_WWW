@@ -14,7 +14,7 @@ const APPROVAL_META = {
 };
 
 export default function FoodCard({
-  item, isPartner = false, quantityInCart = 0, orderable = true, cartBusy = false, onEdit, onDelete,
+  item, isPartner = false, showCategoryTag = true, quantityInCart = 0, orderable = true, cartBusy = false, onEdit, onDelete,
   onToggleAvailability, toggleLoading = false, onAddToCart, onClick,
 }) {
   const isAvailable = Boolean(item.available);
@@ -31,7 +31,7 @@ export default function FoodCard({
         {onClick ? <button type="button" className="food-card__media-button" onClick={onClick}
           aria-label={'Xem chi tiết ' + (item.itemName || 'món ăn')}>{media}</button> : media}
         {!isAvailable && <span className="food-card__soldout-tag">Tạm hết hàng</span>}
-        {item.categoryName && <span className="food-card__cat-tag">{item.categoryName}</span>}
+        {showCategoryTag && item.categoryName && <span className="food-card__cat-tag">{item.categoryName}</span>}
       </div>
       <div className="food-card__body">
         <div>

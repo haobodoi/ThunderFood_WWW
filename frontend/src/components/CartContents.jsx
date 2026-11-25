@@ -26,6 +26,7 @@ function CartItemImage({ line }) {
 function CartLine({ cart, line, requestRemoval }) {
   const state = useCart();
   const [note, setNote] = useState(line.note);
+  const [editingNote, setEditingNote] = useState(Boolean(line.note));
   const [error, setError] = useState('');
   const run = async action => { setError(''); try { await action(); } catch (e) { setError(e.response?.data?.message || e.message); } };
   const disabled = state.busy || state.loading;
@@ -33,11 +34,11 @@ function CartLine({ cart, line, requestRemoval }) {
     <div className="commerce-cart-line__layout">
       <CartItemImage line={line} />
       <div className="commerce-cart-line__content">
-        <div className="commerce-row">
-          <strong>{line.itemName}</strong>
-          <strong>{formatVND(line.lineTotal)}</strong>
+        <div className="commerce-row commerce-cart-line__head">
+          <strong className="commerce-cart-line__name">{line.itemName}</strong>
+          <strong className="commerce-cart-line__total">{formatVND(line.lineTotal)}</strong>
         </div>
-        <p>{formatVND(line.unitPrice)} / phần</p>
+        <p className="commerce-cart-line__unit">{formatVND(line.unitPrice)} / phần</p>
         {line.priceChanged && <Alert type="warning">
           Giá đổi từ {formatVND(line.lastSeenUnitPrice)} thành {formatVND(line.unitPrice)}.
           Giá mới được ghi nhận khi bạn cập nhật món.
@@ -45,7 +46,7 @@ function CartLine({ cart, line, requestRemoval }) {
         {!line.available && <Alert type="warning">
           {line.unavailableReason} · không tính vào tạm tính món khả dụng
         </Alert>}
-        <div className="commerce-row commerce-wrap">
+        <div className="commerce-row commerce-wrap commerce-cart-line__controls">
           <div className="tf-quantity">
             <button
               className="icon-btn"
@@ -67,12 +68,20 @@ function CartLine({ cart, line, requestRemoval }) {
               +
             </button>
           </div>
-          <button className="btn btn--danger btn--sm" disabled={disabled} onClick={() => requestRemoval(line)}>Xóa món</button>
+          <div className="commerce-cart-line__actions">
+            {!editingNote && <button type="button" className="btn btn--ghost btn--sm" disabled={disabled} onClick={() => setEditingNote(true)}>
+              + Ghi chú
+            </button>}
+            <button type="button" className="btn btn--ghost btn--sm commerce-danger-btn" disabled={disabled} onClick={() => requestRemoval(line)}>
+              <Icon name="trash" size={14} /> Xóa
+            </button>
+          </div>
         </div>
-        <label className="commerce-field">Ghi chú cho món
-          <textarea maxLength={300} value={note} onChange={e => setNote(e.target.value)} disabled={disabled} rows={2} />
-        </label>
+        {editingNote && <label className="commerce-field commerce-field--compact">Ghi chú cho món
+          <textarea id={`cart-note-${line.cartItemId}`} name={`cartNote-${line.cartItemId}`} maxLength={300} value={note} onChange={e => setNote(e.target.value)} disabled={disabled} rows={1} placeholder="Ví dụ: ít cay, không hành…" />
+        </label>}
         {(note !== line.note || line.priceChanged) && <button
+          type="button"
           className="btn btn--outline btn--sm"
           disabled={disabled}
           onClick={() => run(() => state.change(cart, line, line.quantity, note))}
@@ -84,7 +93,7 @@ function CartLine({ cart, line, requestRemoval }) {
     </div>
   </article>;
 }
-export default function CartContents({ cart }) {
+export default function CartContents({ cart, inModal = false, extraAction = null }) {
   const state = useCart();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -111,27 +120,37 @@ export default function CartContents({ cart }) {
     }
   };
   const lineToRemove = pending?.line;
-  return <section className="commerce-cart">
+  return <section className={`commerce-cart${inModal ? ' commerce-cart--modal' : ''}`}>
     <h2>
       <Link to={`/restaurants/${cart.restaurantId}`}>{cart.restaurantName}</Link>
     </h2>
     {notice && <Alert type="success">{notice}</Alert>}
-    {cart.items.map(line => <CartLine key={`${line.cartItemId}:${line.note}`} cart={cart} line={line}
-      requestRemoval={lineToRemove => setPending({ type: 'line', line: lineToRemove })} />)}
-    <div className="commerce-row commerce-total"><strong>Tạm tính món khả dụng</strong><strong>{formatVND(cart.subtotal)}</strong></div>
-    <p>Chưa gồm phí giao hàng. Giỏ hàng không giữ món; giá và tình trạng phục vụ có thể thay đổi.</p>
-    <div className="tf-order-actions">
-      {cart.items.some(line => line.available) && <Link
-        className="btn btn--primary"
-        to={`/customer/checkout/${cart.cartId}`}
-      >
-        Đặt hàng
-      </Link>}
-      <button className="btn btn--danger" disabled={state.busy || state.loading} onClick={() => setPending({ type: 'cart' })}>
-        Xóa giỏ quán này
-      </button>
+    <div className="commerce-cart__items">
+      {cart.items.map(line => <CartLine key={`${line.cartItemId}:${line.note}`} cart={cart} line={line}
+        requestRemoval={lineToRemove => setPending({ type: 'line', line: lineToRemove })} />)}
     </div>
-    {error && <Alert type="error">{error}</Alert>}
+    <div className={`commerce-cart__footer${inModal ? ' commerce-cart__footer--sticky' : ''}`}>
+      <div className="commerce-row commerce-total">
+        <strong>Tạm tính món khả dụng</strong>
+        <strong className="commerce-cart-line__total">{formatVND(cart.subtotal)}</strong>
+      </div>
+      <p className="commerce-cart__disclaimer">Chưa gồm phí giao hàng. Giỏ hàng không giữ món; giá và tình trạng phục vụ có thể thay đổi.</p>
+      <div className="tf-order-actions tf-order-actions--split">
+        <div className="tf-order-actions__primary">
+          {cart.items.some(line => line.available) && <Link
+            className="btn btn--primary"
+            to={`/customer/checkout/${cart.cartId}`}
+          >
+            Đặt hàng
+          </Link>}
+          {extraAction}
+        </div>
+        <button type="button" className="btn btn--ghost btn--sm commerce-danger-btn" disabled={state.busy || state.loading} onClick={() => setPending({ type: 'cart' })}>
+          <Icon name="trash" size={14} /> Xóa giỏ quán này
+        </button>
+      </div>
+      {error && <Alert type="error">{error}</Alert>}
+    </div>
     <ConfirmModal
       open={Boolean(pending)}
       title={pending?.type === 'cart' ? 'Xóa giỏ hàng của quán?' : 'Xóa món khỏi giỏ?'}

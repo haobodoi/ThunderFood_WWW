@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { orderApi } from '../../api/orderApi.js';
+import { reviewApi } from '../../api/customerApi.js';
 import { getErrorMessage } from '../../api/baseApi.js';
 import { PAYMENT_METHOD, awaitingTransfer, needsRefund } from '../../utils/orderUtils.js';
 import { useOrderEvents } from '../../hooks/useOrderEvents.js';
@@ -63,6 +64,7 @@ export default function OrderDetailPage() {
 
 function OrderDetail({ id }) {
   const [order, setOrder] = useState(null);
+  const [existingReview, setExistingReview] = useState(null);
   const [error, setError] = useState('');
   const sequence = useRef(0);
   const load = useCallback(async () => {
@@ -72,6 +74,9 @@ function OrderDetail({ id }) {
       if (request === sequence.current) {
         setOrder(result);
         setError('');
+        if (result?.orderStatus === 'COMPLETED' && result?.paymentStatus === 'PAID') {
+          reviewApi.forOrder(id).then(r => { if (request === sequence.current) setExistingReview(r); }).catch(() => {});
+        }
       }
     } catch (e) {
       if (request === sequence.current) setError(getErrorMessage(e));
@@ -87,15 +92,19 @@ function OrderDetail({ id }) {
 
   const waiting = Boolean(order) && awaitingTransfer(order);
 
-  if (error && !order) return <main className="container commerce-page">
+  if (error && !order) return <div className="container commerce-page">
     <Alert type="error">{error}</Alert>
     <Link className="btn btn--outline" to="/customer/orders">Về danh sách đơn</Link>
-  </main>;
-  if (!order) return <main className="container commerce-page">
+  </div>;
+  if (!order) return <div className="container commerce-page">
     <p role="status">Đang tải đơn hàng…</p>
-  </main>;
+  </div>;
 
-  return <main className="container commerce-page">
+  const reviewLabel = existingReview
+    ? (existingReview.editable ? 'Chỉnh sửa đánh giá' : 'Xem đánh giá đã gửi')
+    : 'Đánh giá đồ ăn';
+
+  return <div className="container commerce-page">
     <div className="commerce-row commerce-wrap">
       <Link to="/customer/orders">← Đơn hàng của tôi</Link>
       <LiveStatus live={live} />
@@ -146,9 +155,9 @@ function OrderDetail({ id }) {
           className="btn btn--outline btn--block tf-order-review"
           to={`/customer/orders/${order.orderId}/review`}
         >
-          Đánh giá đồ ăn
+          {reviewLabel}
         </Link>}
       </aside>
     </div>
-  </main>;
+  </div>;
 }

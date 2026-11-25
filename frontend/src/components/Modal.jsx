@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 
-export default function Modal({ title, children, footer, onClose }) {
+export default function Modal({ title, children, footer, onClose, autoFocusInput = true }) {
   const titleId = useId();
   const panelRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -13,8 +14,10 @@ export default function Modal({ title, children, footer, onClose }) {
     document.body.style.overflow = 'hidden';
     const panel = panelRef.current;
     if (panel && !panel.contains(document.activeElement)) {
-      const initial = panel.querySelector('[autofocus], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled)')
-        || panel.querySelector('button:not(:disabled)') || panel;
+      const initial = autoFocusInput
+        ? (panel.querySelector('[autofocus], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled)')
+          || panel.querySelector('button:not(:disabled)') || panel)
+        : panel;
       initial.focus();
     }
 
@@ -51,7 +54,7 @@ export default function Modal({ title, children, footer, onClose }) {
     };
   }, []);
 
-  return (
+  const content = (
     <div className="modal" role="presentation">
       <div className="modal__backdrop" onClick={onClose} />
       <div className="modal__panel" ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
@@ -67,4 +70,6 @@ export default function Modal({ title, children, footer, onClose }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }

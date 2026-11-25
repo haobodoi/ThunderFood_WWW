@@ -200,14 +200,14 @@ export default function RestaurantDetailPage() {
           </div>
           <div className="tf-search-box tf-sticky-nav__search">
             <Icon name="search" size={15} className="tf-search-box__icon" />
-            <input type="search" className="tf-search-box__input" value={menuSearch}
+            <input id="restaurant-menu-search" name="menuSearch" type="search" className="tf-search-box__input" value={menuSearch}
               onChange={(event) => setMenuSearch(event.target.value)}
               aria-label="Tìm món trong quán" placeholder="Tìm món trong quán..." />
           </div>
         </div>
       </nav>
 
-      <main className="container tf-menu-content">
+      <div className="container tf-menu-content">
         {(cartError || cartState.error) && <Alert type="error">{cartError || cartState.error}<button className="btn btn--ghost btn--sm" disabled={cartState.loading || cartState.busy} onClick={cartState.refresh}>Đồng bộ lại giỏ</button></Alert>}
         {!isOpen && <Alert type="warning" title="Nhà hàng hiện tạm đóng cửa">
           Bạn có thể xem trước thực đơn và quay lại khi quán mở cửa.
@@ -231,7 +231,7 @@ export default function RestaurantDetailPage() {
                   </div>
                   <div className="tf-food-grid">
                     {cat.items.map((item) => (
-                      <FoodCard key={item.id} item={item} orderable={isOpen} cartBusy={cartState.busy || cartState.loading} quantityInCart={selectedItems[item.id]?.qty || 0}
+                      <FoodCard key={item.id} item={item} showCategoryTag={false} orderable={isOpen} cartBusy={cartState.busy || cartState.loading} quantityInCart={selectedItems[item.id]?.qty || 0}
                         onClick={() => { setViewingItem(item); setModalQty(1); setModalNote(''); setCartError(''); }}
                         onAddToCart={() => addToCart(item)} />
                     ))}
@@ -241,7 +241,7 @@ export default function RestaurantDetailPage() {
             })}
           </div>
         )}
-      </main>
+      </div>
 
       <CustomerReviews key={id} restaurantId={id} />
 
@@ -292,9 +292,12 @@ export default function RestaurantDetailPage() {
       )}
 
       {cartOpen && (
-        <Modal title="Giỏ hàng" onClose={() => setCartOpen(false)}>
-          <CartContents cart={currentCart} />
-          <Link className="btn btn--ghost" to="/customer/cart">Xem giỏ của tất cả quán</Link>
+        <Modal title="Giỏ hàng" onClose={() => setCartOpen(false)} autoFocusInput={false}>
+          <CartContents
+            cart={currentCart}
+            inModal
+            extraAction={<Link className="btn btn--outline" to="/customer/cart" onClick={() => setCartOpen(false)}>Xem tất cả giỏ</Link>}
+          />
         </Modal>
       )}
     </div>

@@ -78,11 +78,11 @@ export default function RestaurantListSection({
         <div className="tf-discovery__controls">
           <div className="tf-search-box">
             <Icon name="search" size={16} className="tf-search-box__icon" />
-            <input type="search" className="tf-search-box__input" value={keyword}
+            <input id="discovery-search" name="keyword" type="search" className="tf-search-box__input" value={keyword}
               onChange={(event) => { setKeyword(event.target.value); setActiveCuisine('ALL'); }}
               aria-label="Tìm tên quán hoặc món đặc trưng" placeholder="Tìm tên quán, món đặc trưng..." />
           </div>
-          <select className="field__input tf-discovery__sort" value={sortBy}
+          <select id="discovery-sort" name="sortBy" className="field__input tf-discovery__sort" value={sortBy}
             onChange={(event) => setSortBy(event.target.value)} aria-label="Sắp xếp nhà hàng">
             <option value="RECOMMENDED">Mặc định</option>
             <option value="LOWEST_FEE">Phí giao thấp nhất</option>
