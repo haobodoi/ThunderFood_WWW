@@ -55,11 +55,11 @@ export default function UserMenu() {
             <span>{user.email}</span>
             <span className="user-menu__role"><Icon name={roleIcon} size={14} />{ROLE_LABEL[user.role]}</span>
           </div>
-          <Link to={homePathFor(user)} className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
-            <Icon name="home" size={18} />
-            Trang của tôi
-          </Link>
-          {user.role === 'CUSTOMER' && <>
+          {user.role === 'CUSTOMER' ? <>
+            <Link to="/customer/profile" className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
+              <Icon name="user" size={18} />
+              Thông tin tài khoản
+            </Link>
             <Link to="/customer/orders" className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
               <Icon name="shoppingBag" size={18} />
               Đơn hàng của tôi
@@ -68,7 +68,12 @@ export default function UserMenu() {
               <Icon name="star" size={18} />
               Đánh giá của tôi
             </Link>
-          </>}
+          </> : (
+            <Link to={homePathFor(user)} className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
+              <Icon name="home" size={18} />
+              Trang của tôi
+            </Link>
+          )}
           <button type="button" className="user-menu__item user-menu__item--danger" role="menuitem" onClick={handleLogout}>
             <Icon name="logout" size={18} />
             Đăng xuất
