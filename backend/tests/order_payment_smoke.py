@@ -228,7 +228,8 @@ def run():
     check(not preview['onlineAvailable'], 'bank without a BIN disables VietQR at checkout')
     customer.call('POST', '/customer/orders', body(preview), expected=400)
     customer.call('POST', '/customer/orders', body(preview, 'COD'), expected=201)
-    check(customer.call('GET', f"/customer/orders/{waiting['orderId']}")['qr'] is None, 'existing order stays readable without a QR after the bank changes')
+    current = customer.call('GET', f"/customer/orders/{waiting['orderId']}")
+    check(current['qr'] == waiting['qr'], 'an issued VietQR keeps the original recipient after the bank changes')
 
     sql(f"USE thunderfood; UPDATE restaurants SET bank_name='Vietcombank' WHERE restaurant_id={RESTAURANT};")
     check((stream_status(anon, '/customer/orders/events'), stream_status(partner, '/customer/orders/events'), stream_status(customer, '/partner/orders/events')) == (401, 403, 403), 'event streams enforce authentication and role')

@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext.jsx';
 
 export function Brand({ light = false }) {
   return (
-    <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} onClick={() => window.scrollTo(0, 0)}>
+    <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} aria-label="Trang chủ ThunderFood" onClick={() => window.scrollTo(0, 0)}>
       <Logo size={30} light={light} />
     </Link>
   );
