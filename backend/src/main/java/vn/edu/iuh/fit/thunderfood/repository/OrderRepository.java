@@ -28,6 +28,8 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
 
     Optional<OrderEntity> findByIdAndCustomerId(Long id, Long customerId);
 
+    Optional<OrderEntity> findByCustomerIdAndCheckoutRequestId(Long customerId, String checkoutRequestId);
+
     @EntityGraph(attributePaths = "restaurant")
     Page<OrderEntity> findByCustomerId(Long customerId, Pageable pageable);
 

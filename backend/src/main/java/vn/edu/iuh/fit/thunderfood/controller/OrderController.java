@@ -3,6 +3,7 @@ package vn.edu.iuh.fit.thunderfood.controller;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -10,28 +11,40 @@ import vn.edu.iuh.fit.thunderfood.dto.CustomerRequests.*;
 import vn.edu.iuh.fit.thunderfood.dto.OrderResponses.*;
 import vn.edu.iuh.fit.thunderfood.dto.UserDetailsDto;
 import vn.edu.iuh.fit.thunderfood.enums.OrderStatusEnum;
+import vn.edu.iuh.fit.thunderfood.service.CheckoutService;
 import vn.edu.iuh.fit.thunderfood.service.OrderService;
+
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 public class OrderController {
     private final OrderService service;
 
-    public OrderController(OrderService service) {
+    private final CheckoutService checkout;
+
+    public OrderController(OrderService service, CheckoutService checkout) {
         this.service = service;
+        this.checkout = checkout;
     }
 
     @GetMapping("/api/customer/orders/events")
-    public SseEmitter customerEvents(@AuthenticationPrincipal UserDetailsDto user,
+    public ResponseEntity<SseEmitter> customerEvents(@AuthenticationPrincipal UserDetailsDto user,
                                      HttpServletResponse response) {
         noProxyBuffering(response);
-        return service.customerStream(user.getId());
+        return eventResponse(service.customerStream(user.getId()));
     }
 
     @GetMapping("/api/partner/orders/events")
-    public SseEmitter partnerEvents(@AuthenticationPrincipal UserDetailsDto user,
+    public ResponseEntity<SseEmitter> partnerEvents(@AuthenticationPrincipal UserDetailsDto user,
                                     HttpServletResponse response) {
         noProxyBuffering(response);
-        return service.partnerStream(user.getId());
+        return eventResponse(service.partnerStream(user.getId()));
+    }
+
+    private static ResponseEntity<SseEmitter> eventResponse(Optional<SseEmitter> stream) {
+        return stream.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build());
     }
 
     /** Nginx giữ phản hồi trong bộ đệm nếu không có header này, sự kiện sẽ đến trễ. */
@@ -42,14 +55,15 @@ public class OrderController {
     @GetMapping("/api/customer/orders/checkout")
     public CheckoutPreview preview(@AuthenticationPrincipal UserDetailsDto user,
                                    @RequestParam long cartId) {
-        return service.preview(user.getId(), cartId);
+        return checkout.preview(user.getId(), cartId);
     }
 
     @PostMapping("/api/customer/orders")
     @ResponseStatus(HttpStatus.CREATED)
     public CustomerOrder checkout(@AuthenticationPrincipal UserDetailsDto user,
+                                  @RequestHeader(value = "Idempotency-Key", required = false) UUID requestId,
                                   @Valid @RequestBody Checkout request) {
-        return service.checkout(user.getId(), request);
+        return checkout.checkout(user.getId(), requestId, request);
     }
 
     @GetMapping("/api/customer/orders")

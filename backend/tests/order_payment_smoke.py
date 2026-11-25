@@ -12,6 +12,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 from customer_features_smoke import API_PORT, DB_PORT, ROOT, Session, check, sql
 
@@ -84,6 +85,7 @@ def run():
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
     sql((ROOT / 'backend/database/migrations/V5__admin.sql').read_text(encoding='utf-8'))
     sql((ROOT / 'backend/database/migrations/V6__sepay.sql').read_text(encoding='utf-8'))
+    sql((ROOT / 'backend/database/migrations/V8__checkout_requests.sql').read_text(encoding='utf-8'))
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")
     anon = Session()
     customer = Session('customer@example.com')
@@ -148,6 +150,9 @@ def run():
     check(payment(order['orderId'])[:2] == ['VIETQR', 'PENDING'], 'VietQR payment row starts pending')
 
     oid = order['orderId']
+    sql(f'USE thunderfood; DELETE FROM sepay_payments WHERE order_id={oid};')
+    restored_qr = customer.call('GET', f'/customer/orders/{oid}')['qr']
+    check(restored_qr == qr, 'a pre-migration manual VietQR order still shows its payment QR')
     outsider.call('GET', f'/customer/orders/{oid}', expected=404)
     outsider.call('POST', f'/customer/orders/{oid}/cancel', {'reason': 'Not my order at all'}, expected=404)
     other_partner.call('POST', f'/partner/orders/{oid}/confirm-payment', expected=404)
@@ -175,7 +180,18 @@ def run():
     eligible = customer.call('GET', f'/customer/reviews/eligibility?restaurantId={RESTAURANT}')['orders']
     check(any(o['orderId'] == oid for o in eligible), 'completed order unlocks the review flow')
 
-    cod = customer.call('POST', '/customer/orders', body(fill(customer, ITEM), 'COD'), expected=201)
+    cod_request = body(fill(customer, ITEM), 'COD')
+    key = {'Idempotency-Key': str(uuid.uuid4())}
+    def send_order(session):
+        return session.call('POST', '/customer/orders', cod_request, expected=201, headers=key)
+    order_count = int(sql('USE thunderfood; SELECT COUNT(*) FROM orders;'))
+    with concurrent.futures.ThreadPoolExecutor(2) as pool:
+        cod, retry = list(pool.map(send_order, [customer, other_tab]))
+    check(cod['orderId'] == retry['orderId'] == send_order(customer)['orderId']
+          and int(sql('USE thunderfood; SELECT COUNT(*) FROM orders;')) == order_count + 1,
+          'concurrent submissions and later retries with one key return the same order')
+    customer.call('POST', '/customer/orders', {**cod_request, 'note': 'Different request'}, expected=409, headers=key)
+    outsider.call('POST', '/customer/orders', cod_request, expected=404, headers=key)
     check(cod['qr'] is None and payment(cod['orderId'])[:2] == ['COD', 'PENDING'], 'COD order has no QR')
     partner.call('PATCH', f"/partner/orders/{cod['orderId']}/status", {'status': 'CONFIRMED'})
     for status in ['PREPARING', 'DELIVERING', 'COMPLETED']:
@@ -251,9 +267,12 @@ def run():
     partner.call('POST', f'/partner/orders/{lid}/refund')
     check(len(customer_stream.events) == count + 2, 'reject and refund are pushed')
     check(other_customer_stream.events == [] and other_partner_stream.events == [], 'other accounts receive no events')
-    extra = [Stream(customer, '/customer/orders/events') for _ in range(5)]
+    extra = [Stream(customer, '/customer/orders/events') for _ in range(4)]
+    check(all(stream_status(customer, '/customer/orders/events') == 429 for _ in range(3)),
+          'repeated attempts above the stream limit are rejected without opening new streams')
     cancelled_live = customer.call('POST', '/customer/orders', body(fill(customer, ITEM)), expected=201)
-    check(extra[-1].wait(cancelled_live['orderId'], created=True) and not customer_stream.wait(cancelled_live['orderId'], created=True, seconds=1), 'oldest stream is closed past the per-user limit')
+    check(customer_stream.wait(cancelled_live['orderId'], created=True)
+          and extra[-1].wait(cancelled_live['orderId'], created=True), 'existing streams still receive events at the per-user limit')
 
     preview = fill(customer, ITEM)
     cart = customer.call('POST', '/customer/carts/items', {'itemId': ITEM, 'quantity': 1, 'note': 'Ít cơm', 'version': preview['version']})

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
-const RETRY_MS = 5000;
-// EventSource kết nối lại định kỳ; chỉ báo mất kết nối khi đứt đủ lâu để khỏi nhấp nháy.
 const OFFLINE_AFTER_MS = 5000;
+const POLL_INTERVAL_MS = 15000;
+const RECONNECT_MIN_MS = 15000;
+const RECONNECT_MAX_MS = 60000;
 
 /**
- * Lắng nghe đơn hàng đổi trạng thái. Gọi onChange(event) khi có sự kiện, và onChange(null) mỗi khi
- * vừa kết nối lại để bù các sự kiện bị lỡ. Trả về null lúc đang kết nối lần đầu, sau đó true/false.
+ * Gọi onChange(event) khi đơn thay đổi và onChange(null) khi cần đồng bộ lại.
+ * Nếu mất kết nối lâu, tải định kỳ cho đến khi khôi phục được luồng SSE.
  */
 export function useOrderEvents(area, onChange) {
   const [live, setLive] = useState(null);
@@ -15,30 +16,54 @@ export function useOrderEvents(area, onChange) {
 
   useEffect(() => {
     let source;
-    let retry;
+    let reconnect;
     let offline;
+    let polling;
+    let retryDelay = RECONNECT_MIN_MS;
+    const refresh = () => latest.current(null);
+
+    const stopPolling = () => {
+      window.clearTimeout(offline);
+      window.clearInterval(polling);
+      offline = undefined;
+      polling = undefined;
+    };
+
+    const startPollingAfterDelay = () => {
+      if (offline !== undefined || polling !== undefined) return;
+      offline = window.setTimeout(() => {
+        offline = undefined;
+        setLive(false);
+        refresh();
+        polling = window.setInterval(refresh, POLL_INTERVAL_MS);
+      }, OFFLINE_AFTER_MS);
+    };
+
     const connect = () => {
+      reconnect = undefined;
       source = new EventSource(`/api/${area}/orders/events`);
       source.onopen = () => {
-        window.clearTimeout(offline);
-        offline = undefined;
+        stopPolling();
+        retryDelay = RECONNECT_MIN_MS;
         setLive(true);
-        latest.current(null);
+        refresh();
       };
       source.addEventListener('order', message => latest.current(JSON.parse(message.data)));
       source.onerror = () => {
-        if (!offline) offline = window.setTimeout(() => setLive(false), OFFLINE_AFTER_MS);
-        if (source.readyState !== EventSource.CLOSED) return;
-        // Trình duyệt không tự thử lại khi server trả lỗi; tải lại qua API để nếu hết phiên thì app đưa về đăng nhập.
-        latest.current(null);
-        retry = window.setTimeout(connect, RETRY_MS);
+        startPollingAfterDelay();
+        // Khi server từ chối luồng mới, EventSource ngừng thử. Giãn lần thử tiếp theo để đợi có chỗ trống.
+        if (source.readyState !== EventSource.CLOSED || reconnect !== undefined) return;
+        source.close();
+        reconnect = window.setTimeout(connect, retryDelay);
+        retryDelay = Math.min(RECONNECT_MAX_MS, retryDelay * 2);
       };
     };
+
     connect();
     return () => {
       source.close();
-      window.clearTimeout(retry);
-      window.clearTimeout(offline);
+      window.clearTimeout(reconnect);
+      stopPolling();
     };
   }, [area]);
 

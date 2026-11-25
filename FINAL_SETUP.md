@@ -82,7 +82,7 @@ API: `GET /api/partner/statistics/dashboard`, `/dashboard/export`, `/restaurants
 python backend/database/build_final_sql.py
 ```
 
-Nguồn gồm `thunderfood_mariadb_v4.sql`, `migrations/V5__admin.sql`, `migrations/V6__sepay.sql`, `migrations/V7__profile_updates.sql` và `seeds/statistics_demo.sql`. Cài đặt mới dùng file `thunderfood_final.sql` đã tạo.
+Nguồn gồm `thunderfood_mariadb_v4.sql`, `migrations/V5__admin.sql`, `migrations/V6__sepay.sql`, `migrations/V7__profile_updates.sql`, `migrations/V8__checkout_requests.sql` và `seeds/statistics_demo.sql`. Cài đặt mới dùng file `thunderfood_final.sql` đã tạo.
 
 Kiểm thử tích hợp trên DB riêng `.test-runtime/mariadb`, cổng 13317, API 18081, theo hướng dẫn trong `ADMIN_HANDOVER.md`:
 

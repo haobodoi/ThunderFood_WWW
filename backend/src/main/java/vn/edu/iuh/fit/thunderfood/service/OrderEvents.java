@@ -6,10 +6,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import vn.edu.iuh.fit.thunderfood.entity.OrderEntity;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -19,7 +21,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 @Component
 public class OrderEvents {
-    public record OrderChanged(long orderId, long customerId, long partnerId, boolean created) {}
+    public record OrderChanged(long orderId, long customerId, long partnerId, boolean created) {
+        public static OrderChanged from(OrderEntity order, boolean created) {
+            return new OrderChanged(order.getId(), order.getCustomerId(),
+                    order.getRestaurant().getOwnerUserId(), created);
+        }
+    }
 
     /** Hết hạn thì trình duyệt tự kết nối lại, nhờ đó tài khoản bị khóa hoặc đã đăng xuất mất luồng sau tối đa 5 phút. */
     private static final long STREAM_TIMEOUT_MS = 5 * 60 * 1000;
@@ -28,21 +35,19 @@ public class OrderEvents {
 
     private final Map<Long, List<SseEmitter>> streams = new ConcurrentHashMap<>();
 
-    public SseEmitter subscribe(long userId) {
+    public Optional<SseEmitter> subscribe(long userId) {
         var emitter = new SseEmitter(STREAM_TIMEOUT_MS);
         emitter.onCompletion(() -> remove(userId, emitter));
         emitter.onTimeout(emitter::complete);
         emitter.onError(error -> remove(userId, emitter));
-        SseEmitter oldest = null;
         synchronized (streams) {
             var mine = streams.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());
-            if (mine.size() >= MAX_STREAMS_PER_USER) oldest = mine.removeFirst();
+            if (mine.size() >= MAX_STREAMS_PER_USER) return Optional.empty();
             mine.add(emitter);
         }
-        if (oldest != null) oldest.complete();
         // Gửi ngay một dòng để header đi qua proxy, EventSource biết đã kết nối.
         send(userId, emitter, SseEmitter.event().comment("connected"));
-        return emitter;
+        return Optional.of(emitter);
     }
 
     /** Chạy sau commit: client nhận tín hiệu rồi tải lại sẽ luôn thấy dữ liệu mới. */

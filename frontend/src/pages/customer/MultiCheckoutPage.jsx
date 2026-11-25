@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { orderApi } from '../../api/orderApi.js';
+import { isCheckoutResultUnknown, orderApi, prepareCheckout } from '../../api/orderApi.js';
 import { getErrorMessage, getFieldErrors } from '../../api/baseApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useCart } from '../../context/CartContext.jsx';
@@ -31,10 +31,12 @@ function MultiCheckout({ selection }) {
   const [method, setMethod] = useState('COD');
   const [created, setCreated] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const active = useRef(false);
   const submittingRef = useRef(false);
+  const attempt = useRef(null);
   const loadSequence = useRef(0);
 
   const load = useCallback(async ids => {
@@ -57,8 +59,10 @@ function MultiCheckout({ selection }) {
     return () => { active.current = false; ++loadSequence.current; };
   }, [cartIds, load]);
 
-  const orderable = previews.filter(preview => preview.items.some(line => line.available));
-  const unavailable = previews.filter(preview => !preview.items.some(line => line.available));
+  const completedCarts = new Set(created.map(order => order.cartId));
+  const remaining = previews.filter(preview => !completedCarts.has(preview.cartId));
+  const orderable = remaining.filter(preview => preview.items.some(line => line.available));
+  const unavailable = remaining.filter(preview => !preview.items.some(line => line.available));
   const onlineAvailable = orderable.length > 0 && orderable.every(preview => preview.onlineAvailable);
   const chosen = method === 'ONLINE' && !onlineAvailable ? null : method;
   const total = orderable.reduce((sum, preview) => sum + Number(preview.totalAmount || 0), 0);
@@ -67,26 +71,39 @@ function MultiCheckout({ selection }) {
     event.preventDefault();
     if (submittingRef.current || !chosen || !orderable.length) return;
     submittingRef.current = true;
-    setSubmitting(true); setError(''); setFieldErrors({});
+    setSubmitting(true);
+    setError('');
+    setFieldErrors({});
     const placed = [...created];
     try {
       for (const preview of orderable) {
-        if (!active.current) break;
-        const order = await orderApi.checkout(preview, { ...form, paymentMethod: chosen });
+        if (!active.current) return;
+        attempt.current ??= prepareCheckout(preview, { ...form, paymentMethod: chosen });
+        const order = await attempt.current();
+        attempt.current = null;
         placed.push({ cartId: preview.cartId, orderId: order.orderId, restaurantName: preview.restaurantName });
       }
-      await refreshAfterCheckout();
-      if (active.current) navigate(placed.length === 1 ? `/customer/orders/${placed[0].orderId}` : '/customer/orders', { replace: true });
-    } catch (e) {
-      await refreshAfterCheckout();
+      if (active.current) {
+        const target = placed.length === 1 ? `/customer/orders/${placed[0].orderId}` : '/customer/orders';
+        navigate(target, { replace: true });
+      }
+    } catch (error) {
       if (!active.current) return;
       setCreated(placed);
-      setError(getErrorMessage(e));
-      setFieldErrors(getFieldErrors(e));
-      const completedCarts = new Set(placed.map(order => order.cartId));
-      await load(cartIds.filter(id => !completedCarts.has(id)));
+      if (attempt.current && isCheckoutResultUnknown(error)) {
+        setUncertain(true);
+        return;
+      }
+      attempt.current = null;
+      setUncertain(false);
+      setError(getErrorMessage(error));
+      setFieldErrors(getFieldErrors(error));
+      const placedCarts = new Set(placed.map(order => order.cartId));
+      await load(cartIds.filter(id => !placedCarts.has(id)));
+    } finally {
+      if (placed.length > created.length) void refreshAfterCheckout();
       submittingRef.current = false;
-      setSubmitting(false);
+      if (active.current) setSubmitting(false);
     }
   };
 
@@ -104,6 +121,7 @@ function MultiCheckout({ selection }) {
     <Link className="btn btn--outline" to="/customer/cart">Về giỏ hàng</Link>
   </div>;
 
+  const editingDisabled = submitting || uncertain;
   return <div className="container commerce-page">
     <h1>Đặt tất cả món</h1>
     {placedOrders}
@@ -111,11 +129,11 @@ function MultiCheckout({ selection }) {
     <form className="tf-checkout" onSubmit={submit} noValidate>
       <section className="commerce-cart tf-checkout__form">
         <h2>Thông tin giao hàng</h2>
-        <TextField label="Người nhận" name="recipientName" value={form.recipientName} onChange={update} error={fieldErrors.recipientName} autoComplete="name" disabled={submitting} />
-        <TextField label="Số điện thoại" name="recipientPhone" type="tel" value={form.recipientPhone} onChange={update} error={fieldErrors.recipientPhone} autoComplete="tel" disabled={submitting} />
-        <TextField label="Địa chỉ giao hàng" name="deliveryAddress" value={form.deliveryAddress} onChange={update} error={fieldErrors.deliveryAddress} autoComplete="street-address" disabled={submitting} />
-        <label className="commerce-field">Ghi chú cho các quán (không bắt buộc)<textarea name="note" maxLength={1000} rows={2} value={form.note} onChange={update} disabled={submitting} /></label>
-        <fieldset className="tf-pay-methods" disabled={submitting}>
+        <TextField label="Người nhận" name="recipientName" value={form.recipientName} onChange={update} error={fieldErrors.recipientName} autoComplete="name" disabled={editingDisabled} />
+        <TextField label="Số điện thoại" name="recipientPhone" type="tel" value={form.recipientPhone} onChange={update} error={fieldErrors.recipientPhone} autoComplete="tel" disabled={editingDisabled} />
+        <TextField label="Địa chỉ giao hàng" name="deliveryAddress" value={form.deliveryAddress} onChange={update} error={fieldErrors.deliveryAddress} autoComplete="street-address" disabled={editingDisabled} />
+        <label className="commerce-field">Ghi chú cho các quán (không bắt buộc)<textarea name="note" maxLength={1000} rows={2} value={form.note} onChange={update} disabled={editingDisabled} /></label>
+        <fieldset className="tf-pay-methods" disabled={editingDisabled}>
           <legend>Phương thức thanh toán</legend>
           {['ONLINE', 'COD'].map(value => <label key={value} className="tf-pay-method">
             <input type="radio" name="paymentMethod" value={value} checked={chosen === value} disabled={value === 'ONLINE' && !onlineAvailable} onChange={() => setMethod(value)} />
@@ -142,7 +160,12 @@ function MultiCheckout({ selection }) {
         </Alert>}
         <div className="tf-multi-checkout__grand"><span>Tổng {orderable.length} đơn</span><strong>{formatVND(total)}</strong></div>
         {error && <Alert type="error">{error}</Alert>}
-        <button type="submit" className="btn btn--primary btn--block" disabled={submitting || !chosen}>{submitting ? 'Đang tạo đơn…' : `Đặt ${orderable.length} đơn`}</button>
+        {uncertain && <Alert type="warning">
+          Chưa nhận được kết quả cho một đơn. Bấm thử lại để tiếp tục hoặc <Link to="/customer/orders">xem đơn hàng</Link>.
+        </Alert>}
+        <button type="submit" className="btn btn--primary btn--block" disabled={submitting || !chosen}>
+          {submitting ? 'Đang xử lý…' : uncertain ? 'Thử lại đơn vừa gửi' : `Đặt ${orderable.length} đơn`}
+        </button>
         <Link className="btn btn--ghost btn--block" to="/customer/cart">Quay lại giỏ hàng</Link>
       </aside>
     </form>

@@ -45,8 +45,8 @@ class Session:
             self.call('POST', '/auth/login', urllib.parse.urlencode({'username': email, 'password': '123456'}).encode(), content_type='application/x-www-form-urlencoded')
             self.call('GET', '/auth/csrf')
 
-    def call(self, method, path, body=None, expected=200, content_type='application/json', csrf=True):
-        headers = {}
+    def call(self, method, path, body=None, expected=200, content_type='application/json', csrf=True, headers=None):
+        headers = dict(headers or {})
         if body is not None:
             headers['Content-Type'] = content_type
             if not isinstance(body, bytes): body = json.dumps(body).encode()
@@ -71,6 +71,7 @@ def run():
     sql((ROOT / 'backend/database/thunderfood_mariadb_v4.sql').read_text(encoding='utf-8'))
     sql((ROOT / 'backend/database/migrations/V5__admin.sql').read_text(encoding='utf-8'))
     sql((ROOT / 'backend/database/migrations/V6__sepay.sql').read_text(encoding='utf-8'))
+    sql((ROOT / 'backend/database/migrations/V8__checkout_requests.sql').read_text(encoding='utf-8'))
     # Full-day fixture makes service-hour tests independent of execution time.
     sql("USE thunderfood; UPDATE restaurant_opening_hours SET open_time='00:00:00',close_time='23:59:59';")
     anon = Session()
@@ -136,6 +137,12 @@ def run():
         sql(f"USE thunderfood; INSERT INTO orders(order_id,order_code,customer_id,restaurant_id,recipient_name,recipient_phone,delivery_address,order_status,payment_status,subtotal,delivery_fee,total_amount,completed_at) VALUES({order_id},'TEST-{order_id}',{owner},1,'Test','0900000004','Test address','{status}','PAID',55000,0,55000,NOW()-INTERVAL {days} DAY);")
     eligibility = customer.call('GET', '/customer/reviews/eligibility?restaurantId=1')
     check([o['orderId'] for o in eligibility['orders']] == [2], 'only unreviewed completed orders within 30 days are eligible')
+    fresh_order = customer.call('GET', '/customer/orders/2/review-state')
+    expired_order = customer.call('GET', '/customer/orders/5/review-state')
+    customer.call('GET', '/customer/orders/6/review-state', expected=404)
+    check(fresh_order['canCreate'] and fresh_order['review'] is None
+          and not expired_order['canCreate'] and '30 ngày' in expired_order['reason'],
+          'review-state shares the order eligibility rules and checks ownership')
     review_body = {'rating': 4, 'content': 'The food was delicious and packed well.'}
     for order_id, expected in [(1,400),(3,400),(4,400),(5,400),(6,404)]:
         customer.call('POST', '/customer/reviews', {**review_body,'orderId':order_id}, expected=expected)
@@ -181,12 +188,16 @@ def run():
     check(anon.call('GET','/restaurants/1/reviews')['summary']['reviewCount']==2, 'admin restore recalculates score')
     sql(f"USE thunderfood; UPDATE customer_reviews SET created_at=NOW()-INTERVAL 8 DAY WHERE review_id={created};")
     expired = customer.call('GET', '/customer/orders/2/review')
-    check(not expired['editable'] and expired['deletedAt'] is None, 'an expired review is read-only and still present')
+    state = customer.call('GET', '/customer/orders/2/review-state')
+    check(not expired['editable'] and expired['deletedAt'] is None
+          and not state['canCreate'] and state['review'] == expired, 'an expired review is read-only and still present')
     customer.call('PUT',f'/customer/reviews/{created}',{'rating':5,'content':'This edit is outside the allowed window.','version':own['version']+3},expected=400)
     sql(f"USE thunderfood; UPDATE customer_reviews SET created_at=NOW() WHERE review_id={created};")
     customer.call('DELETE',f'/customer/reviews/{created}?version={own["version"]+3}')
     deleted = customer.call('GET', '/customer/orders/2/review')
-    check(not deleted['editable'] and deleted['deletedAt'], 'a deleted review remains distinguishable inside the edit window')
+    state = customer.call('GET', '/customer/orders/2/review-state')
+    check(not deleted['editable'] and deleted['deletedAt'] and not state['canCreate'] and state['review'] == deleted,
+          'a deleted review remains distinguishable and cannot be recreated')
     customer.call('POST','/customer/reviews',{**review_body,'orderId':2},expected=400)
     check(anon.call('GET','/restaurants/1/reviews')['summary']['reviewCount']==1, 'expired edit blocked; soft delete allowed; no second review for same order')
     sql("USE thunderfood; UPDATE users SET account_status='LOCKED' WHERE user_id=6;")

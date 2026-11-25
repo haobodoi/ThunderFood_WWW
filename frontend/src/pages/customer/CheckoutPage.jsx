@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { orderApi } from '../../api/orderApi.js';
+import { isCheckoutResultUnknown, orderApi, prepareCheckout } from '../../api/orderApi.js';
 import { getErrorMessage, getFieldErrors } from '../../api/baseApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useCart } from '../../context/CartContext.jsx';
@@ -29,10 +29,12 @@ function Checkout({ cartId }) {
   });
   const [method, setMethod] = useState('ONLINE');
   const [submitting, setSubmitting] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const active = useRef(false);
   const submittingRef = useRef(false);
+  const attempt = useRef(null);
   const loadSequence = useRef(0);
 
   const load = useCallback(async () => {
@@ -74,21 +76,27 @@ function Checkout({ cartId }) {
     setSubmitting(true);
     setError('');
     setFieldErrors({});
-    let order;
     try {
-      order = await orderApi.checkout(preview, { ...form, paymentMethod: chosen });
-    } catch (e) {
+      attempt.current ??= prepareCheckout(preview, { ...form, paymentMethod: chosen });
+      const order = await attempt.current();
+      if (active.current) navigate(`/customer/orders/${order.orderId}`, { replace: true });
+      void refreshAfterCheckout();
+    } catch (error) {
       if (!active.current) return;
-      setError(getErrorMessage(e));
-      setFieldErrors(getFieldErrors(e));
-      // Tổng tiền hoặc giỏ có thể vừa đổi: hiện số mới để khách xem lại, không tự gửi lại.
+      if (attempt.current && isCheckoutResultUnknown(error)) {
+        setUncertain(true);
+        return;
+      }
+      attempt.current = null;
+      setUncertain(false);
+      setError(getErrorMessage(error));
+      setFieldErrors(getFieldErrors(error));
+      // Reload the quote after a definitive rejection so the customer can review changes before resubmitting.
       await load();
+    } finally {
       submittingRef.current = false;
-      setSubmitting(false);
-      return;
+      if (active.current) setSubmitting(false);
     }
-    if (active.current) navigate(`/customer/orders/${order.orderId}`, { replace: true });
-    void refreshAfterCheckout();
   };
 
   if (!available.length) return <div className="container commerce-page">
@@ -97,6 +105,7 @@ function Checkout({ cartId }) {
     <Link className="btn btn--outline" to="/customer/cart">Về giỏ hàng</Link>
   </div>;
 
+  const editingDisabled = submitting || uncertain;
   return <div className="container commerce-page">
     <h1>Đặt hàng</h1>
     <form className="tf-checkout" onSubmit={submit} noValidate>
@@ -109,7 +118,7 @@ function Checkout({ cartId }) {
           onChange={update}
           error={fieldErrors.recipientName}
           autoComplete="name"
-          disabled={submitting}
+          disabled={editingDisabled}
         />
         <TextField
           label="Số điện thoại"
@@ -119,7 +128,7 @@ function Checkout({ cartId }) {
           onChange={update}
           error={fieldErrors.recipientPhone}
           autoComplete="tel"
-          disabled={submitting}
+          disabled={editingDisabled}
         />
         <TextField
           label="Địa chỉ giao hàng"
@@ -128,12 +137,12 @@ function Checkout({ cartId }) {
           onChange={update}
           error={fieldErrors.deliveryAddress}
           autoComplete="street-address"
-          disabled={submitting}
+          disabled={editingDisabled}
         />
         <label className="commerce-field">Ghi chú cho quán (không bắt buộc)
-          <textarea name="note" maxLength={1000} rows={2} value={form.note} onChange={update} disabled={submitting} />
+          <textarea name="note" maxLength={1000} rows={2} value={form.note} onChange={update} disabled={editingDisabled} />
         </label>
-        <fieldset className="tf-pay-methods" disabled={submitting}>
+        <fieldset className="tf-pay-methods" disabled={editingDisabled}>
           <legend>Phương thức thanh toán</legend>
           {['ONLINE', 'COD'].map(value => <label key={value} className="tf-pay-method">
             <input
@@ -157,8 +166,11 @@ function Checkout({ cartId }) {
         </Alert>}
         <OrderTotals subtotal={preview.subtotal} fee={preview.deliveryFee} total={preview.totalAmount} />
         {error && <Alert type="error">{error}</Alert>}
+        {uncertain && <Alert type="warning">
+          Chưa nhận được kết quả đặt hàng. Bấm thử lại để kiểm tra đơn vừa gửi hoặc <Link to="/customer/orders">xem đơn hàng</Link>.
+        </Alert>}
         <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>
-          {submitting ? 'Đang đặt hàng…' : chosen === 'ONLINE' ? 'Đặt hàng và thanh toán' : 'Đặt hàng'}
+          {submitting ? 'Đang xử lý…' : uncertain ? 'Thử lại đơn vừa gửi' : chosen === 'ONLINE' ? 'Đặt hàng và thanh toán' : 'Đặt hàng'}
         </button>
         <button type="button" className="btn btn--ghost btn--block" disabled={submitting} onClick={() => navigate('/customer/cart')}>
           Quay lại giỏ hàng

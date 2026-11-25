@@ -7,6 +7,7 @@ import { Badge, OrderTable, Table, formatVND } from './AdminShared.jsx';
 
 const number = new Intl.NumberFormat('vi-VN');
 const percent = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const formatReportMoney = value => formatChartValue(toChartUnits(value, true), true);
 const STATUS_COLORS = { PENDING: '#d97706', CONFIRMED: '#64748b', PREPARING: '#6366a1', DELIVERING: '#0284c7', COMPLETED: '#168466', CANCELLED: '#dc5c5c', REJECTED: '#9f3349' };
 const METHOD_COLORS = { COD: '#344b65', ONLINE: '#f97316' };
 
@@ -113,11 +114,11 @@ export function Settlement({ report }) {
   return <section className="admin-panel report-settlement">
     <SectionHeading title="Cơ cấu tổng thu" description="Các đơn được tạo trong kỳ, hiện đã hoàn tất và thanh toán." />
     <dl className="report-money-equation">
-      <div><dt>Doanh thu món</dt><dd>{formatVND(report.current.revenue)}</dd><small>Không gồm phí giao hàng</small></div>
+      <div><dt>Doanh thu món</dt><dd>{formatReportMoney(report.current.revenue)}</dd><small>Không gồm phí giao hàng</small></div>
       <span aria-hidden="true">+</span>
-      <div><dt>Phí giao hàng</dt><dd>{formatVND(report.current.deliveryFees)}</dd><small>Của cùng các đơn đủ điều kiện</small></div>
+      <div><dt>Phí giao hàng</dt><dd>{formatReportMoney(report.current.deliveryFees)}</dd><small>Của cùng các đơn đủ điều kiện</small></div>
       <span aria-hidden="true">=</span>
-      <div className="report-money-equation__total"><dt>Tổng thu đơn đã trả</dt><dd>{formatVND(report.current.receipts)}</dd><small>Gồm doanh thu món và phí giao</small></div>
+      <div className="report-money-equation__total"><dt>Tổng thu đơn đã trả</dt><dd>{formatReportMoney(report.current.receipts)}</dd><small>Gồm doanh thu món và phí giao</small></div>
     </dl>
     <div className="report-payment-states"><h3>Trạng thái thanh toán <span>· Tất cả đơn trong kỳ</span></h3><ul>
       {Object.entries(PAYMENT_STATUS).map(([key, meta]) => <li key={key}><span className={`report-payment-dot report-payment-dot--${meta.tone}`} aria-hidden="true" /><span>{meta.label}</span><strong>{number.format(report.payments.find(row => row.status === key)?.count ?? 0)} <small>đơn</small></strong></li>)}
@@ -130,7 +131,7 @@ export function ReportHighlights({ report, onView }) {
   const paid = report.current.completed;
   return <section className="report-highlights" aria-label="Điểm nổi bật trong kỳ">
     <div><span className="report-highlights__icon"><CheckCircle2 size={20} /></span><div><span>Hoàn tất & đã thanh toán</span><strong>{number.format(paid)} đơn</strong></div><button type="button" onClick={() => onView('orders')} aria-label="Xem phân tích đơn hàng"><ArrowRight size={20} /></button></div>
-    <div><span className="report-highlights__icon"><Banknote size={20} /></span><div><span>Tổng thu gồm phí giao</span><strong>{formatVND(report.current.receipts)}</strong></div><button type="button" onClick={() => onView('orders')} aria-label="Xem cơ cấu tổng thu"><ArrowRight size={20} /></button></div>
+    <div><span className="report-highlights__icon"><Banknote size={20} /></span><div><span>Tổng thu gồm phí giao</span><strong>{formatReportMoney(report.current.receipts)}</strong></div><button type="button" onClick={() => onView('orders')} aria-label="Xem cơ cấu tổng thu"><ArrowRight size={20} /></button></div>
     <div><span className="report-highlights__icon"><UtensilsCrossed size={20} /></span><div><span>Món bán nhiều nhất</span><strong className="report-highlights__dish">{best?.name || 'Chưa có món bán trong kỳ'}</strong>{best && <small>{number.format(best.quantity)} phần đã bán</small>}</div><button type="button" onClick={() => onView('products')} aria-label="Xem hiệu quả thực đơn"><ArrowRight size={20} /></button></div>
   </section>;
 }
@@ -139,7 +140,7 @@ export function PeriodTable({ report, displayDate }) {
   return <details className="admin-panel report-period-table"><summary>Số liệu chi tiết theo kỳ <span>{number.format(report.series.length)} kỳ</span></summary>
     <p className="muted">Theo ngày tạo đơn. Doanh thu món tính trên đơn hoàn tất và đã thanh toán.</p>
     <Table headers={['Đầu kỳ', 'Số đơn', 'Doanh thu món']} numeric={['Số đơn', 'Doanh thu món']} caption="Số liệu chi tiết theo kỳ">
-      {report.series.map(row => <tr key={row.period}><td>{displayDate(row.period)}</td><td data-numeric>{formatChartValue(toChartUnits(row.orders, false), false)}</td><td data-numeric>{formatChartValue(toChartUnits(row.revenue, true), true)}</td></tr>)}
+      {report.series.map(row => <tr key={row.period}><td>{displayDate(row.period)}</td><td data-numeric>{formatChartValue(toChartUnits(row.orders, false), false)}</td><td data-numeric>{formatReportMoney(row.revenue)}</td></tr>)}
     </Table>
   </details>;
 }

@@ -8,6 +8,7 @@ import vn.edu.iuh.fit.thunderfood.dto.CustomerRequests.*;
 import vn.edu.iuh.fit.thunderfood.dto.OrderResponses.PageResponse;
 import vn.edu.iuh.fit.thunderfood.dto.ReviewResponses.*;
 import vn.edu.iuh.fit.thunderfood.entity.CustomerReviewEntity;
+import vn.edu.iuh.fit.thunderfood.entity.OrderEntity;
 import vn.edu.iuh.fit.thunderfood.entity.ReviewModerationLogEntity;
 import vn.edu.iuh.fit.thunderfood.entity.ReviewReplyEntity;
 import vn.edu.iuh.fit.thunderfood.entity.ReviewReportEntity;
@@ -29,6 +30,7 @@ import vn.edu.iuh.fit.thunderfood.repository.ReviewReportRepository;
 import vn.edu.iuh.fit.thunderfood.repository.MenuItemRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.*;
 
@@ -37,6 +39,9 @@ import static vn.edu.iuh.fit.thunderfood.service.CustomerRules.*;
 public class CustomerReviewService {
     private static final String CUSTOMER_ROLE = "CUSTOMER", PARTNER_ROLE = "RESTAURANT_PARTNER", ADMIN_ROLE = "ADMIN";
     private static final int PAGE_SIZE = 10;
+    private static final int REVIEW_WINDOW_DAYS = 30;
+    private static final int DAILY_REVIEW_LIMIT = 10;
+    private static final String DAILY_LIMIT_REASON = "Bạn đã đạt giới hạn 10 đánh giá trong 24 giờ";
     /** Dùng mã đánh giá làm tiêu chí phụ khi nhiều dòng trùng thời điểm. */
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
     private static final Sort OLDEST_FIRST = Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
@@ -129,7 +134,8 @@ public class CustomerReviewService {
         rules.actor(customer, CUSTOMER_ROLE, false);
         publicRestaurant(restaurant);
         var now = rules.now();
-        var rows = orders.findReviewable(customer, restaurant, now.minusDays(30), now)
+        if (atDailyReviewLimit(customer, now)) return new Eligibility(List.of(), DAILY_LIMIT_REASON);
+        var rows = orders.findReviewable(customer, restaurant, now.minusDays(REVIEW_WINDOW_DAYS), now)
                 .stream()
                 .map(EligibleOrder::from)
                 .toList();
@@ -139,8 +145,22 @@ public class CustomerReviewService {
     }
 
     @Transactional(readOnly = true)
+    public OrderReviewState orderReviewState(long customer, long orderId) {
+        rules.actor(customer, CUSTOMER_ROLE, false);
+        var order = orders.findByIdAndCustomerId(orderId, customer).orElseThrow(CustomerReviewService::missing);
+        var existing = findOwnReview(customer, orderId);
+        if (existing != null) return new OrderReviewState(existing, false, "");
+        var reason = reviewBlockReason(order, customer, rules.now());
+        return new OrderReviewState(null, reason.isEmpty(), reason);
+    }
+
+    @Transactional(readOnly = true)
     public ManagedReview ownForOrder(long customer, long orderId) {
         rules.actor(customer, CUSTOMER_ROLE, false);
+        return findOwnReview(customer, orderId);
+    }
+
+    private ManagedReview findOwnReview(long customer, long orderId) {
         return reviews.findByOrderIdAndCustomerId(orderId, customer)
                 .map(review -> ManagedReview.from(review, review.getDeletedAt() == null && withinEditWindow(review.getCreatedAt())))
                 .orElse(null);
@@ -150,22 +170,34 @@ public class CustomerReviewService {
         rules.actor(customer, CUSTOMER_ROLE, true);
         var order = orders.findWithLockByIdAndCustomerId(request.orderId(), customer)
                 .orElseThrow(CustomerReviewService::missing);
-        var restaurant = order.getRestaurant();
-        var completed = order.getCompletedAt();
         var now = rules.now();
-        if (order.getOrderStatus() != OrderStatusEnum.COMPLETED || order.getPaymentStatus() != OrderPaymentStatusEnum.PAID || completed == null || completed.isAfter(now) || completed.isBefore(now.minusDays(30)) || restaurant.getOwnerUserId() == customer || restaurant.getStatus() != RestaurantStatusEnum.APPROVED)
-            throw new BusinessException("Đơn hàng không đủ điều kiện đánh giá");
         if (reviews.existsByOrderId(request.orderId()))
             throw new BusinessException("Đơn này đã được đánh giá");
-        if (reviews.countByCustomerIdAndCreatedAtGreaterThanEqual(customer, now.minusDays(1)) >= 10)
-            throw new BusinessException("Bạn đã đạt giới hạn 10 đánh giá trong 24 giờ");
+        var reason = reviewBlockReason(order, customer, now);
+        if (!reason.isEmpty()) throw new BusinessException(reason);
         var review = reviews.save(new CustomerReviewEntity(request.orderId(),
                 customer,
-                restaurant,
+                order.getRestaurant(),
                 request.rating(),
                 text(request.content(), 10, 1000),
                 now));
         return new CreatedReview(review.getId());
+    }
+
+    private String reviewBlockReason(OrderEntity order, long customer, LocalDateTime now) {
+        if (order.getOrderStatus() != OrderStatusEnum.COMPLETED || order.getPaymentStatus() != OrderPaymentStatusEnum.PAID)
+            return "Chỉ đơn đã hoàn tất và thanh toán mới có thể gửi đánh giá";
+        var completed = order.getCompletedAt();
+        if (completed == null || completed.isAfter(now) || completed.isBefore(now.minusDays(REVIEW_WINDOW_DAYS)))
+            return "Bạn có thể gửi đánh giá trong 30 ngày kể từ khi hoàn tất đơn";
+        var restaurant = order.getRestaurant();
+        if (restaurant.getOwnerUserId() == customer || restaurant.getStatus() != RestaurantStatusEnum.APPROVED)
+            return "Đơn hàng không đủ điều kiện đánh giá";
+        return atDailyReviewLimit(customer, now) ? DAILY_LIMIT_REASON : "";
+    }
+
+    private boolean atDailyReviewLimit(long customer, LocalDateTime now) {
+        return reviews.countByCustomerIdAndCreatedAtGreaterThanEqual(customer, now.minusDays(1)) >= DAILY_REVIEW_LIMIT;
     }
 
     public void edit(long customer, long id, EditReview request) {
