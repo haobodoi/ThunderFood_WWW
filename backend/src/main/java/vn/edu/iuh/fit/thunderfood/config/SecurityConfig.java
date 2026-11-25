@@ -69,7 +69,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                         .requestMatchers("/api/admin/orders/*/confirm-payment", "/api/admin/orders/*/refund").hasRole("ADMIN")
-                        .requestMatchers("/api/admin/dashboard/**", "/api/admin/orders/**", "/api/admin/catalog/**", "/api/admin/uploads").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers("/api/admin/dashboard/**", "/api/admin/orders/**", "/api/admin/catalog/**", "/api/admin/uploads", "/api/admin/attention").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/partner/**").hasRole("RESTAURANT_PARTNER")
                         .requestMatchers("/api/customer/**").hasRole("CUSTOMER")

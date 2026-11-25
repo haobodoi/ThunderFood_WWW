@@ -1,8 +1,9 @@
 export const ORDER_STATUS = {
   PENDING: { label: 'Chờ xác nhận', tone: 'warning', icon: 'clock' },
-  CONFIRMED: { label: 'Đã xác nhận', tone: 'neutral', icon: 'checkCircle' },
-  PREPARING: { label: 'Đang chế biến', tone: 'neutral', icon: 'utensils' },
-  DELIVERING: { label: 'Đang giao', tone: 'neutral', icon: 'mapPin' },
+  // Mỗi bước đang xử lý có màu riêng (cùng bảng màu với biểu đồ trạng thái) để dễ phân biệt trong danh sách.
+  CONFIRMED: { label: 'Đã xác nhận', tone: 'info', icon: 'checkCircle' },
+  PREPARING: { label: 'Đang chế biến', tone: 'progress', icon: 'utensils' },
+  DELIVERING: { label: 'Đang giao', tone: 'delivery', icon: 'mapPin' },
   COMPLETED: { label: 'Hoàn tất', tone: 'success', icon: 'checkCircle' },
   CANCELLED: { label: 'Đã hủy', tone: 'danger', icon: 'xCircle' },
   REJECTED: { label: 'Quán từ chối', tone: 'danger', icon: 'xCircle' },

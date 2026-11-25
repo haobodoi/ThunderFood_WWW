@@ -32,14 +32,31 @@ public class AdminController {
         return query.dashboard(query.range(from, to), group);
     }
 
+    @GetMapping("/dashboard/insights")
+    public Map<String, Object> insights(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to) {
+        return query.insights(query.range(from, to));
+    }
+
     @GetMapping("/dashboard/export")
     public ResponseEntity<String> export(@RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(defaultValue = "day") String group) {
         return ResponseEntity.ok().contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=thunderfood-report.csv").body(query.csv(query.range(from, to), group));
     }
 
     @GetMapping("/orders")
-    public PageResponse<Map<String, Object>> orders(@RequestParam(defaultValue = "") String q, @RequestParam(required = false) String status, @RequestParam(required = false) String payment, @RequestParam(defaultValue = "false") boolean refunds, @RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) Long customer, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "newest") String sort) {
-        return query.orders(q, status, payment, refunds, from, to, customer, page, sort);
+    public PageResponse<Map<String, Object>> orders(@RequestParam(defaultValue = "") String q, @RequestParam(required = false) String status, @RequestParam(required = false) String payment, @RequestParam(defaultValue = "false") boolean refunds, @RequestParam(defaultValue = "false") boolean awaiting, @RequestParam(required = false) LocalDate from, @RequestParam(required = false) LocalDate to, @RequestParam(required = false) Long customer, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "newest") String sort) {
+        return query.orders(q, status, payment, refunds, awaiting, from, to, customer, page, sort);
+    }
+
+    /** Counts for the quick filter tabs of the order list. */
+    @GetMapping("/orders/counts")
+    public Map<String, Object> orderCounts() {
+        return query.orderCounts();
+    }
+
+    /** Current work queues (pending orders, refunds, profiles, reports, complaints) for sidebar badges. */
+    @GetMapping("/attention")
+    public Map<String, Object> attention() {
+        return query.attention();
     }
 
     @GetMapping("/orders/{id}")

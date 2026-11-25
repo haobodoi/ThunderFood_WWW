@@ -199,3 +199,78 @@
 @media (max-width: 370px) {
   .dash .report-page .report-filters__fields { grid-template-columns: 1fr; }
 }
+
+/* ===== Admin UX pass (2026-11): KPI số liệu luôn trên một dòng, cỡ chữ theo độ dài ===== */
+.dash .report-page .admin-kpi > strong.admin-kpi__value { white-space: nowrap; overflow-wrap: normal; font-variant-numeric: tabular-nums; }
+.dash .report-page .admin-kpi > strong.admin-kpi__value[data-size="sm"] { font-size: clamp(22px, 2vw, 30px); }
+.dash .report-page .admin-kpi > strong.admin-kpi__value[data-size="xs"] { font-size: clamp(19px, 1.7vw, 26px); }
+.dash .report-page .admin-kpi { min-height: 0; }
+.report-ranking__shop { display: block; margin-top: 2px; color: #7a899a; font-size: 12.5px; font-weight: 500; }
+.report-ranking__share { font-weight: 600; color: #526479; }
+@media (max-width: 520px) {
+  /* Điện thoại: 2 thẻ/hàng, gọn hơn để thấy toàn bộ chỉ số mà không phải cuộn dài. */
+  .dash .report-page .admin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dash .report-page .admin-kpi { min-height: 0; padding: 14px; gap: 6px; }
+  .dash .report-page .admin-kpi > span { font-size: 13px; }
+  .dash .report-page .admin-kpi > strong.admin-kpi__value { font-size: 21px; }
+  .dash .report-page .admin-kpi > strong.admin-kpi__value[data-size="sm"] { font-size: 17px; }
+  .dash .report-page .admin-kpi > strong.admin-kpi__value[data-size="xs"] { font-size: 15px; }
+  .dash .report-page .admin-kpi__comparison, .dash .report-page .report-kpi-context { font-size: 12px; }
+  .dash .report-page .enterprise-kpi-icon { width: 30px; height: 30px; }
+}
+@media (max-width: 340px) { .dash .report-page .admin-kpis { grid-template-columns: 1fr; } }
+
+/* ===== Trang Thống kê: các góc phân tích ===== */
+.dash .report-page .report-navigation { flex-wrap: wrap; row-gap: 0; }
+@media (min-width: 769px) { .dash .report-page .report-navigation { column-gap: 24px; } }
+.analytics-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.analytics-stats--flat { margin-top: 4px; }
+@media (min-width: 900px) { .analytics-stats--flat { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.analytics-stat { display: grid; gap: 4px; align-content: start; padding: 16px 18px; border: 1px solid #e0e6ed; border-radius: 10px; background: #fff; min-width: 0; }
+.analytics-stats--flat .analytics-stat { background: #f8fafc; }
+.analytics-stat > span { color: #526479; font-size: 13.5px; }
+.analytics-stat > strong { color: var(--report-ink, #172b41); font-size: 22px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.analytics-stat > small { color: #7a899a; font-size: 12.5px; }
+.analytics-stat[data-tone="good"] > strong { color: #16634b; }
+.analytics-stat[data-tone="bad"] > strong { color: #a12835; }
+.analytics-sort { display: grid; gap: 4px; font-size: 13px; color: #526479; }
+.analytics-sort select { min-height: 40px; border: 1px solid #dce4ed; border-radius: 8px; padding: 0 10px; font: inherit; color: #172b41; background: #fff; }
+.analytics-share { display: block; height: 4px; margin-top: 6px; max-width: 220px; background: #eef2f6; border-radius: 2px; }
+.analytics-share > span { display: block; height: 100%; background: #ec9556; border-radius: inherit; }
+.analytics-delta { font-weight: 600; font-variant-numeric: tabular-nums; }
+.analytics-delta[data-direction="up"] { color: #16634b; }
+.analytics-delta[data-direction="down"] { color: #a12835; }
+.analytics-delta[data-direction="flat"] { color: #64748b; }
+.analytics-rate[data-alert] { color: #a12835; font-weight: 700; }
+.analytics-footnote { margin: 12px 0 0; color: #7a899a; font-size: 12.5px; }
+.analytics-heatmap-wrap { overflow-x: auto; }
+.analytics-heatmap { border-collapse: separate; border-spacing: 3px; width: 100%; min-width: 760px; table-layout: fixed; }
+.analytics-heatmap th { font-size: 11.5px; font-weight: 500; color: #7a899a; text-align: center; padding: 0 0 4px; }
+.analytics-heatmap tbody th { text-align: left; width: 52px; padding: 0 6px 0 0; font-size: 12.5px; color: #526479; white-space: nowrap; }
+.analytics-heatmap td { height: 26px; border-radius: 4px; background: #f1f5f9; }
+.analytics-heatmap td:hover { outline: 2px solid #172b41; outline-offset: -1px; }
+.analytics-heatmap-legend { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; font-size: 12px; color: #7a899a; }
+.analytics-heatmap-legend i { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(234,88,12,.1), rgba(234,88,12,.95)); }
+.analytics-hours { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 4px; align-items: end; height: 150px; }
+.analytics-hours li { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 4px; text-align: center; }
+.analytics-hours__bar { display: flex; align-items: flex-end; height: 100%; background: #f8fafc; border-radius: 4px 4px 0 0; }
+.analytics-hours__bar > span { display: block; width: 100%; background: #7189a2; border-radius: 4px 4px 0 0; min-height: 2px; }
+.analytics-hours__bar > span[data-top] { background: #ea580c; }
+.analytics-hours small { font-size: 11px; color: #7a899a; }
+.analytics-buckets { display: flex; gap: 3px; margin-top: 16px; min-height: 52px; border-radius: 8px; overflow: hidden; }
+.analytics-buckets > div { display: grid; align-content: center; gap: 2px; padding: 6px 10px; min-width: 86px; color: #fff; font-size: 12px; }
+.analytics-buckets > div strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.analytics-buckets > div[data-tone="good"] { background: #168466; }
+.analytics-buckets > div[data-tone="warn"] { background: #d97706; }
+.analytics-buckets > div[data-tone="bad"] { background: #b03c48; }
+.report-unsold-panel summary { display: flex; align-items: center; gap: 4px; cursor: pointer; min-height: 32px; }
+.report-unsold-panel[open] summary { margin-bottom: 12px; }
+.dash .tf-admin-table td small.report-unsold { display: block; width: fit-content; margin-top: 4px; }
+@media (max-width: 720px) {
+  .analytics-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .analytics-stat { padding: 12px; }
+  .analytics-stat > strong { font-size: 17px; }
+  .analytics-hours { height: 110px; gap: 2px; }
+  .analytics-hours small { font-size: 9px; }
+  .analytics-buckets { flex-wrap: wrap; }
+}

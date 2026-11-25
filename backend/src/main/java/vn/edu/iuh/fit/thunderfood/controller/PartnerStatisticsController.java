@@ -21,6 +21,12 @@ public class PartnerStatisticsController {
             @RequestParam(defaultValue="day") String group,@RequestParam(required=false) Long restaurantId) {
         return statistics.partnerDashboard(user.getId(),restaurantId,statistics.range(from,to),group);
     }
+    @GetMapping("/dashboard/insights")
+    public Map<String,Object> insights(@AuthenticationPrincipal UserDetailsDto user,
+            @RequestParam(required=false) LocalDate from,@RequestParam(required=false) LocalDate to,
+            @RequestParam(required=false) Long restaurantId) {
+        return statistics.partnerInsights(user.getId(),restaurantId,statistics.range(from,to));
+    }
     @GetMapping("/dashboard/export")
     public ResponseEntity<String> export(@AuthenticationPrincipal UserDetailsDto user,
             @RequestParam(required=false) LocalDate from,@RequestParam(required=false) LocalDate to,
