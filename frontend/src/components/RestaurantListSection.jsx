@@ -44,20 +44,25 @@ export default function RestaurantListSection({
     return () => { active = false; window.clearTimeout(timer); };
   }, [keyword, reloadToken]);
 
+  const cuisineLabelsOf = (restaurant) => {
+    const fromTags = (Array.isArray(restaurant.tags) ? restaurant.tags : [])
+      .filter((tag) => tag.tagType === 'CUISINE' && tag.tagName?.trim())
+      .map((tag) => tag.tagName.trim());
+    if (fromTags.length > 0) return fromTags;
+    return restaurant.specialty?.trim() ? [restaurant.specialty.trim()] : [];
+  };
+
   const cuisines = useMemo(() => {
     const names = new Set();
     restaurants.forEach((restaurant) => {
-      (Array.isArray(restaurant.tags) ? restaurant.tags : []).forEach((tag) => {
-        if (tag.tagType === 'CUISINE' && tag.tagName?.trim()) names.add(tag.tagName.trim());
-      });
+      cuisineLabelsOf(restaurant).forEach((label) => names.add(label));
     });
     return [...names].sort((a, b) => a.localeCompare(b, 'vi-VN'));
   }, [restaurants]);
 
   const displayed = restaurants
     .filter((restaurant) => !onlyOpen || restaurant.open)
-    .filter((restaurant) => activeCuisine === 'ALL' ||
-      (restaurant.tags || []).some((tag) => tag.tagType === 'CUISINE' && tag.tagName?.trim() === activeCuisine))
+    .filter((restaurant) => activeCuisine === 'ALL' || cuisineLabelsOf(restaurant).includes(activeCuisine))
     .sort((a, b) => {
       if (sortBy === 'LOWEST_FEE') return deliveryFeeSortValue(a.deliveryFee) - deliveryFeeSortValue(b.deliveryFee);
       if (sortBy === 'OPEN_FIRST') return Number(Boolean(b.open)) - Number(Boolean(a.open));

@@ -4374,3 +4374,48 @@ select.field__input {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   overflow: hidden; line-height: 1.35;
 }
+
+@media (max-width: 420px) {
+  .navbar .container {
+    padding: 0 10px;
+  }
+  .navbar__inner {
+    gap: 6px;
+  }
+  .brand-logo {
+    gap: 5px;
+  }
+  .brand-logo__mark {
+    width: 26px;
+    height: auto;
+  }
+  .brand-logo__text {
+    font-size: 15px;
+  }
+  .navbar__actions {
+    gap: 4px;
+    min-width: 0;
+  }
+  .navbar__actions .btn {
+    height: 34px;
+    padding: 0 8px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .navbar__cart-link {
+    gap: 4px;
+  }
+  .navbar__customer-link {
+    display: none;
+  }
+  .user-menu__trigger {
+    height: 36px;
+    padding: 0 6px 0 4px;
+    gap: 4px;
+  }
+  .user-menu__trigger .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+}

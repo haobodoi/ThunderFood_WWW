@@ -138,11 +138,11 @@ export default function CustomerReviews({ restaurantId, itemId = null, title = '
     {hasReviews && <>
       <div className="commerce-filters">
         <div className="commerce-star-filter" aria-label="Lọc theo số sao"><button type="button" className={!stars ? 'is-active' : ''} onClick={() => { setStars(''); setPage(0); }}>Tất cả</button>{[5, 4, 3, 2, 1].map(n => <button type="button" key={n} className={Number(stars) === n ? 'is-active' : ''} onClick={() => { setStars(String(n)); setPage(0); }}>{n}★</button>)}</div>
-        <label>Sắp xếp <select name="sort" value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}>
+        <label htmlFor="reviews-sort">Sắp xếp <select id="reviews-sort" name="sort" value={sort} onChange={e => { setSort(e.target.value); setPage(0); }}>
           <option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option>
           <option value="highest">Điểm cao</option><option value="lowest">Điểm thấp</option>
         </select></label>
-        <label><input type="checkbox" name="photos" checked={photos} onChange={e => { setPhotos(e.target.checked); setPage(0); }} /> Có ảnh</label>
+        <label htmlFor="reviews-photos-only"><input id="reviews-photos-only" type="checkbox" name="photos" checked={photos} onChange={e => { setPhotos(e.target.checked); setPage(0); }} /> Có ảnh</label>
         <button className="btn btn--outline btn--sm" disabled={loading} onClick={() => setReload(n => n + 1)}>Tải lại</button>
       </div>
       {loading ? <p role="status">Đang tải đánh giá…</p> : !error && <>
