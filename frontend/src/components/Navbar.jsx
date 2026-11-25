@@ -8,7 +8,7 @@ import { useCart } from '../context/CartContext.jsx';
 
 export function Brand({ light = false }) {
   return (
-    <Link to="/" className={`brand ${light ? 'brand--light' : ''}`}>
+    <Link to="/" className={`brand ${light ? 'brand--light' : ''}`} onClick={() => window.scrollTo(0, 0)}>
       <Logo size={30} light={light} />
     </Link>
   );
@@ -24,13 +24,13 @@ export default function Navbar() {
         <Brand />
 
         <nav className="navbar__links" aria-label="Điều hướng chính">
-          <NavLink to="/" end className="navbar__link">
+          <NavLink to="/" end className="navbar__link" onClick={() => window.scrollTo(0, 0)}>
             Trang chủ
           </NavLink>
-          <a href="/#explore-restaurants" className="navbar__link">
+          <Link to="/#explore-restaurants" className="navbar__link">
             Khám phá quán ngon
-          </a>
-          {user && (
+          </Link>
+          {user && user.role !== 'CUSTOMER' && (
             <NavLink to={homePathFor(user)} end className="navbar__link">
               {ROLE_LABEL[user.role]}
             </NavLink>

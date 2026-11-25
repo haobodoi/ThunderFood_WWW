@@ -11,6 +11,7 @@ import RegisterPage from './pages/RegisterPage.jsx';
 import ForbiddenPage from './pages/ForbiddenPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import CustomerHomePage from './pages/customer/CustomerHomePage.jsx';
+import CustomerProfilePage from './pages/customer/CustomerProfilePage.jsx';
 import MyRestaurantsPage from './pages/partner/MyRestaurantsPage.jsx';
 import RestaurantRegisterPage from './pages/partner/RestaurantRegisterPage.jsx';
 import RestaurantDetailPage from './pages/customer/RestaurantDetailPage.jsx';
@@ -52,6 +53,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute roles={[ROLES.CUSTOMER]} />}>
             <Route path="/customer" element={<CustomerHomePage />} />
+            <Route path="/customer/profile" element={<CustomerProfilePage />} />
             <Route path="/customer/cart" element={<CartPage />} />
             <Route path="/customer/checkout/all" element={<MultiCheckoutPage />} />
             <Route path="/customer/checkout/:cartId" element={<CheckoutPage />} />

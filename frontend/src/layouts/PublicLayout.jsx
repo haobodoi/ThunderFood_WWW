@@ -39,6 +39,7 @@ export default function PublicLayout() {
                 <>
                   <h4>Tài khoản khách hàng</h4>
                   <div className="tf-footer__links">
+                    <Link to="/customer/profile">Thông tin tài khoản</Link>
                     <Link to="/customer/cart">Giỏ hàng của bạn</Link>
                     <Link to="/customer/orders">Đơn hàng của tôi</Link>
                     <Link to="/customer/reviews">Đánh giá của tôi</Link>

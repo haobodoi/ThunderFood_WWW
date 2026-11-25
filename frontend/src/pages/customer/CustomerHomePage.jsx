@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import AccountInfoCard from '../../components/AccountInfoCard.jsx';
 import Icon from '../../components/Icon.jsx';
 import RestaurantListSection from '../../components/RestaurantListSection.jsx';
 
@@ -24,10 +23,6 @@ export default function CustomerHomePage() {
         </div>
       </div>
       <RestaurantListSection title="Khám phá nhà hàng" />
-      <section className="container customer-home__account">
-        <h2>Thông tin tài khoản của bạn</h2>
-        <AccountInfoCard user={user} />
-      </section>
     </div>
   );
 }
