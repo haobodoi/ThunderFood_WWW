@@ -31,7 +31,7 @@ export default function PolicyChatPage() {
   }
 
   return (
-    <main className="container commerce-page policy-chat-page">
+    <div className="container commerce-page policy-chat-page">
       <h1>Hỏi về chính sách ThunderFood</h1>
       <p>Trợ lý trả lời dựa trên điều khoản, chính sách hủy và hoàn tiền, và câu hỏi thường gặp.</p>
 
@@ -63,6 +63,6 @@ export default function PolicyChatPage() {
         />
         <button className="btn btn--primary" disabled={busy || !input.trim()}>Gửi</button>
       </form>
-    </main>
+    </div>
   );
 }

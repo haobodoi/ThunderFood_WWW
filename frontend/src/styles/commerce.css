@@ -46,6 +46,10 @@
 .tf-rating-input__stars button.is-selected { color: var(--tf-orange-500); }
 .order-review-page { padding-top: 32px; padding-bottom: 48px; }
 .order-review-page__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .8fr); gap: 24px; margin-top: 20px; }
+.order-review-page__items, .order-review-page__form { min-width: 0; }
+@media (max-width: 820px) {
+  .order-review-page__grid { grid-template-columns: minmax(0, 1fr); }
+}
 .order-review-page__image { display: inline-flex; flex-direction: column; gap: 6px; margin: 0 8px 8px 0; vertical-align: top; }
 .order-review-page__image img { border-radius: var(--radius-sm); height: 96px; object-fit: cover; width: 96px; }
 .order-review-page__image--pending { position: relative; }

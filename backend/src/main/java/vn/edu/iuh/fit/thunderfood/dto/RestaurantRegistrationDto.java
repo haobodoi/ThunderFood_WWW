@@ -25,7 +25,8 @@ public record RestaurantRegistrationDto(
         RestaurantBasicDto basic,
         RestaurantRepresentativeDto representative,
         RestaurantBankDto bank,
-        RestaurantDetailsDto details
+        RestaurantDetailsDto details,
+        Boolean open
 ) {
     public static RestaurantRegistrationDto from(RestaurantEntity r) {
         UserEntity owner = r.getOwner();
@@ -66,7 +67,8 @@ public record RestaurantRegistrationDto(
                 basic,
                 representative,
                 bank,
-                details
+                details,
+                Boolean.TRUE.equals(r.getOpen())
         );
     }
 

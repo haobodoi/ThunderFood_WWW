@@ -154,8 +154,14 @@ function OrderReview({ id }) {
     <div className="order-review-page__grid">
       <section className="commerce-cart order-review-page__items"><h2>Món bạn đã dùng</h2><p><strong>{order.restaurantName}</strong></p><OrderLines items={order.items} /><p className="muted">{PAYMENT_METHOD[order.paymentMethod]} · Tổng thanh toán: <strong>{Number(order.totalAmount).toLocaleString('vi-VN')} ₫</strong></p></section>
       <section className="commerce-compose order-review-page__form">
-        <h2>{review?.editable === false ? 'Đánh giá bạn đã gửi' : 'Chia sẻ trải nghiệm'}</h2>
-        {isReviewable(order) ? review?.editable === false ? <div className="order-review-page__readonly">
+        <h2>{review?.deleted ? 'Đánh giá đã bị xóa' : review?.editable === false ? 'Đánh giá bạn đã gửi' : 'Chia sẻ trải nghiệm'}</h2>
+        {isReviewable(order) ? review?.deleted ? <div className="order-review-page__readonly">
+          <Alert type="warning" title="Đánh giá đã bị xóa">Bạn đã xóa đánh giá cho đơn hàng này. Mỗi đơn hàng chỉ được gửi đánh giá một lần nên không thể tạo lại hoặc chỉnh sửa.</Alert>
+          <div className="tf-order-actions">
+            <Link className="btn btn--outline" to="/customer/reviews">Quản lý đánh giá của tôi</Link>
+            <Link className="btn btn--ghost" to={`/customer/orders/${order.orderId}`}>Về chi tiết đơn</Link>
+          </div>
+        </div> : review?.editable === false ? <div className="order-review-page__readonly">
           <Alert type="info" title="Đánh giá đã hết hạn sửa">Đánh giá này chỉ được chỉnh sửa hoặc thêm ảnh trong 7 ngày sau khi gửi.</Alert>
           <ReviewCard review={review} />
           <div className="tf-order-actions">

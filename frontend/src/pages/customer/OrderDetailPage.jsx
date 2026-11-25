@@ -101,7 +101,9 @@ function OrderDetail({ id }) {
   </div>;
 
   const reviewLabel = existingReview
-    ? (existingReview.editable ? 'Chỉnh sửa đánh giá' : 'Xem đánh giá đã gửi')
+    ? (existingReview.deleted
+      ? 'Đánh giá đã xóa'
+      : existingReview.editable ? 'Chỉnh sửa đánh giá' : 'Xem đánh giá đã gửi')
     : 'Đánh giá đồ ăn';
 
   return <div className="container commerce-page">

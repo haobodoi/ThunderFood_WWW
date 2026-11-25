@@ -109,7 +109,12 @@ public class PartnerMenuService {
         MenuCategoryEntity entity = categoryRepository.findByIdAndRestaurantId(categoryId, restaurantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục"));
 
-        // Gỡ liên kết các món ăn thuộc category này về null trước khi xóa
+        long itemCount = menuItemRepository.countByCategoryIdAndDeletedFalse(categoryId);
+        if (itemCount > 0) {
+            throw new BusinessException("Không thể xóa nhóm đang chứa " + itemCount + " món ăn. Vui lòng chuyển hoặc xóa các món trước.");
+        }
+
+        // Gỡ liên kết các món đã xóa mềm (nếu có) trước khi xóa nhóm
         menuItemRepository.clearCategoryForItems(categoryId);
         categoryRepository.delete(entity);
     }

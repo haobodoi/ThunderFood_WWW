@@ -222,7 +222,9 @@ export default function RestaurantMenuPage() {
       <section className="tf-partner-menu__header" aria-label="Thông tin và trạng thái quán">
         <div className="tf-partner-menu__identity">
           <div className="tf-partner-menu__avatar">
-            {restaurant.avatarImage ? <img src={restaurant.avatarImage} alt="" /> : <Icon name="store" size={28} />}
+            {(restaurant.avatarImage || restaurant.details?.avatarImage)
+              ? <img src={restaurant.avatarImage || restaurant.details?.avatarImage} alt="" />
+              : <Icon name="store" size={28} />}
           </div>
           <div className="tf-partner-menu__identity-text">
             <h1>{restaurant.restaurantName || 'Nhà hàng'}</h1>
@@ -301,6 +303,8 @@ export default function RestaurantMenuPage() {
             <Icon name="edit" size={13} />Sửa nhóm
           </button>
           <button type="button" className="btn btn--ghost btn--sm btn--danger-text"
+            disabled={(activeCatObj.itemCount ?? 0) > 0}
+            title={(activeCatObj.itemCount ?? 0) > 0 ? 'Chuyển hoặc xóa các món trong nhóm trước khi xóa nhóm' : 'Xóa nhóm thực đơn'}
             onClick={() => setDeleteConfirm({ type: 'category', data: activeCatObj })}>
             <Icon name="trash" size={13} />Xóa nhóm
           </button>
@@ -345,7 +349,7 @@ export default function RestaurantMenuPage() {
         title={deleteConfirm?.type === 'item' ? 'Xác nhận xóa món ăn' : 'Xác nhận xóa nhóm thực đơn'}
         message={deleteConfirm?.type === 'item'
           ? 'Xóa món "' + (deleteConfirm?.data?.itemName || '') + '" khỏi thực đơn?'
-          : 'Xóa nhóm "' + (deleteConfirm?.data?.categoryName || '') + '"? Các món trong nhóm sẽ chuyển về Chưa phân nhóm.'}
+          : 'Xóa nhóm "' + (deleteConfirm?.data?.categoryName || '') + '" khỏi thực đơn?'}
         loading={deleting} onConfirm={handleConfirmDelete} onCancel={() => setDeleteConfirm(null)} />
     </div>
   );
