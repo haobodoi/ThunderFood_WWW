@@ -73,6 +73,39 @@ public class AdminQueryService {
         return result;
     }
     public Map<String,Object> dashboard(Range range,String group) { return dashboard(range,group,new DashboardScope(null,null)); }
+    public Map<String,Object> insights(Range range) { return insights(range,new DashboardScope(null,null)); }
+    public Map<String,Object> partnerInsights(long owner,Long restaurant,Range range) {
+        rules.actor(owner,"RESTAURANT_PARTNER",false);
+        if(restaurant!=null) one("SELECT restaurant_id FROM restaurants WHERE restaurant_id=:id AND owner_user_id=:owner",Map.of("id",restaurant,"owner",owner));
+        return insights(range,new DashboardScope(owner,restaurant));
+    }
+    private static final String FULFIL = "TIMESTAMPDIFF(MINUTE,o.confirmed_at,o.completed_at)";
+    private static final String FULFILLED = "o.order_status='COMPLETED' AND o.confirmed_at IS NOT NULL AND o.completed_at IS NOT NULL";
+    /** Phân tích chi tiết cho trang Thống kê: theo nhà hàng, khung giờ, khách hàng, dòng tiền, hủy đơn, thời gian xử lý. */
+    private Map<String,Object> insights(Range range,DashboardScope scope) {
+        var p=scope.params(range);
+        String in=" FROM orders o WHERE o.created_at>=:from AND o.created_at<:until"+scope.orders();
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("from",range.from()); result.put("to",range.to());
+        // Theo nhà hàng (kèm doanh thu kỳ trước để tính tăng trưởng)
+        var shops=rows("SELECT r.restaurant_id AS id,r.restaurant_name AS name,COUNT(*) AS orders,COALESCE(SUM("+ELIGIBLE+"),0) AS completed,COALESCE(SUM(CASE WHEN "+ELIGIBLE+" THEN o.subtotal ELSE 0 END),0) AS revenue,COALESCE(SUM(CASE WHEN "+ELIGIBLE+" THEN o.total_amount ELSE 0 END),0) AS receipts,COALESCE(SUM(o.order_status='CANCELLED'),0) AS cancelled,COALESCE(SUM(o.order_status='REJECTED'),0) AS rejected,AVG(CASE WHEN o.payment_method='COD' AND o.confirmed_at IS NOT NULL THEN TIMESTAMPDIFF(MINUTE,o.created_at,o.confirmed_at) END) AS avgConfirmMinutes,AVG(CASE WHEN "+FULFILLED+" THEN "+FULFIL+" END) AS avgFulfilMinutes FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE o.created_at>=:from AND o.created_at<:until"+scope.orders()+" GROUP BY r.restaurant_id,r.restaurant_name ORDER BY revenue DESC,orders DESC,r.restaurant_id LIMIT 100",p);
+        Map<Object,Object> before=new HashMap<>();
+        rows("SELECT o.restaurant_id AS id,COALESCE(SUM(CASE WHEN "+ELIGIBLE+" THEN o.subtotal ELSE 0 END),0) AS revenue"+in+" GROUP BY o.restaurant_id",scope.params(range.previous())).forEach(row->before.put(row.get("id"),row.get("revenue")));
+        shops.forEach(row->row.put("previousRevenue",before.getOrDefault(row.get("id"),BigDecimal.ZERO)));
+        result.put("restaurants",shops);
+        // Khung giờ cao điểm: thứ (0 = Thứ Hai) x giờ, theo giờ Việt Nam đã lưu
+        result.put("heatmap",rows("SELECT WEEKDAY(o.created_at) AS dayIndex,HOUR(o.created_at) AS hourOfDay,COUNT(*) AS orders,COALESCE(SUM(CASE WHEN "+ELIGIBLE+" THEN o.subtotal ELSE 0 END),0) AS revenue"+in+" GROUP BY dayIndex,hourOfDay",p));
+        // Khách hàng: đang hoạt động, lần đầu đặt, quay lại, đặt từ 2 đơn trong kỳ
+        result.put("customers",one("SELECT COUNT(*) AS active,COALESCE(SUM(f.firstOrder>=:from),0) AS firstTime,COALESCE(SUM(f.firstOrder<:from),0) AS returningCustomers,COALESCE(SUM(c.orders>=2),0) AS repeaters,COALESCE(SUM(c.orders),0) AS orders FROM (SELECT o.customer_id,COUNT(*) AS orders"+in+" GROUP BY o.customer_id) c JOIN (SELECT o.customer_id,MIN(o.created_at) AS firstOrder FROM orders o WHERE o.created_at<:until"+scope.orders()+" GROUP BY o.customer_id) f ON f.customer_id=c.customer_id",p));
+        result.put("topCustomers",rows("SELECT u.user_id AS id,u.full_name AS name,t.orders,t.spend FROM (SELECT o.customer_id,COUNT(*) AS orders,SUM(o.total_amount) AS spend"+in+" AND "+ELIGIBLE+" GROUP BY o.customer_id ORDER BY spend DESC,o.customer_id LIMIT 10) t JOIN users u ON u.user_id=t.customer_id ORDER BY t.spend DESC,u.user_id",p));
+        // Dòng tiền của các đơn tạo trong kỳ
+        result.put("money",one("SELECT COALESCE(SUM(CASE WHEN "+ELIGIBLE+" AND o.payment_method='COD' THEN o.total_amount END),0) AS codReceipts,COALESCE(SUM(CASE WHEN "+ELIGIBLE+" AND o.payment_method='ONLINE' THEN o.total_amount END),0) AS onlineReceipts,COALESCE(SUM(CASE WHEN o.order_status IN ('PENDING','CONFIRMED','PREPARING','DELIVERING') THEN o.total_amount END),0) AS inProgress,COALESCE(SUM(o.order_status IN ('PENDING','CONFIRMED','PREPARING','DELIVERING')),0) AS inProgressCount,COALESCE(SUM(CASE WHEN "+REFUND_REQUIRED+" THEN o.total_amount END),0) AS refundPending,COALESCE(SUM("+REFUND_REQUIRED+"),0) AS refundPendingCount,COALESCE(SUM(CASE WHEN o.payment_status='REFUNDED' THEN o.total_amount END),0) AS refunded,COALESCE(SUM(o.payment_status='REFUNDED'),0) AS refundedCount,COALESCE(SUM(CASE WHEN o.order_status IN ('CANCELLED','REJECTED') THEN o.total_amount END),0) AS lost"+in,p));
+        // Lý do hủy / từ chối
+        result.put("cancelReasons",rows("SELECT o.order_status AS status,COALESCE(NULLIF(TRIM(o.cancel_reason),''),'Không ghi lý do') AS reason,COUNT(*) AS count"+in+" AND o.order_status IN ('CANCELLED','REJECTED') GROUP BY status,reason ORDER BY count DESC,reason LIMIT 10",p));
+        // Thời gian xử lý: quán xác nhận đơn COD; từ lúc xác nhận đến khi giao xong
+        result.put("times",one("SELECT AVG(CASE WHEN o.payment_method='COD' AND o.confirmed_at IS NOT NULL THEN TIMESTAMPDIFF(SECOND,o.created_at,o.confirmed_at) END)/60 AS avgConfirmMinutes,AVG(CASE WHEN "+FULFILLED+" THEN TIMESTAMPDIFF(SECOND,o.confirmed_at,o.completed_at) END)/60 AS avgFulfilMinutes,COALESCE(SUM("+FULFILLED+" AND "+FULFIL+"<=30),0) AS within30,COALESCE(SUM("+FULFILLED+" AND "+FULFIL+">30 AND "+FULFIL+"<=45),0) AS within45,COALESCE(SUM("+FULFILLED+" AND "+FULFIL+">45 AND "+FULFIL+"<=60),0) AS within60,COALESCE(SUM("+FULFILLED+" AND "+FULFIL+">60),0) AS over60"+in,p));
+        return result;
+    }
     public Map<String,Object> partnerDashboard(long owner,Long restaurant,Range range,String group) {
         rules.actor(owner,"RESTAURANT_PARTNER",false);
         if(restaurant!=null) one("SELECT restaurant_id FROM restaurants WHERE restaurant_id=:id AND owner_user_id=:owner",Map.of("id",restaurant,"owner",owner));
@@ -98,12 +131,17 @@ public class AdminQueryService {
         result.put("paymentMethods",rows("SELECT o.payment_method AS method,COUNT(*) AS count,COALESCE(SUM(CASE WHEN "+ELIGIBLE+" THEN o.total_amount ELSE 0 END),0) AS receipts FROM orders o WHERE o.created_at>=:from AND o.created_at<:until"+scope.orders()+" GROUP BY o.payment_method",p));
         result.put("payments",rows("SELECT o.payment_status AS status,COUNT(*) AS count FROM orders o WHERE o.created_at>=:from AND o.created_at<:until"+scope.orders()+" GROUP BY o.payment_status",p));
         String sold=" FROM order_items i JOIN orders o ON o.order_id=i.order_id WHERE "+ELIGIBLE+" AND o.created_at>=:from AND o.created_at<:until"+scope.orders()+" ";
-        result.put("topItems",rows("SELECT i.item_id AS itemId,i.item_name AS name,SUM(i.quantity) AS quantity,SUM(i.line_total) AS revenue"+sold+"GROUP BY i.item_id,i.item_name ORDER BY quantity DESC,name LIMIT 10",p));
+        result.put("topItems",rows("SELECT t.itemId,t.name,t.quantity,t.revenue,r.restaurant_name AS restaurantName FROM (SELECT i.item_id AS itemId,i.item_name AS name,MAX(o.restaurant_id) AS restaurantId,SUM(i.quantity) AS quantity,SUM(i.line_total) AS revenue"+sold+"GROUP BY i.item_id,i.item_name ORDER BY quantity DESC,name LIMIT 10) t LEFT JOIN restaurants r ON r.restaurant_id=t.restaurantId ORDER BY t.quantity DESC,t.name",p));
         result.put("topCategories",rows("SELECT COALESCE(i.category_name,'Chưa lưu danh mục') AS name,SUM(i.quantity) AS quantity,SUM(i.line_total) AS revenue"+sold+"GROUP BY i.category_name ORDER BY quantity DESC,name LIMIT 10",p));
-        result.put("slowItems",rows("SELECT m.item_id AS itemId,m.item_name AS name,r.restaurant_name AS restaurantName,COALESCE(s.quantity,0) AS quantity FROM menu_items m JOIN restaurants r ON r.restaurant_id=m.restaurant_id LEFT JOIN (SELECT i.item_id,SUM(i.quantity) AS quantity"+sold+"GROUP BY i.item_id) s ON s.item_id=m.item_id WHERE m.is_deleted=0 AND m.approval_status='APPROVED' AND m.created_at<:until"+scope.menu()+" ORDER BY quantity,m.item_id LIMIT 10",p));
+        // Món bán chậm: chỉ món ĐÃ bán trong kỳ, đang mở bán từ trước kỳ; kèm tỷ trọng trong chính quán đó
+        // (một món bán 5 phần ở quán nhỏ khác hẳn 5 phần ở quán lớn). Món chưa bán được tách riêng (unsoldItems).
+        result.put("slowItems",rows("SELECT s.itemId,m.item_name AS name,r.restaurant_name AS restaurantName,s.quantity,s.revenue,s.orders,m.is_available AS available,ROUND(s.quantity*100/rt.quantity,1) AS restaurantShare FROM (SELECT i.item_id AS itemId,SUM(i.quantity) AS quantity,SUM(i.line_total) AS revenue,COUNT(DISTINCT i.order_id) AS orders"+sold+"GROUP BY i.item_id) s JOIN menu_items m ON m.item_id=s.itemId JOIN restaurants r ON r.restaurant_id=m.restaurant_id JOIN (SELECT o.restaurant_id,SUM(i.quantity) AS quantity"+sold+"GROUP BY o.restaurant_id) rt ON rt.restaurant_id=m.restaurant_id WHERE m.is_deleted=0 AND m.approval_status='APPROVED' AND r.status='APPROVED' AND m.created_at<:from"+scope.menu()+" ORDER BY s.quantity,s.revenue,s.itemId LIMIT 10",p));
+        String unsold=" FROM menu_items m JOIN restaurants r ON r.restaurant_id=m.restaurant_id WHERE m.is_deleted=0 AND m.approval_status='APPROVED' AND r.status='APPROVED' AND m.created_at<:from"+scope.menu()+" AND NOT EXISTS (SELECT 1 FROM order_items i JOIN orders o ON o.order_id=i.order_id WHERE i.item_id=m.item_id AND "+ELIGIBLE+" AND o.created_at>=:from AND o.created_at<:until)";
+        result.put("unsoldCount",db.queryForObject("SELECT COUNT(*)"+unsold,p,Long.class));
+        result.put("unsoldItems",rows("SELECT m.item_id AS itemId,m.item_name AS name,r.restaurant_name AS restaurantName,m.price,m.is_available AS available"+unsold+" ORDER BY m.is_available DESC,r.restaurant_name,m.item_name LIMIT 20",p));
         result.put("latest",rows("SELECT "+ORDER_COLUMNS+" FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id WHERE o.created_at>=:from AND o.created_at<:until"+scope.orders()+" ORDER BY o.created_at DESC,o.order_id DESC LIMIT 8",p));
         if(scope.owner()==null) {
-        result.put("attention",one("SELECT (SELECT COUNT(*) FROM orders WHERE order_status='PENDING') AS pending,(SELECT COUNT(*) FROM orders o WHERE "+REFUND_REQUIRED+") AS refunds,(SELECT COUNT(*) FROM restaurants WHERE status='PENDING') AS restaurants,(SELECT COUNT(*) FROM review_reports WHERE status IN ('OPEN','PROCESSING')) AS reports",Map.of()));
+        result.put("attention",attention());
         } else {
             result.put("attention",one("SELECT (SELECT COUNT(*) FROM orders o WHERE o.order_status='PENDING'"+scope.orders()+") AS pending,(SELECT COUNT(*) FROM orders o WHERE "+REFUND_REQUIRED+scope.orders()+") AS refunds",p));
         }
@@ -113,13 +151,25 @@ public class AdminQueryService {
         return result;
     }
     private static final String REFUND_REQUIRED = "o.order_status IN ('REJECTED','CANCELLED') AND o.payment_status='PAID'";
+    private static final String AWAITING_TRANSFER = "o.order_status='PENDING' AND o.payment_method='ONLINE' AND o.payment_status='UNPAID'";
 
-    public PageResponse<Map<String,Object>> orders(String q, String status, String payment, boolean refunds, LocalDate from, LocalDate to, Long customer, int page, String sort) {
+    /** Current work queues for the whole platform (not filtered by date). Used by the dashboard and the sidebar badges. */
+    public Map<String,Object> attention() {
+        return one("SELECT (SELECT COUNT(*) FROM orders WHERE order_status='PENDING') AS pending,(SELECT COUNT(*) FROM orders o WHERE "+AWAITING_TRANSFER+") AS awaitingTransfer,(SELECT COUNT(*) FROM orders o WHERE "+REFUND_REQUIRED+") AS refunds,(SELECT COUNT(*) FROM restaurants WHERE status='PENDING') AS restaurants,(SELECT COUNT(*) FROM review_reports WHERE status IN ('OPEN','PROCESSING')) AS reports,(SELECT COUNT(*) FROM complaints WHERE complaint_status IN ('OPEN','PROCESSING')) AS complaints",Map.of());
+    }
+
+    /** Counts for the quick tabs on the order list; one aggregate pass over orders. */
+    public Map<String,Object> orderCounts() {
+        return one("SELECT COUNT(*) AS total,COALESCE(SUM(o.order_status='PENDING'),0) AS PENDING,COALESCE(SUM(o.order_status='CONFIRMED'),0) AS CONFIRMED,COALESCE(SUM(o.order_status='PREPARING'),0) AS PREPARING,COALESCE(SUM(o.order_status='DELIVERING'),0) AS DELIVERING,COALESCE(SUM("+AWAITING_TRANSFER+"),0) AS awaitingTransfer,COALESCE(SUM("+REFUND_REQUIRED+"),0) AS refunds FROM orders o",Map.of());
+    }
+
+    public PageResponse<Map<String,Object>> orders(String q, String status, String payment, boolean refunds, boolean awaiting, LocalDate from, LocalDate to, Long customer, int page, String sort) {
         Map<String,Object> p=new HashMap<>(); p.put("q",keyword(q));
         String where=" WHERE (o.order_code LIKE :q ESCAPE '!' OR o.recipient_name LIKE :q ESCAPE '!' OR o.recipient_phone LIKE :q ESCAPE '!' OR EXISTS(SELECT 1 FROM users u WHERE u.user_id=o.customer_id AND (u.full_name LIKE :q ESCAPE '!' OR u.email LIKE :q ESCAPE '!')))";
         if(status!=null&&!status.isEmpty()){ validate(status,Set.of("PENDING","CONFIRMED","PREPARING","DELIVERING","COMPLETED","CANCELLED","REJECTED")); where+=" AND o.order_status=:status";p.put("status",status); }
         if(payment!=null&&!payment.isEmpty()){validate(payment,Set.of("UNPAID","PAID","FAILED","REFUNDED"));where+=" AND o.payment_status=:payment";p.put("payment",payment);}
         if(refunds) where+=" AND "+REFUND_REQUIRED;
+        if(awaiting) where+=" AND "+AWAITING_TRANSFER;
         if(from!=null&&to!=null&&to.isBefore(from)) throw new BusinessException("Ngày kết thúc phải sau ngày bắt đầu");
         if(from!=null){where+=" AND o.created_at>=:from";p.put("from",from.atStartOfDay());}
         if(to!=null){where+=" AND o.created_at<:until";p.put("until",to.plusDays(1).atStartOfDay());}
@@ -156,7 +206,7 @@ public class AdminQueryService {
         if(kind.equals("categories")) return page("SELECT c.category_id AS id,c.category_name AS categoryName,c.display_order AS displayOrder,c.is_visible AS visible,(SELECT COUNT(*) FROM menu_items i WHERE i.category_id=c.category_id AND i.is_deleted=0) AS itemCount"," FROM menu_categories c"," WHERE c.restaurant_id=:restaurant AND c.category_name LIKE :q ESCAPE '!'",p,page,"c.display_order,c.category_id");
         String where=" WHERE m.restaurant_id=:restaurant AND m.is_deleted=0 AND m.item_name LIKE :q ESCAPE '!'";
         if(category!=null){where+=" AND m.category_id=:category";p.put("category",category);}
-        if(status!=null&&!status.isEmpty()){validate(status,Set.of("available","unavailable","hidden"));where+=switch(status){case "available"->" AND m.is_available=1 AND m.approval_status='APPROVED'";case "hidden"->" AND m.approval_status='HIDDEN'";default->" AND m.is_available=0";};}
+        if(status!=null&&!status.isEmpty()){validate(status,Set.of("available","unavailable","hidden","pending"));where+=switch(status){case "available"->" AND m.is_available=1 AND m.approval_status='APPROVED'";case "hidden"->" AND m.approval_status='HIDDEN'";case "pending"->" AND m.approval_status IN ('PENDING','REJECTED')";default->" AND m.is_available=0 AND m.approval_status='APPROVED'";};}
         String order=switch(sort){case "price"->"m.price,m.item_id";case "name"->"m.item_name,m.item_id";case "newest"->"m.created_at DESC,m.item_id DESC";default->throw new BusinessException("Sắp xếp không hợp lệ");};
         return page("SELECT m.item_id AS id,m.item_name AS itemName,m.category_id AS categoryId,c.category_name AS categoryName,m.price,m.description,m.image_url AS imageUrl,m.is_available AS available,m.approval_status AS approvalStatus"," FROM menu_items m LEFT JOIN menu_categories c ON c.category_id=m.category_id",where,p,page,order);
     }
@@ -184,13 +234,53 @@ public class AdminQueryService {
     private static void validate(String value,Set<String> allowed){if(!allowed.contains(value))throw new BusinessException("Giá trị bộ lọc không hợp lệ");}
     public String csv(Range range,String group) { return csv(dashboard(range,group)); }
     public String partnerCsv(long owner,Long restaurant,Range range,String group) { return csv(partnerDashboard(owner,restaurant,range,group)); }
+    private static final Map<String,String> CSV_METRICS = new LinkedHashMap<>();
+    static {
+        CSV_METRICS.put("revenue","Doanh thu món (VND - không gồm phí giao)");
+        CSV_METRICS.put("deliveryFees","Phí giao hàng (VND)");
+        CSV_METRICS.put("receipts","Tổng thu đơn đã trả (VND)");
+        CSV_METRICS.put("orders","Tổng đơn tạo trong kỳ");
+        CSV_METRICS.put("completed","Đơn hoàn tất & đã thanh toán");
+        CSV_METRICS.put("average","Giá trị đơn trung bình (VND)");
+        CSV_METRICS.put("cancelled","Đơn hủy / bị từ chối");
+        CSV_METRICS.put("cancellationRate","Tỷ lệ hủy / từ chối (%)");
+        CSV_METRICS.put("customers","Khách hàng mới / khách đặt trong kỳ");
+    }
+    private static final Map<String,String> CSV_STATUS = Map.of("PENDING","Chờ xác nhận","CONFIRMED","Đã xác nhận","PREPARING","Đang chế biến","DELIVERING","Đang giao","COMPLETED","Hoàn tất","CANCELLED","Đã hủy","REJECTED","Quán từ chối");
+    private static final Map<String,String> CSV_PAYMENT = Map.of("UNPAID","Chưa thanh toán","PAID","Đã thanh toán","FAILED","Không thanh toán","REFUNDED","Đã hoàn tiền","COD","Tiền mặt (COD)","ONLINE","Chuyển khoản VietQR");
+
+    /** Quote every text cell and neutralise spreadsheet formulas (CSV injection) coming from user-entered names. */
+    private static String cell(Object value) {
+        String text = value == null ? "" : value.toString();
+        if (!text.isEmpty() && "=+-@\t\r".indexOf(text.charAt(0)) >= 0) text = "'" + text;
+        return "\"" + text.replace("\"", "\"\"") + "\"";
+    }
+    @SuppressWarnings("unchecked")
+    private static List<Map<String,Object>> list(Map<String,Object> report, String key) {
+        Object value = report.get(key);
+        return value instanceof List<?> rows ? (List<Map<String,Object>>) rows : List.of();
+    }
+    @SuppressWarnings("unchecked")
     private String csv(Map<String,Object> report) {
-        var out=new StringBuilder("\uFEFFThunderFood,VND,Asia/Ho_Chi_Minh\r\nTừ,"+report.get("from")+",Đến,"+report.get("to")+"\r\nQuy tắc,Đơn tạo trong kỳ và hiện COMPLETED + PAID; doanh thu món không gồm phí giao hàng\r\nKỳ,Số đơn,Doanh thu món (VND)\r\n");
-        @SuppressWarnings("unchecked") var series=(List<Map<String,Object>>)report.get("series");
-        for(var row:series)out.append(row.get("period")).append(',').append(row.get("orders")).append(',').append(row.get("revenue")).append("\r\n");
-        out.append("\r\nChỉ số,Giá trị\r\n");
-        @SuppressWarnings("unchecked") var current=(Map<String,Object>)report.get("current");
-        for(String key:List.of("revenue","receipts","deliveryFees","orders","completed","customers","average","cancelled","cancellationRate"))out.append(key).append(',').append(current.get(key)).append("\r\n");
+        var out=new StringBuilder("﻿ThunderFood,VND,Asia/Ho_Chi_Minh\r\n");
+        out.append("Từ ngày,").append(report.get("from")).append(",Đến ngày,").append(report.get("to")).append("\r\n");
+        out.append("Kỳ so sánh,").append(report.get("previousFrom")).append(",,").append(report.get("previousTo")).append("\r\n");
+        out.append(cell("Quy tắc")).append(',').append(cell("Lọc theo ngày tạo đơn; doanh thu chỉ tính đơn hiện COMPLETED + PAID; doanh thu món không gồm phí giao hàng")).append("\r\n");
+        var current=(Map<String,Object>)report.get("current"); var previous=(Map<String,Object>)report.get("previous");
+        out.append("\r\nChỉ số,Kỳ này,Kỳ trước\r\n");
+        CSV_METRICS.forEach((key,label)->out.append(cell(label)).append(',').append(current.get(key)).append(',').append(previous==null?"":previous.get(key)).append("\r\n"));
+        out.append("\r\nKỳ,Số đơn,Doanh thu món (VND)\r\n");
+        for(var row:list(report,"series"))out.append(row.get("period")).append(',').append(row.get("orders")).append(',').append(row.get("revenue")).append("\r\n");
+        out.append("\r\nTrạng thái đơn,Số đơn\r\n");
+        for(var row:list(report,"statuses"))out.append(cell(CSV_STATUS.getOrDefault(String.valueOf(row.get("status")),String.valueOf(row.get("status"))))).append(',').append(row.get("count")).append("\r\n");
+        out.append("\r\nTrạng thái thanh toán,Số đơn\r\n");
+        for(var row:list(report,"payments"))out.append(cell(CSV_PAYMENT.getOrDefault(String.valueOf(row.get("status")),String.valueOf(row.get("status"))))).append(',').append(row.get("count")).append("\r\n");
+        out.append("\r\nPhương thức thanh toán,Số đơn,Tổng thu đơn đã trả (VND)\r\n");
+        for(var row:list(report,"paymentMethods"))out.append(cell(CSV_PAYMENT.getOrDefault(String.valueOf(row.get("method")),String.valueOf(row.get("method"))))).append(',').append(row.get("count")).append(',').append(row.get("receipts")).append("\r\n");
+        out.append("\r\nMón bán chạy,Nhà hàng,Số phần,Doanh thu món (VND)\r\n");
+        for(var row:list(report,"topItems"))out.append(cell(row.get("name"))).append(',').append(cell(row.get("restaurantName"))).append(',').append(row.get("quantity")).append(',').append(row.get("revenue")).append("\r\n");
+        out.append("\r\nDanh mục,Số phần,Doanh thu món (VND)\r\n");
+        for(var row:list(report,"topCategories"))out.append(cell(row.get("name"))).append(',').append(row.get("quantity")).append(',').append(row.get("revenue")).append("\r\n");
         return out.toString();
     }
 }

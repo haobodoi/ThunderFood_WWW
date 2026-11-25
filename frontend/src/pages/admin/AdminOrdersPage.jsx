@@ -8,14 +8,19 @@ import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, NEXT_ACTION, awaitingTran
 import { OrderStatus, PaymentStatus, OrderLines, OrderTotals, OrderProgress } from '../../components/OrderParts.jsx';
 import Modal from '../../components/Modal.jsx';
 import Alert from '../../components/Alert.jsx';
-import { Head, Field, Search, Pager, DataState, OrderTable, Toast, useAdminData, formatDateTime } from './AdminShared.jsx';
+import { Head, Field, Search, Pager, DataState, OrderTable, Toast, WaitingTime, useAdminData, formatDateTime } from './AdminShared.jsx';
 
+// Lọc nhanh theo từng bước xử lý của đơn giao đồ ăn; `count` là khóa trong /admin/orders/counts.
 const ORDER_VIEWS = [
-  { label: 'Tất cả', status: '', payment: '' },
-  { label: 'Chờ xác nhận', status: 'PENDING', payment: '' },
-  { label: 'Đang giao', status: 'DELIVERING', payment: '' },
-  { label: 'Cần hoàn tiền', status: '', payment: '', refunds: 'true' },
+  { label: 'Tất cả', status: '', payment: '', count: 'total' },
+  { label: 'Chờ xác nhận', status: 'PENDING', payment: '', count: 'PENDING', urgent: true },
+  { label: 'Chờ đối soát VietQR', status: '', payment: '', awaiting: 'true', count: 'awaitingTransfer', urgent: true },
+  { label: 'Đã xác nhận', status: 'CONFIRMED', payment: '', count: 'CONFIRMED' },
+  { label: 'Đang chế biến', status: 'PREPARING', payment: '', count: 'PREPARING' },
+  { label: 'Đang giao', status: 'DELIVERING', payment: '', count: 'DELIVERING' },
+  { label: 'Cần hoàn tiền', status: '', payment: '', refunds: 'true', count: 'refunds', urgent: true },
 ];
+const countFormat = new Intl.NumberFormat('vi-VN');
 
 export default function AdminOrdersPage() {
   const [params, setParams] = useSearchParams();
@@ -23,6 +28,8 @@ export default function AdminOrdersPage() {
   const requestedPage = Number(filters.page);
   const page = Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
   const resource = useAdminData('/orders', { ...filters, page });
+  const counts = useAdminData('/orders/counts');
+  function refresh() { resource.refresh(); counts.refresh(); }
 
   function change(changes) {
     const next = { ...filters, ...changes, page: 0 };
@@ -31,23 +38,27 @@ export default function AdminOrdersPage() {
 
   return <div className="admin-page">
     <Head title="Quản lý đơn hàng" description="Tra cứu đơn, theo dõi thanh toán và xử lý theo trạng thái.">
-      <button type="button" className="btn btn--outline" disabled={resource.loading} onClick={resource.refresh}><RefreshCw size={16} /> Làm mới</button>
+      <button type="button" className="btn btn--outline" disabled={resource.loading} onClick={refresh}><RefreshCw size={16} /> Làm mới</button>
     </Head>
     <section className="admin-panel order-filters">
-      <div className="tabs" role="group" aria-label="Lọc nhanh đơn hàng">
+      <div className="tabs order-quick-tabs" role="group" aria-label="Lọc nhanh đơn hàng">
         {ORDER_VIEWS.map(view => {
           const active = (filters.status || '') === view.status && (filters.payment || '') === view.payment
-            && (filters.refunds || '') === (view.refunds || '');
+            && (filters.refunds || '') === (view.refunds || '') && (filters.awaiting || '') === (view.awaiting || '');
+          const count = counts.data?.[view.count];
           return <button key={view.label} type="button" className={'tabs__item' + (active ? ' is-active' : '')}
-            aria-pressed={active} onClick={() => change({ status: view.status, payment: view.payment, refunds: view.refunds })}>{view.label}</button>;
+            aria-pressed={active} onClick={() => change({ status: view.status, payment: view.payment, refunds: view.refunds, awaiting: view.awaiting })}>
+            {view.label}
+            {count != null && <span className="tab-count" data-urgent={(view.urgent && Number(count) > 0) || undefined}>{countFormat.format(Number(count))}</span>}
+          </button>;
         })}
       </div>
       <div className="admin-filters">
         <Search value={filters.q || ''} label="Mã đơn / khách hàng" onChange={q => change({ q })} />
-        <Field label="Trạng thái đơn"><select value={filters.status || ''} onChange={event => change({ status: event.target.value, refunds: '' })}>
+        <Field label="Trạng thái đơn"><select value={filters.status || ''} onChange={event => change({ status: event.target.value, refunds: '', awaiting: '' })}>
           <option value="">Tất cả</option>{Object.entries(ORDER_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
         </select></Field>
-        <Field label="Thanh toán"><select value={filters.payment || ''} onChange={event => change({ payment: event.target.value, refunds: '' })}>
+        <Field label="Thanh toán"><select value={filters.payment || ''} onChange={event => change({ payment: event.target.value, refunds: '', awaiting: '' })}>
           <option value="">Tất cả</option>{Object.entries(PAYMENT_STATUS).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
         </select></Field>
         <Field label="Từ ngày"><input type="date" max={filters.to || undefined} value={filters.from || ''} onChange={event => change({ from: event.target.value })} /></Field>
@@ -77,7 +88,7 @@ export function AdminOrderDetailPage() {
     finally { setBusy(false); }
   }
   return <div className="admin-page"><Head title={o?.orderCode || 'Chi tiết đơn hàng'} description="Thông tin món và số tiền được lưu tại lúc đặt đơn."><Link className="btn btn--outline" to="/admin/orders">← Danh sách đơn</Link><button type="button" className="btn btn--outline" onClick={resource.refresh}><RefreshCw size={16} /> Làm mới</button></Head>{success && <Toast message={success} onClose={() => setSuccess('')} />}<DataState resource={resource}>{o && <>
-    <section className="admin-panel admin-order-summary"><div className="admin-section-head"><h2>Trạng thái đơn</h2></div><div className="admin-actions"><OrderStatus status={o.orderStatus} /><PaymentStatus status={o.paymentStatus} /><span>{PAYMENT_METHOD[o.paymentMethod]}</span></div><OrderProgress status={o.orderStatus} /><div className="admin-actions">
+    <section className="admin-panel admin-order-summary"><div className="admin-section-head"><h2>Trạng thái đơn</h2></div><div className="admin-actions"><OrderStatus status={o.orderStatus} />{o.orderStatus === 'PENDING' && <WaitingTime createdAt={o.createdAt} />}<PaymentStatus status={o.paymentStatus} /><span>{PAYMENT_METHOD[o.paymentMethod]}</span></div><OrderProgress status={o.orderStatus} /><div className="admin-actions">
       {o.orderStatus === 'PENDING' && !awaitingTransfer(o) && <button className="btn btn--primary" onClick={() => begin({ path: 'status', status: 'CONFIRMED', label: 'Xác nhận đơn' })}>Xác nhận đơn</button>}
       {awaitingTransfer(o) && user.role === 'ADMIN' && <button className="btn btn--primary" onClick={() => begin({ path: 'confirm-payment', label: 'Xác nhận đã nhận tiền', financial: true })}>Đã nhận tiền VietQR</button>}
       {NEXT_ACTION[o.orderStatus] && <button className="btn btn--primary" onClick={() => begin({ path: 'status', ...NEXT_ACTION[o.orderStatus] })}>{NEXT_ACTION[o.orderStatus].label}</button>}
