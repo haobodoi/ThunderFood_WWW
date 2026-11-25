@@ -86,15 +86,17 @@ export default function ReviewManagementPage({ area = 'customer' }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
+  const [replyStatus, setReplyStatus] = useState('ALL');
   const reload = () => setRevision(n => n + 1);
   useEffect(() => {
     let active = true; setLoading(true); setError('');
     const load = area === 'partner' ? reviewApi.partner : reviewApi.mine;
-    load(page).then(result => { if (active) setData(result); }).catch(e => { if (active) setError(getErrorMessage(e)); }).finally(() => { if (active) setLoading(false); });
+    load(page, area === 'partner' ? replyStatus : undefined).then(result => { if (active) setData(result); }).catch(e => { if (active) setError(getErrorMessage(e)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [area, page, revision]);
+  }, [area, page, replyStatus, revision]);
   return <div className={area === 'customer' ? 'container commerce-page' : 'commerce-page'}>
     <div className="commerce-row"><h1>{area === 'partner' ? 'Đánh giá về quán' : 'Đánh giá của tôi'}</h1><button className="btn btn--outline" disabled={loading} onClick={reload}>Tải lại</button></div>
+    {area === 'partner' && <div className="tf-tab-list" role="tablist" aria-label="Lọc phản hồi"><button type="button" role="tab" aria-selected={replyStatus === 'ALL'} className={replyStatus === 'ALL' ? 'is-active' : ''} onClick={() => { setReplyStatus('ALL'); setPage(0); }}>Tất cả</button><button type="button" role="tab" aria-selected={replyStatus === 'UNREPLIED'} className={replyStatus === 'UNREPLIED' ? 'is-active' : ''} onClick={() => { setReplyStatus('UNREPLIED'); setPage(0); }}>Chưa phản hồi</button><button type="button" role="tab" aria-selected={replyStatus === 'REPLIED'} className={replyStatus === 'REPLIED' ? 'is-active' : ''} onClick={() => { setReplyStatus('REPLIED'); setPage(0); }}>Đã phản hồi</button></div>}
     {area === 'customer' && location.state?.notice && <Alert type="success">{location.state.notice}</Alert>}
     {error && <Alert type="error">{error}</Alert>}
     {loading ? <p role="status">Đang tải…</p> : !error && <>

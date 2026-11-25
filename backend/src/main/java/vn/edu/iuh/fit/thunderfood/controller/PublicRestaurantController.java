@@ -3,6 +3,7 @@ package vn.edu.iuh.fit.thunderfood.controller;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.iuh.fit.thunderfood.dto.RestaurantMenuResponseDto;
 import vn.edu.iuh.fit.thunderfood.dto.RestaurantPublicDto;
+import vn.edu.iuh.fit.thunderfood.dto.RestaurantSuggestionDto;
 import vn.edu.iuh.fit.thunderfood.service.PublicRestaurantService;
 
 import java.util.List;
@@ -21,6 +22,11 @@ public class PublicRestaurantController {
     public List<RestaurantPublicDto> list(@RequestParam(required = false) String keyword,
                                          @RequestParam(required = false) String province) {
         return publicRestaurantService.search(keyword, province);
+    }
+
+    @GetMapping("/suggestions")
+    public List<RestaurantSuggestionDto> suggestions(@RequestParam(required = false) String keyword) {
+        return publicRestaurantService.suggestions(keyword);
     }
 
     @GetMapping("/{id}")

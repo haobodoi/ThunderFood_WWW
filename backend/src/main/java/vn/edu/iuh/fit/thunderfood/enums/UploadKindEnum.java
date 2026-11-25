@@ -1,6 +1,7 @@
 package vn.edu.iuh.fit.thunderfood.enums;
 
 public enum UploadKindEnum {
+    PROFILE_AVATAR(false),
     AVATAR(false),
     COVER(false),
     ID_FRONT(true),

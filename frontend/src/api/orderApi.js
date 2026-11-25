@@ -9,7 +9,7 @@ export const orderApi = {
     expectedTotal: preview.totalAmount,
     expectedLines: preview.items.filter(line => line.available).map(({ id, lineTotal }) => ({ id, lineTotal })),
   }).then(r => r.data),
-  mine: page => api.get('/customer/orders', { params: { page } }).then(r => r.data),
+  mine: (page, group) => api.get('/customer/orders', { params: { page, group: group || undefined } }).then(r => r.data),
   get: id => api.get(`/customer/orders/${id}`).then(r => r.data),
   cancel: (id, reason) => api.post(`/customer/orders/${id}/cancel`, { reason }).then(r => r.data),
 };

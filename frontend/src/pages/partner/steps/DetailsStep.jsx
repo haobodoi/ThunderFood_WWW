@@ -12,7 +12,7 @@ import OpeningHoursEditor, {
 } from '../../../components/OpeningHoursEditor.jsx';
 import Alert from '../../../components/Alert.jsx';
 
-export default function DetailsStep({ registration, options, onSaved, onBack }) {
+export default function DetailsStep({ registration, options, onSaved, onBack, api = partnerRestaurantApi }) {
   const details = registration.details;
   const [schedule, setSchedule] = useState(() => hoursToSchedule(details.openingHours));
   const [form, setForm] = useState({
@@ -60,7 +60,7 @@ export default function DetailsStep({ registration, options, onSaved, onBack }) 
     };
     setSaving(true);
     try {
-      onSaved(await partnerRestaurantApi.updateDetails(registration.id, payload), 5);
+      onSaved(await api.updateDetails(registration.id, payload), 5);
     } catch (error) {
       setErrors(fieldErrorsFor(getFieldErrors(error), ['openingHours']));
       setServerError(getErrorMessage(error, 'Không lưu được thông tin, vui lòng thử lại.'));

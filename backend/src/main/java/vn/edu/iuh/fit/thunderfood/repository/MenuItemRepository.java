@@ -12,6 +12,7 @@ import vn.edu.iuh.fit.thunderfood.enums.ApprovalStatusEnum;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface MenuItemRepository extends JpaRepository<MenuItemEntity, Long> {
@@ -41,4 +42,11 @@ public interface MenuItemRepository extends JpaRepository<MenuItemEntity, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MenuItemEntity m JOIN FETCH m.restaurant WHERE m.id = :id")
     Optional<MenuItemEntity> findWithLockById(@Param("id") Long id);
+
+    @Query("SELECT m FROM MenuItemEntity m JOIN FETCH m.restaurant r WHERE m.deleted = false AND m.available = true " +
+            "AND m.approvalStatus = vn.edu.iuh.fit.thunderfood.enums.ApprovalStatusEnum.APPROVED " +
+            "AND r.status = vn.edu.iuh.fit.thunderfood.enums.RestaurantStatusEnum.APPROVED " +
+            "AND (:keyword IS NULL OR LOWER(m.itemName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "ORDER BY r.open DESC, m.updatedAt DESC, m.id DESC")
+    List<MenuItemEntity> findPublicSuggestions(@Param("keyword") String keyword, Pageable pageable);
 }

@@ -77,11 +77,11 @@ function RestaurantCard({ restaurant, onDelete }) {
             <Link to={'/restaurants/' + restaurant.id} className="btn btn--outline btn--sm">
               <Icon name="externalLink" size={14} />Xem trang quán
             </Link>
+            <Link to={'/partner/restaurants/' + restaurant.id + '/profile-update'} className="btn btn--outline btn--sm">
+              <Icon name="edit" size={14} />Đề nghị cập nhật hồ sơ
+            </Link>
           </>}
-          <Link to={'/partner/register/' + restaurant.id}
-            className={status === 'APPROVED' ? 'btn btn--ghost btn--sm' : 'btn btn--primary btn--sm'}>
-            {action}
-          </Link>
+          {status !== 'APPROVED' && <Link to={'/partner/register/' + restaurant.id} className="btn btn--primary btn--sm">{action}</Link>}
           {status === 'DRAFT' && <button type="button" className="btn btn--ghost btn--sm btn--danger-text"
             onClick={() => onDelete(restaurant)}>
             <Icon name="trash" size={14} />Xóa nháp

@@ -6,7 +6,7 @@ import { BANK_ACCOUNT_REGEX, foldName } from '../../../utils/restaurantUtils.js'
 import FormRow from '../../../components/FormRow.jsx';
 import Alert from '../../../components/Alert.jsx';
 
-export default function BankStep({ registration, onSaved, onBack }) {
+export default function BankStep({ registration, onSaved, onBack, api = partnerRestaurantApi }) {
   const { bank, representative: rep } = registration;
   const isBusiness = rep.businessType && rep.businessType !== 'INDIVIDUAL';
   const suggestedHolder = foldName(rep.repFullName || '');
@@ -64,7 +64,7 @@ export default function BankStep({ registration, onSaved, onBack }) {
     };
     setSaving(true);
     try {
-      onSaved(await partnerRestaurantApi.updateBank(registration.id, payload), 4);
+      onSaved(await api.updateBank(registration.id, payload), 4);
     } catch (error) {
       setErrors(getFieldErrors(error));
       setServerError(getErrorMessage(error, 'Không lưu được thông tin, vui lòng thử lại.'));

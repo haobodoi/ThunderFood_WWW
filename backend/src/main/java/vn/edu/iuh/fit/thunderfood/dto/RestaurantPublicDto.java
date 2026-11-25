@@ -19,6 +19,8 @@ public record RestaurantPublicDto(
         String coverImage,
         BigDecimal deliveryFee,
         Boolean open,
+        BigDecimal averageRating,
+        long reviewCount,
         List<OpeningHourDto> openingHours,
         List<TagDto> tags
 ) {

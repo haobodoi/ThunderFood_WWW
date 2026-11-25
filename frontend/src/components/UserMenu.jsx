@@ -68,12 +68,16 @@ export default function UserMenu() {
               <Icon name="star" size={18} />
               Đánh giá của tôi
             </Link>
-          </> : (
+          </> : <>
             <Link to={homePathFor(user)} className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
               <Icon name="home" size={18} />
               Trang của tôi
             </Link>
-          )}
+            {user.role === 'RESTAURANT_PARTNER' && <Link to="/partner/account" className="user-menu__item" role="menuitem" onClick={() => setOpen(false)}>
+              <Icon name="user" size={18} />
+              Cài đặt tài khoản
+            </Link>}
+          </>}
           <button type="button" className="user-menu__item user-menu__item--danger" role="menuitem" onClick={handleLogout}>
             <Icon name="logout" size={18} />
             Đăng xuất

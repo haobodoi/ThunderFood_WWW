@@ -29,6 +29,10 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReviewEn
         Long getStars5();
     }
 
+    interface RestaurantRatingView extends RatingSummaryView {
+        Long getRestaurantId();
+    }
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CustomerReviewEntity> findWithLockById(Long id);
 
@@ -44,10 +48,12 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReviewEn
     @Query(
             "SELECT r FROM CustomerReviewEntity r WHERE r.restaurant.id = :restaurantId AND r.status = PUBLISHED AND r.deletedAt IS NULL " +
             "AND (:rating IS NULL OR r.rating = :rating) " +
-            "AND (:photos = FALSE OR EXISTS (SELECT 1 FROM ReviewImageEntity i WHERE i.review = r))")
+            "AND (:photos = FALSE OR EXISTS (SELECT 1 FROM ReviewImageEntity i WHERE i.review = r)) " +
+            "AND (:itemId IS NULL OR EXISTS (SELECT 1 FROM OrderItemEntity i WHERE i.order.id = r.orderId AND i.itemId = :itemId))")
     Page<CustomerReviewEntity> findPublic(@Param("restaurantId") Long restaurantId,
                                           @Param("rating") Integer rating,
                                           @Param("photos") boolean photos,
+                                          @Param("itemId") Long itemId,
                                           Pageable pageable);
 
     @EntityGraph(attributePaths = {"customer", "restaurant"})
@@ -58,9 +64,33 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReviewEn
                                                                                       ReviewStatusEnum status,
                                                                                       Pageable pageable);
 
+    @EntityGraph(attributePaths = {"customer", "restaurant"})
+    @Query("SELECT r FROM CustomerReviewEntity r WHERE r.restaurant.ownerUserId = :ownerUserId AND r.status = PUBLISHED AND r.deletedAt IS NULL " +
+            "AND (:replyStatus = 'ALL' OR (:replyStatus = 'REPLIED' AND EXISTS (SELECT 1 FROM ReviewReplyEntity q WHERE q.review = r AND q.deletedAt IS NULL)) " +
+            "OR (:replyStatus = 'UNREPLIED' AND NOT EXISTS (SELECT 1 FROM ReviewReplyEntity q WHERE q.review = r AND q.deletedAt IS NULL)))")
+    Page<CustomerReviewEntity> findPartnerReviews(@Param("ownerUserId") Long ownerUserId,
+                                                  @Param("replyStatus") String replyStatus,
+                                                  Pageable pageable);
+
     @Query(value =
             "SELECT review_count AS reviewCount, average_rating AS averageRating, stars_1 AS stars1, stars_2 AS stars2, " +
             "stars_3 AS stars3, stars_4 AS stars4, stars_5 AS stars5 FROM restaurant_rating_summary WHERE restaurant_id = :restaurantId",
             nativeQuery = true)
     Optional<RatingSummaryView> findRatingSummary(@Param("restaurantId") Long restaurantId);
+
+    @Query(value = """
+            SELECT COUNT(*) AS reviewCount, AVG(r.rating) AS averageRating,
+              SUM(r.rating = 1) AS stars1, SUM(r.rating = 2) AS stars2, SUM(r.rating = 3) AS stars3,
+              SUM(r.rating = 4) AS stars4, SUM(r.rating = 5) AS stars5
+            FROM customer_reviews r
+            WHERE r.restaurant_id = :restaurantId AND r.status = 'PUBLISHED' AND r.deleted_at IS NULL
+              AND (:itemId IS NULL OR EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = r.order_id AND oi.item_id = :itemId))
+            """, nativeQuery = true)
+    RatingSummaryView findFilteredRatingSummary(@Param("restaurantId") Long restaurantId, @Param("itemId") Long itemId);
+
+    @Query(value =
+            "SELECT restaurant_id AS restaurantId, review_count AS reviewCount, average_rating AS averageRating, " +
+            "stars_1 AS stars1, stars_2 AS stars2, stars_3 AS stars3, stars_4 AS stars4, stars_5 AS stars5 " +
+            "FROM restaurant_rating_summary WHERE restaurant_id IN (:restaurantIds)", nativeQuery = true)
+    java.util.List<RestaurantRatingView> findRatingSummaries(@Param("restaurantIds") java.util.Collection<Long> restaurantIds);
 }

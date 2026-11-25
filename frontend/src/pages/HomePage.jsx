@@ -7,6 +7,8 @@ import { getMotionSafeScrollBehavior } from '../utils/motionUtils.js';
 import Icon from '../components/Icon.jsx';
 import RestaurantListSection from '../components/RestaurantListSection.jsx';
 
+const QUICK_SEARCHES = ['Cơm tấm', 'Bún chả', 'Bún bò', 'Gà rán', 'Trà sữa'];
+
 export default function HomePage() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
@@ -16,6 +18,11 @@ export default function HomePage() {
   const handleSearch = event => {
     event.preventDefault();
     setKeyword(search.trim());
+    discover();
+  };
+  const quickSearch = term => {
+    setSearch(term);
+    setKeyword(term);
     discover();
   };
   return <>
@@ -30,6 +37,10 @@ export default function HomePage() {
             <input id="home-hero-search" name="heroSearch" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm quán hoặc món ăn" aria-label="Tìm quán hoặc món ăn" />
             <button className="btn btn--primary" type="submit">Tìm kiếm</button>
           </form>
+          <div className="home-hero__quick-search" aria-label="Tìm kiếm nhanh">
+            <span>Tìm nhanh:</span>
+            {QUICK_SEARCHES.map(term => <button key={term} type="button" onClick={() => quickSearch(term)}>{term}</button>)}
+          </div>
           <div className="home-hero__links"><button type="button" className="home-hero__discover" onClick={discover}>Khám phá nhà hàng <Icon name="arrowRight" size={17} /></button><Link to={user ? homePathFor(user) : '/login'}>{user ? 'Tài khoản của tôi' : 'Đăng nhập'}</Link></div>
         </div>
         <div className="home-hero__image"><img src={HERO_MARQUEE_ROW_1[1].image} alt="" /><div className="home-hero__caption">Một bữa ngon<br /><strong>bắt đầu từ đây.</strong></div></div>

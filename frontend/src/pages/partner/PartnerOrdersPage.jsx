@@ -196,20 +196,7 @@ export default function PartnerOrdersPage() {
     {newOrder && <Alert type="info" title="Có đơn hàng mới">
       <button type="button" className="btn btn--outline btn--sm" onClick={showNewest}>Xem đơn mới</button>
     </Alert>}
-    <div className="commerce-filters">
-      <label>Trạng thái
-        <select value={refunds ? 'refunds' : status} onChange={e => {
-          const value = e.target.value;
-          setParams(value === 'refunds' ? { refunds: 'true' } : value ? { status: value } : {});
-        }}>
-          <option value="">Tất cả</option>
-          <option value="refunds">Cần hoàn tiền</option>
-          {Object.entries(ORDER_STATUS).map(([value, meta]) => <option key={value} value={value}>
-            {meta.label}
-          </option>)}
-        </select>
-      </label>
-    </div>
+    <div className="tf-tab-list" role="tablist" aria-label="Trạng thái đơn hàng"><button type="button" role="tab" aria-selected={!status && !refunds} className={!status && !refunds ? 'is-active' : ''} onClick={() => setParams({})}>Tất cả</button>{Object.entries(ORDER_STATUS).map(([value, meta]) => <button key={value} type="button" role="tab" aria-selected={status === value && !refunds} className={status === value && !refunds ? 'is-active' : ''} onClick={() => setParams({ status: value })}>{meta.label}</button>)}<button type="button" role="tab" aria-selected={refunds} className={refunds ? 'is-active' : ''} onClick={() => setParams({ refunds: 'true' })}>Cần hoàn tiền</button></div>
     {error && <Alert type="error">{error} <button type="button" className="btn btn--outline btn--sm" onClick={load}>Thử lại</button></Alert>}
     {loading && <p role="status">Đang tải…</p>}
     {!loading && !error && !data?.items.length && <p>Chưa có đơn hàng nào.</p>}

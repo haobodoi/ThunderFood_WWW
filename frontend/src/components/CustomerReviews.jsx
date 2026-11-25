@@ -81,7 +81,7 @@ export function RatingFields({ rating, setRating, content, setContent }) {
     <label className="commerce-field">Cảm nhận về đồ ăn<textarea required minLength={10} maxLength={1000} rows={4} value={content} onChange={e => setContent(e.target.value)} placeholder="Đồ ăn có ngon, vừa khẩu vị và đúng như mong đợi không?" /></label>
   </>;
 }
-export default function CustomerReviews({ restaurantId }) {
+export default function CustomerReviews({ restaurantId, itemId = null, title = 'Đánh giá từ khách hàng', compact = false }) {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [eligibility, setEligibility] = useState(null);
@@ -102,14 +102,14 @@ export default function CustomerReviews({ restaurantId }) {
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   useEffect(() => {
     let active = true; setLoading(true); setError('');
-    reviewApi.list(restaurantId, { page, stars: stars || undefined, photos, sort })
+    reviewApi.list(restaurantId, { page, stars: stars || undefined, photos, sort, itemId: itemId || undefined })
       .then(result => { if (active) setData(result); }).catch(err => { if (active) setError(getErrorMessage(err)); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [restaurantId, page, stars, photos, sort, reload]);
+  }, [restaurantId, itemId, page, stars, photos, sort, reload]);
   useEffect(() => {
     let active = true; setEligibility(null); setOrder('');
-    if (user?.role === 'CUSTOMER') reviewApi.eligibility(restaurantId)
+    if (!compact && user?.role === 'CUSTOMER') reviewApi.eligibility(restaurantId)
       .then(result => {
         if (active) {
           setEligibility(result);
@@ -120,7 +120,7 @@ export default function CustomerReviews({ restaurantId }) {
         if (active) setEligibility({ orders: [], reason: getErrorMessage(err, 'Không kiểm tra được quyền đánh giá.') });
       });
     return () => { active = false; };
-  }, [restaurantId, user?.id, user?.role, reload]);
+  }, [restaurantId, user?.id, user?.role, compact, reload]);
   const submit = async e => {
     e.preventDefault(); setBusy(true); setFormError(''); setSuccess('');
     try {
@@ -132,7 +132,7 @@ export default function CustomerReviews({ restaurantId }) {
   const summary = data?.summary;
   const hasReviews = Number(summary?.reviewCount) > 0;
   return <section className="container commerce-page" aria-label="Đánh giá nhà hàng">
-    <h2>Đánh giá từ khách hàng</h2>
+    <h2>{title}</h2>{itemId && <p className="muted">Các đánh giá này là của toàn bộ đơn hàng có chứa món này.</p>}
     {summary && <div className="commerce-summary"><strong>{Number(summary.reviewCount) ? `${Number(summary.averageRating).toFixed(1)} / 5.0` : 'Chưa có đánh giá'}</strong><span>{summary.reviewCount} lượt đánh giá đã mua hàng</span><div>{[5, 4, 3, 2, 1].map(n => <span key={n}>{n}★: {summary[`stars${n}`]}　</span>)}</div></div>}
     {error && <Alert type="error">{error}</Alert>}
     {hasReviews && <>
@@ -150,6 +150,6 @@ export default function CustomerReviews({ restaurantId }) {
         <Pagination page={page} total={data?.total || 0} setPage={setPage} />
       </>}
     </>}
-    {!user && <p><Link to="/login" state={{ from: `/restaurants/${restaurantId}` }}>Đăng nhập</Link> để xem quyền đánh giá sau khi mua hàng.</p>}
+    {!compact && !user && <p><Link to="/login" state={{ from: `/restaurants/${restaurantId}` }}>Đăng nhập</Link> để xem quyền đánh giá sau khi mua hàng.</p>}
   </section>;
 }

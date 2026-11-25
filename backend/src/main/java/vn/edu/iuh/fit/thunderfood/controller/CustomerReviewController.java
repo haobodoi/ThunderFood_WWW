@@ -25,8 +25,9 @@ public class CustomerReviewController {
                                  @RequestParam(required = false) Integer stars,
                                  @RequestParam(defaultValue = "false") boolean photos,
                                  @RequestParam(defaultValue = "newest") String sort,
+                                 @RequestParam(required = false) Long itemId,
                                  @AuthenticationPrincipal UserDetailsDto user) {
-        return service.list(id, page, stars, photos, sort, user == null ? null : user.getId());
+        return service.list(id, page, stars, photos, sort, itemId, user == null ? null : user.getId());
     }
 
     @GetMapping("/api/restaurants/review-images/{id}")
@@ -75,8 +76,9 @@ public class CustomerReviewController {
 
     @GetMapping("/api/partner/reviews")
     public PageResponse<ManagedReview> partner(@AuthenticationPrincipal UserDetailsDto user,
-                                               @RequestParam(defaultValue = "0") int page) {
-        return service.own(user.getId(), "RESTAURANT_PARTNER", page);
+                                               @RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "ALL") String replyStatus) {
+        return service.own(user.getId(), "RESTAURANT_PARTNER", page, replyStatus);
     }
 
     @PutMapping("/api/partner/reviews/{id}/reply")

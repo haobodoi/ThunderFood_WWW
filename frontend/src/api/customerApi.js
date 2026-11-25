@@ -15,7 +15,7 @@ export const reviewApi = {
   edit: (id, body) => api.put(`/customer/reviews/${id}`, body),
   remove: (id, version) => api.delete(`/customer/reviews/${id}`, { params: { version } }),
   mine: page => api.get('/customer/reviews', { params: { page } }).then(r => r.data),
-  partner: page => api.get('/partner/reviews', { params: { page } }).then(r => r.data),
+  partner: (page, replyStatus) => api.get('/partner/reviews', { params: { page, replyStatus: replyStatus || undefined } }).then(r => r.data),
   reply: (id, body) => api.put(`/partner/reviews/${id}/reply`, body),
   deleteReply: (id, version) => api.delete(`/partner/reviews/${id}/reply`, { params: { version } }),
   report: (id, body, partner = false) => api.post(`/${partner ? 'partner' : 'customer'}/reviews/${id}/reports`, body),

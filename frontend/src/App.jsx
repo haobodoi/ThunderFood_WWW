@@ -12,8 +12,10 @@ import ForbiddenPage from './pages/ForbiddenPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import CustomerHomePage from './pages/customer/CustomerHomePage.jsx';
 import CustomerProfilePage from './pages/customer/CustomerProfilePage.jsx';
+import AccountSettingsPage from './pages/AccountSettingsPage.jsx';
 import MyRestaurantsPage from './pages/partner/MyRestaurantsPage.jsx';
 import RestaurantRegisterPage from './pages/partner/RestaurantRegisterPage.jsx';
+import RestaurantProfileUpdatePage from './pages/partner/RestaurantProfileUpdatePage.jsx';
 import RestaurantDetailPage from './pages/customer/RestaurantDetailPage.jsx';
 import RestaurantMenuPage from './pages/partner/RestaurantMenuPage.jsx';
 import AdminOrdersPage, { AdminOrderDetailPage } from './pages/admin/AdminOrdersPage.jsx';
@@ -22,6 +24,7 @@ import AdminUsersPage, { AdminUserDetailPage } from './pages/admin/AdminUsersPag
 import { AdminActivityPage, AdminStoresPage, AdminComplaintsPage } from './pages/admin/AdminOperationsPage.jsx';
 import RestaurantReviewListPage from './pages/admin/RestaurantReviewListPage.jsx';
 import RestaurantReviewDetailPage from './pages/admin/RestaurantReviewDetailPage.jsx';
+import AdminProfileUpdatesPage, { AdminProfileUpdateDetailPage } from './pages/admin/AdminProfileUpdatesPage.jsx';
 import CartPage from './pages/customer/CartPage.jsx';
 import ReviewManagementPage from './pages/ReviewManagementPage.jsx';
 import CheckoutPage from './pages/customer/CheckoutPage.jsx';
@@ -75,8 +78,10 @@ export default function App() {
             <Route path="/partner/orders" element={<PartnerOrdersPage />} />
             <Route path="/partner/reviews" element={<ReviewManagementPage area="partner" />} />
             <Route path="/partner/restaurants/:restaurantId/menu" element={<RestaurantMenuPage />} />
+            <Route path="/partner/restaurants/:restaurantId/profile-update" element={<RestaurantProfileUpdatePage />} />
             <Route path="/partner/register" element={<RestaurantRegisterPage />} />
             <Route path="/partner/register/:id" element={<RestaurantRegisterPage />} />
+            <Route path="/partner/account" element={<AccountSettingsPage />} />
           </Route>
         </Route>
 
@@ -96,6 +101,8 @@ export default function App() {
             <Route path="/admin/review-reports" element={<Suspense fallback={loading}><AdminReviewReportsPage /></Suspense>} />
             <Route path="/admin/restaurants" element={<RestaurantReviewListPage />} />
             <Route path="/admin/restaurants/:id" element={<RestaurantReviewDetailPage />} />
+            <Route path="/admin/restaurant-profile-updates" element={<AdminProfileUpdatesPage />} />
+            <Route path="/admin/restaurant-profile-updates/:id" element={<AdminProfileUpdateDetailPage />} />
             </Route>
           </Route>
         </Route>

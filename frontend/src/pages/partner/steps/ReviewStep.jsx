@@ -4,7 +4,7 @@ import { getErrorMessage } from '../../../api/baseApi.js';
 import RestaurantSummary from '../../../components/RestaurantSummary.jsx';
 import Alert from '../../../components/Alert.jsx';
 
-export default function ReviewStep({ registration, options, onEdit, onBack, onSubmitted }) {
+export default function ReviewStep({ registration, options, onEdit, onBack, onSubmitted, api = partnerRestaurantApi, submitLabel = 'Gửi đăng ký' }) {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -17,7 +17,7 @@ export default function ReviewStep({ registration, options, onEdit, onBack, onSu
     }
     setSubmitting(true);
     try {
-      onSubmitted(await partnerRestaurantApi.submit(registration.id));
+      onSubmitted(await api.submit(registration.id));
     } catch (err) {
       setError(getErrorMessage(err, 'Gửi duyệt thất bại, vui lòng thử lại.'));
       setSubmitting(false);
@@ -45,7 +45,7 @@ export default function ReviewStep({ registration, options, onEdit, onBack, onSu
           Quay lại
         </button>
         <button type="button" className="btn btn--primary btn--lg" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? 'Đang gửi...' : 'Gửi đăng ký'}
+          {submitting ? 'Đang gửi...' : submitLabel}
         </button>
       </div>
     </div>
