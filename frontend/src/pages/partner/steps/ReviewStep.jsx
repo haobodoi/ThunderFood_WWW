@@ -33,7 +33,7 @@ export default function ReviewStep({ registration, options, onEdit, onBack, onSu
       <RestaurantSummary registration={registration} options={options} onEdit={onEdit} />
 
       <label className="checkbox">
-        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+        <input name="agreed" type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
         <span>
           Tôi cam kết các thông tin trên là chính xác và đồng ý để ThunderFood xác minh hồ sơ. Sau khi gửi, hồ sơ sẽ
           không thể chỉnh sửa cho tới khi có kết quả duyệt.

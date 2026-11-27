@@ -84,7 +84,7 @@ function ReportDialog({ report, close, refresh, notify }) {
       {error && <Alert type="error">{error}</Alert>}
       {pending ? <section className="admin-notice"><strong>{pending.label}?</strong><p className="commerce-text">{reason.trim()}</p></section>
         : canAct && <section className="review-report-detail__actions">
-          <Field label="Lý do xử lý (5–500 ký tự)"><textarea value={reason} minLength={5} maxLength={500} rows={3} onChange={event => setReason(event.target.value)} /></Field>
+          <Field label="Lý do xử lý (5–500 ký tự)"><textarea name="reason" value={reason} minLength={5} maxLength={500} rows={3} onChange={event => setReason(event.target.value)} /></Field>
           <div className="admin-actions">
             {canModerate && <button type="button" className="btn btn--outline" disabled={!valid} onClick={() => setPending({ label: moderate, action: 'moderate' })}>{moderate}</button>}
             {!closed && <>
@@ -116,7 +116,7 @@ export default function AdminReviewReportsPage() {
     </Head>
     <section className="admin-panel admin-filters">
       <Search value={query} onChange={setQuery} label="Tìm trong trang hiện tại" placeholder="Mã báo cáo, tên quán, nội dung" />
-      <Field label="Trạng thái trên trang"><select value={status} onChange={event => setStatus(event.target.value)}>
+      <Field label="Trạng thái trên trang"><select name="status" value={status} onChange={event => setStatus(event.target.value)}>
         <option value="">Tất cả trạng thái</option>
         {Object.entries(STATUS).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}
       </select></Field>

@@ -39,7 +39,7 @@ function CancelOrder({ order, onDone }) {
     </Alert>}
     <form onSubmit={submit}>
       <label className="commerce-field">Lý do hủy (ít nhất 5 ký tự)
-        <textarea
+        <textarea name="cancelReason"
           required
           minLength={5}
           maxLength={500}

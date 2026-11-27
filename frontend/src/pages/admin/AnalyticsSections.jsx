@@ -51,7 +51,7 @@ export function RestaurantPerformance({ rows = [], partner }) {
   const headers = ['Nhà hàng', 'Số đơn', 'Doanh thu', 'Tăng trưởng', 'TB/đơn', 'Hủy / từ chối', 'Xác nhận COD', 'Thời gian giao'];
   return <section className="admin-panel">
     <SectionHeading title={partner ? 'Hiệu quả từng quán' : 'Hiệu quả theo nhà hàng'} description="Đơn tạo trong kỳ. Doanh thu món chỉ tính đơn hoàn tất, đã thanh toán; tăng trưởng so với kỳ trước. Xác nhận COD: phút từ lúc đặt đến khi quán nhận đơn. Thời gian giao: phút từ lúc xác nhận đến khi hoàn tất.">
-      <label className="analytics-sort"><span>Sắp xếp theo</span><select value={sort} onChange={event => setSort(event.target.value)}>
+      <label className="analytics-sort"><span>Sắp xếp theo</span><select name="sort" value={sort} onChange={event => setSort(event.target.value)}>
         {Object.entries(SORTS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}
       </select></label>
     </SectionHeading>

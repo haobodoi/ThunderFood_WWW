@@ -102,9 +102,9 @@ function ReportFilters({ draft, setDraft, apply, quickApply, error, pending }) {
       </div>
     </div>
     <div className="report-filters__fields">
-      <Field label="Từ ngày"><input type="date" required min="1800-01-01" max={draft.to || '2200-12-31'} aria-describedby="report-range-hint" value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
-      <Field label="Đến ngày"><input type="date" required min={draft.from || '1800-01-01'} max="2200-12-31" aria-describedby="report-range-hint" value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
-      <Field label="Xem theo"><select value={draft.group} onChange={event => setDraft({ ...draft, group: event.target.value })}>
+      <Field label="Từ ngày"><input name="from" type="date" required min="1800-01-01" max={draft.to || '2200-12-31'} aria-describedby="report-range-hint" value={draft.from} onChange={event => setDraft({ ...draft, from: event.target.value })} /></Field>
+      <Field label="Đến ngày"><input name="to" type="date" required min={draft.from || '1800-01-01'} max="2200-12-31" aria-describedby="report-range-hint" value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} /></Field>
+      <Field label="Xem theo"><select name="group" value={draft.group} onChange={event => setDraft({ ...draft, group: event.target.value })}>
         {Object.entries(GROUPS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
       </select></Field>
       <button type="submit" className="btn btn--primary">Áp dụng</button>
