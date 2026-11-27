@@ -95,7 +95,7 @@ function OrderActions({ order, reload }) {
         run(() => partnerOrderApi.updateStatus(id, 'REJECTED', reason));
       }}>
         <label className="commerce-field">Lý do từ chối (ít nhất 5 ký tự)
-          <textarea
+          <textarea name="cancelReason"
             required
             minLength={5}
             maxLength={500}

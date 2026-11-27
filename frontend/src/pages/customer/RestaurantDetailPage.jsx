@@ -288,7 +288,7 @@ export default function RestaurantDetailPage() {
             </div>
             {viewingItem.description && <p>{viewingItem.description}</p>}
             <CustomerReviews restaurantId={id} itemId={viewingItem.id} title={`Đánh giá cho ${viewingItem.itemName}`} compact />
-            <label className="commerce-field">Ghi chú cho món<textarea maxLength={300} rows={2} value={modalNote} onChange={e => setModalNote(e.target.value)} placeholder="Ví dụ: ít cay, không hành…" /></label>
+            <label className="commerce-field">Ghi chú cho món<textarea name="note" maxLength={300} rows={2} value={modalNote} onChange={e => setModalNote(e.target.value)} placeholder="Ví dụ: ít cay, không hành…" /></label>
             {cartError && <Alert type="error">{cartError}</Alert>}
             <div className="tf-item-detail__actions">
               <div className="tf-quantity" aria-label="Số lượng">

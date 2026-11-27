@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 /**
  * Trợ lý mua sắm: system prompt + chat memory (nhớ "món đầu tiên" khách vừa xem) + tool calling (tìm quán, món, giỏ)
  * + RAG chính sách (đoạn chính sách liên quan được thêm vào system prompt của lượt hỏi đó).
+ * Khi dịch vụ AI chưa cấu hình, lỗi hoặc quá thời gian chờ, trả lời bằng {@link AssistantFallback}
+ * để khách luôn nhận được phản hồi nhanh thay vì chờ rồi báo lỗi (BUG-014).
  */
 @Service
 public class ShoppingAssistantService {
@@ -48,16 +50,24 @@ public class ShoppingAssistantService {
             - Nếu công cụ trả về "error", giải thích ngắn gọn cho khách bằng lời thân thiện.
             - Định dạng: dùng **chữ đậm** cho tên quán, món và giá; dùng danh sách gạch đầu dòng "- " hoặc đánh số "1. ".
               Không dùng bảng, không dùng tiêu đề #, không chèn ảnh. Giá viết dạng 35.000đ.
-            - Câu hỏi không liên quan đến ăn uống hay ThunderFood: lịch sự từ chối và nói bạn có thể giúp gì.
+            - Câu hỏi không liên quan đến ăn uống hay ThunderFood: trả lời thật ngắn (một câu) là bạn không hỗ trợ nội dung đó,
+              không gọi công cụ, rồi gợi ý một việc bạn có thể giúp.
             """;
 
     private final ChatClient chatClient;
     private final ChatMemory chatMemory;
     private final VectorStore vectorStore;
+    private final PolicyLibrary library;
+    private final AssistantFallback fallback;
+    private final boolean ragEnabled;
+    private final boolean aiConfigured;
     private final int topK;
     private final double threshold;
 
     public ShoppingAssistantService(ChatClient.Builder builder, ChatMemory chatMemory, VectorStore vectorStore, AssistantTools tools,
+                                    PolicyLibrary library, AssistantFallback fallback,
+                                    @Value("${app.ai.rag.enabled:false}") boolean ragEnabled,
+                                    @Value("${spring.ai.anthropic.api-key:}") String apiKey,
                                     @Value("${app.ai.rag.top-k:4}") int topK,
                                     @Value("${app.ai.assistant.policy-threshold:0.6}") double threshold) {
         this.chatClient = builder
@@ -66,14 +76,24 @@ public class ShoppingAssistantService {
                 .build();
         this.chatMemory = chatMemory;
         this.vectorStore = vectorStore;
+        this.library = library;
+        this.fallback = fallback;
+        this.ragEnabled = ragEnabled;
+        this.aiConfigured = isConfigured(apiKey);
         this.topK = topK;
         this.threshold = threshold;
     }
 
+    /** Khóa API chưa đặt (giá trị mặc định "not-configured") thì không gọi AI, trả lời nhanh bằng dữ liệu hệ thống. */
+    static boolean isConfigured(String apiKey) {
+        return apiKey != null && !apiKey.isBlank() && !"not-configured".equalsIgnoreCase(apiKey.trim());
+    }
+
     public AssistantReply chat(long customerId, String message) {
-        List<Document> policies = relatedPolicies(message);
+        if (!aiConfigured) return fallbackReply(customerId, message);
+        List<Policy> policies = relatedPolicies(message);
         String system = policies.isEmpty() ? SYSTEM : SYSTEM + "\nChính sách liên quan (chỉ dùng khi câu hỏi liên quan tới chính sách):\n"
-                + policies.stream().map(d -> "[" + sourceOf(d) + "]\n" + d.getText()).collect(Collectors.joining("\n\n"));
+                + policies.stream().map(p -> "[" + p.source() + "]\n" + p.text()).collect(Collectors.joining("\n\n"));
         var collected = new Collected();
         String answer;
         try {
@@ -85,27 +105,43 @@ public class ShoppingAssistantService {
                     .call()
                     .content();
         } catch (RuntimeException e) {
-            log.warn("Gọi model trợ lý thất bại", e);
-            throw new BusinessException("Trợ lý AI tạm thời không phản hồi. Vui lòng thử lại sau.");
+            log.warn("Gọi model trợ lý thất bại, trả lời bằng dữ liệu hệ thống", e);
+            return fallbackReply(customerId, message);
         }
+        if (answer == null || answer.isBlank()) return fallbackReply(customerId, message);
         // Chỉ ghi nguồn chính sách khi câu trả lời không dựa vào công cụ (câu hỏi thuần về chính sách).
         List<String> sources = collected.toolUsed() ? List.of()
-                : policies.stream().map(ShoppingAssistantService::sourceOf).filter(Objects::nonNull).distinct().toList();
+                : policies.stream().map(Policy::source).filter(Objects::nonNull).distinct().toList();
         return new AssistantReply(answer, sources, collected.cartChanged(), collected.restaurants(), collected.dishes());
+    }
+
+    private AssistantReply fallbackReply(long customerId, String message) {
+        try {
+            return fallback.reply(customerId, message);
+        } catch (RuntimeException e) {
+            log.warn("Trả lời dự phòng của trợ lý thất bại", e);
+            throw new BusinessException("Trợ lý AI tạm thời không phản hồi. Vui lòng thử lại sau.");
+        }
     }
 
     public void reset(long customerId) {
         chatMemory.clear(conversationId(customerId));
     }
 
-    private List<Document> relatedPolicies(String message) {
-        try {
-            return vectorStore.similaritySearch(SearchRequest.builder()
-                    .query(message).topK(topK).similarityThreshold(threshold).build());
-        } catch (RuntimeException e) {
-            log.warn("Không truy xuất được chính sách cho trợ lý", e);
-            return List.of();
+    private record Policy(String source, String text) {}
+
+    /** Vector store chỉ dùng khi bật RAG (tránh chờ kết nối Qdrant/Ollama không chạy); không có thì dùng kho chính sách cục bộ. */
+    private List<Policy> relatedPolicies(String message) {
+        if (ragEnabled) {
+            try {
+                List<Document> docs = vectorStore.similaritySearch(SearchRequest.builder()
+                        .query(message).topK(topK).similarityThreshold(threshold).build());
+                return docs.stream().map(d -> new Policy(sourceOf(d), d.getText())).toList();
+            } catch (RuntimeException e) {
+                log.warn("Không truy xuất được chính sách cho trợ lý, dùng kho chính sách cục bộ", e);
+            }
         }
+        return library.search(message, 2).stream().map(s -> new Policy(s.source(), s.title() + "\n" + s.body())).toList();
     }
 
     /** Tên file chính sách: "filename" do bộ nạp đặt, hoặc "source" do TextReader đặt cho dữ liệu nạp trước đó. */

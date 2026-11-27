@@ -75,7 +75,7 @@ export default function OpeningHoursEditor({ value, onChange, disabled = false }
         return (
           <div key={day.value} className={`hours__row ${item.enabled ? '' : 'is-off'}`}>
             <label className="toggle" aria-label={`Mở cửa ${day.label}`}>
-              <input
+              <input name={`enabled-${day.value}`}
                 type="checkbox"
                 checked={item.enabled}
                 disabled={disabled}
@@ -95,7 +95,7 @@ export default function OpeningHoursEditor({ value, onChange, disabled = false }
               <div className="hours__slots">
                 {item.slots.map((slot, index) => (
                   <div key={index} className="hours__slot">
-                    <input
+                    <input name={`openTime-${day.value}-${index}`}
                       type="time"
                       className="field__input field__input--time"
                       value={slot.openTime}
@@ -104,7 +104,7 @@ export default function OpeningHoursEditor({ value, onChange, disabled = false }
                       aria-label={`${day.label} giờ mở cửa khung ${index + 1}`}
                     />
                     <span className="hours__dash">–</span>
-                    <input
+                    <input name={`closeTime-${day.value}-${index}`}
                       type="time"
                       className="field__input field__input--time"
                       value={slot.closeTime}

@@ -246,7 +246,7 @@ export default function MenuItemModal({
                 >
                   <Icon name="image" size={15} />
                   <span>{uploading ? 'Đang tải lên...' : 'Chọn file ảnh'}</span>
-                  <input
+                  <input name="menuItemImage"
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
                     onChange={handleImageFileChange}

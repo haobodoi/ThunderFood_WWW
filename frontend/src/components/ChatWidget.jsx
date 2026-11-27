@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { ROLES } from '../utils/roleUtils.js';
-import { aiApi } from '../api/aiApi.js';
+import { aiApi, getAiErrorMessage } from '../api/aiApi.js';
 import { getErrorMessage } from '../api/baseApi.js';
 import ChatMarkdown from './ChatMarkdown.jsx';
 
@@ -73,6 +73,7 @@ const CloseIcon = props => <Icon {...props} d={<path d="M18 6 6 18M6 6l12 12" />
 const ResetIcon = props => <Icon {...props} d={<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>} />;
 const SendIcon = props => <Icon {...props} d={<><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></>} />;
 const ExpandIcon = props => <Icon {...props} d={<><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></>} />;
+const StopIcon = props => <Icon {...props} d={<rect x="6" y="6" width="12" height="12" rx="2" />} />;
 const ShrinkIcon = props => <Icon {...props} d={<><path d="M4 14h6v6" /><path d="M20 10h-6V4" /><path d="M14 10l7-7" /><path d="M3 21l7-7" /></>} />;
 
 function BotAvatar({ small = false }) {
@@ -157,6 +158,9 @@ export default function ChatWidget() {
   const [busy, setBusy] = useState(false);
   const [pendingDish, setPendingDish] = useState(null);
   const [error, setError] = useState('');
+  const [retryText, setRetryText] = useState('');
+  const [elapsed, setElapsed] = useState(0);
+  const requestRef = useRef(null);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
   const bodyRef = useRef(null);
@@ -205,10 +209,23 @@ export default function ChatWidget() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // Đếm số giây chờ để khách biết trợ lý vẫn đang xử lý và có thể dừng (BUG-014).
+  useEffect(() => {
+    if (!busy) return undefined;
+    setElapsed(0);
+    const started = Date.now();
+    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [busy]);
+
+  useEffect(() => () => requestRef.current?.abort(), []);
+
   // Đổi tài khoản hoặc tải lại trang: bắt đầu hội thoại mới cả ở giao diện lẫn bộ nhớ phía server.
   useEffect(() => {
+    requestRef.current?.abort();
     setMessages([]);
     setError('');
+    setRetryText('');
     if (isCustomer) aiApi.resetAssistant().catch(() => {});
   }, [userKey, isCustomer]);
 
@@ -255,26 +272,42 @@ export default function ChatWidget() {
     setExpanded(v => { writeStore(EXPANDED_KEY, !v); return !v; });
   }
 
-  async function ask(text) {
+  // retry = true: gửi lại câu hỏi vừa lỗi mà không lặp lại bong bóng tin nhắn của khách.
+  async function ask(text, retry = false) {
     const message = text.trim();
     if (!message || busy) return;
-    setMessages(list => [...list, { role: 'user', text: message }]);
-    setInput('');
+    if (!retry) {
+      setMessages(list => [...list, { role: 'user', text: message }]);
+      setInput('');
+    }
+    const controller = new AbortController();
+    requestRef.current = controller;
     setBusy(true);
     setError('');
+    setRetryText('');
     try {
-      const res = await aiApi.assistantChat(message);
+      const res = await aiApi.assistantChat(message, controller.signal);
+      if (requestRef.current !== controller) return;
       setMessages(list => [...list, {
         role: 'assistant', text: res.answer, sources: res.sources,
         restaurants: res.restaurants ?? [], dishes: res.dishes ?? [],
       }]);
       if (res.cartUpdated) cart?.refresh?.();
     } catch (err) {
-      setError(getErrorMessage(err, 'Trợ lý chưa trả lời được lúc này, vui lòng thử lại.'));
+      if (requestRef.current !== controller) return;
+      setError(getAiErrorMessage(err, 'Trợ lý chưa trả lời được lúc này, vui lòng thử lại.') ?? 'Đã dừng chờ câu trả lời.');
+      setRetryText(message);
     } finally {
-      setBusy(false);
-      inputRef.current?.focus();
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setBusy(false);
+        inputRef.current?.focus();
+      }
     }
+  }
+
+  function cancelAsk() {
+    requestRef.current?.abort();
   }
 
   // Bấm trên thẻ món: thêm 1 phần vào giỏ; "Đặt ngay" chuyển thẳng tới trang thanh toán của giỏ quán đó.
@@ -297,10 +330,15 @@ export default function ChatWidget() {
     }
   }
 
+  // Dùng được cả khi trợ lý đang trả lời: hủy yêu cầu đang chờ rồi mở hội thoại mới.
   async function resetConversation() {
-    if (busy) return;
+    const pending = requestRef.current;
+    requestRef.current = null;
+    pending?.abort();
+    setBusy(false);
     setMessages([]);
     setError('');
+    setRetryText('');
     try { await aiApi.resetAssistant(); } catch { /* bỏ qua: hội thoại mới vẫn hiển thị trống */ }
   }
 
@@ -325,7 +363,7 @@ export default function ChatWidget() {
             <div className="tf-chat__header-actions">
               {isCustomer && (
                 <button type="button" className="tf-chat__icon-btn" onClick={resetConversation}
-                  aria-label="Bắt đầu cuộc trò chuyện mới" title="Cuộc trò chuyện mới" disabled={busy}>
+                  aria-label="Bắt đầu cuộc trò chuyện mới" title="Cuộc trò chuyện mới">
                   <ResetIcon />
                 </button>
               )}
@@ -412,10 +450,25 @@ export default function ChatWidget() {
             {busy && (
               <div className="tf-chat__row" role="status" aria-label="Trợ lý đang trả lời">
                 <BotAvatar small />
-                <div className="tf-chat__msg tf-chat__msg--assistant tf-chat__typing"><span /><span /><span /></div>
+                <div className="tf-chat__msg tf-chat__msg--assistant tf-chat__waiting">
+                  <span className="tf-chat__typing"><span /><span /><span /></span>
+                  {elapsed >= 3 && (
+                    <span className="tf-chat__elapsed">
+                      {elapsed >= 15 ? `Vẫn đang xử lý… ${elapsed} giây` : `${elapsed} giây`}
+                    </span>
+                  )}
+                  <button type="button" className="tf-chat__stop" onClick={cancelAsk}>Dừng</button>
+                </div>
               </div>
             )}
-            {error && <p role="alert" className="tf-chat__error">{error}</p>}
+            {error && (
+              <div role="alert" className="tf-chat__error">
+                <span>{error}</span>
+                {retryText && (
+                  <button type="button" className="tf-chat__retry" onClick={() => ask(retryText, true)}>Thử lại</button>
+                )}
+              </div>
+            )}
           </div>
 
           {isCustomer && (
@@ -423,15 +476,23 @@ export default function ChatWidget() {
               <form className="tf-chat__form" onSubmit={e => { e.preventDefault(); ask(input); }}>
                 <input
                   ref={inputRef}
+                  name="message"
                   value={input}
                   maxLength={500}
                   aria-label="Tin nhắn cho trợ lý"
                   placeholder="Hỏi về món ăn, quán, giỏ hàng…"
                   onChange={e => setInput(e.target.value)}
                 />
-                <button className="tf-chat__send" disabled={busy || !input.trim()} aria-label="Gửi">
-                  <SendIcon />
-                </button>
+                {busy ? (
+                  <button type="button" className="tf-chat__send tf-chat__send--stop" onClick={cancelAsk}
+                    aria-label="Dừng chờ câu trả lời" title="Dừng">
+                    <StopIcon />
+                  </button>
+                ) : (
+                  <button className="tf-chat__send" disabled={!input.trim()} aria-label="Gửi">
+                    <SendIcon />
+                  </button>
+                )}
               </form>
               <p className="tf-chat__disclaimer">Trả lời tự động bởi AI, có thể chưa chính xác. Hãy kiểm tra giỏ hàng trước khi đặt.</p>
             </footer>

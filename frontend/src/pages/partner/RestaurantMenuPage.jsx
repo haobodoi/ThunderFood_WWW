@@ -277,7 +277,7 @@ export default function RestaurantMenuPage() {
       </div>
 
       <div className="tf-partner-menu__filters">
-        <select className="field__input" value={availabilityFilter}
+        <select name="availability" className="field__input" value={availabilityFilter}
           onChange={(event) => setAvailabilityFilter(event.target.value)} aria-label="Lọc trạng thái món">
           <option value="ALL">Tất cả trạng thái</option>
           <option value="AVAILABLE">Còn món ({availableCount})</option>
@@ -285,7 +285,7 @@ export default function RestaurantMenuPage() {
         </select>
         <div className="tf-search-box">
           <Icon name="search" size={15} className="tf-search-box__icon" />
-          <input type="search" className="tf-search-box__input" value={searchQuery}
+          <input name="search" type="search" className="tf-search-box__input" value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)} aria-label="Tìm tên món"
             placeholder="Tìm tên món..." />
         </div>

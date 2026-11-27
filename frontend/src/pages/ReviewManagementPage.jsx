@@ -19,7 +19,7 @@ function ReviewActions({ review, partner, reload }) {
         e.preventDefault();
         action(() => reviewApi.reply(review.reviewId, { content: reply, version: replyVersion }));
       }}>
-        <label className="commerce-field">{review.replies?.length ? 'Cập nhật phản hồi của quán' : 'Phản hồi của quán'}<textarea required maxLength={1000} value={reply} onChange={e => setReply(e.target.value)} placeholder="Cảm ơn khách hàng và nêu rõ cách quán sẽ hỗ trợ." /></label>
+        <label className="commerce-field">{review.replies?.length ? 'Cập nhật phản hồi của quán' : 'Phản hồi của quán'}<textarea name="reply" required maxLength={1000} value={reply} onChange={e => setReply(e.target.value)} placeholder="Cảm ơn khách hàng và nêu rõ cách quán sẽ hỗ trợ." /></label>
         <button className="btn btn--primary" disabled={busy}>{busy ? 'Đang lưu…' : review.replies?.length ? 'Cập nhật phản hồi' : 'Gửi phản hồi'}</button>
       </form>
       {review.replies?.length > 0 && <button
@@ -41,7 +41,7 @@ function ReviewActions({ review, partner, reload }) {
           <RatingFields {...{ rating, setRating, content, setContent }} /><button className="btn btn--primary" disabled={busy}>Lưu chỉnh sửa</button>
         </form>
         <label className="commerce-field">Thêm ảnh JPG/PNG · tối đa 1MB/ảnh, 5 ảnh
-          <input
+          <input name="reviewImage"
             type="file"
             accept="image/jpeg,image/png"
             disabled={busy || review.images.length >= 5}

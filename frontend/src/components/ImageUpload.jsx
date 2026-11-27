@@ -67,7 +67,7 @@ export default function ImageUpload({ kind, value, onChange, caption, error, dis
           </button>
         </div>
       )}
-      <input
+      <input name="imageFile"
         ref={inputRef}
         type="file"
         accept={ACCEPTED_TYPES.join(',')}

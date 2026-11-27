@@ -315,13 +315,20 @@
 }
 
 /* Trợ lý chính sách (RAG) */
-.policy-chat { display: grid; gap: 12px; min-height: 240px; max-height: 60vh; overflow-y: auto; padding: 14px; border: 1px solid #d9dde3; border-radius: 12px; margin-bottom: 14px; }
+.policy-chat { display: grid; align-content: start; gap: 12px; min-height: 240px; max-height: 60vh; overflow-y: auto; padding: 14px; border: 1px solid #d9dde3; border-radius: 12px; margin-bottom: 14px; }
 .policy-chat__msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; background: #f3f5f8; }
 .policy-chat__msg--user { justify-self: end; background: #e6f0ff; }
 .policy-chat__msg p { margin: 0; white-space: pre-wrap; }
 .policy-chat__sources, .policy-chat__hint { color: #5b6675; }
 .policy-chat__form { display: flex; gap: 8px; }
 .policy-chat__form input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid #c5ccd6; border-radius: 8px; }
+.policy-chat__samples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.policy-chat__samples-label { width: 100%; margin: 0; }
+.policy-chat__sample { padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600; color: #243244; background: #fff; border: 1px solid #c5ccd6; border-radius: 999px; cursor: pointer; }
+.policy-chat__sample:hover:not(:disabled) { border-color: #f08a24; background: #fff6ec; }
+.policy-chat__sample:disabled { opacity: 0.5; cursor: default; }
+.policy-chat__waiting { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.policy-chat__error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 @media (max-width: 480px) { .policy-chat__form { flex-direction: column; } }
 
 /* Tiện ích ẩn nhãn nhưng vẫn đọc được bằng trình đọc màn hình */
@@ -378,7 +385,17 @@
 .tf-chat__typing span:nth-child(2) { animation-delay: 0.15s; }
 .tf-chat__typing span:nth-child(3) { animation-delay: 0.3s; }
 @keyframes tf-chat-dot { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
-.tf-chat__error { margin: 0; padding: 8px 10px; font-size: 13px; color: var(--tf-danger); background: var(--tf-danger-bg); border: 1px solid var(--tf-danger-border); border-radius: 10px; }
+.tf-chat__error { margin: 0; padding: 8px 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--tf-danger); background: var(--tf-danger-bg); border: 1px solid var(--tf-danger-border); border-radius: 10px; }
+.tf-chat__error > span { flex: 1; min-width: 160px; }
+.tf-chat__retry, .tf-chat__stop { flex-shrink: 0; padding: 5px 12px; font: inherit; font-size: 13px; font-weight: 600; border-radius: 999px; cursor: pointer; }
+.tf-chat__retry { color: var(--tf-text-inverted); background: var(--tf-orange-600); border: 0; }
+.tf-chat__retry:hover { background: var(--tf-orange-700); }
+.tf-chat__waiting { display: flex; align-items: center; gap: 10px; padding: 4px 6px 4px 2px; }
+.tf-chat__waiting .tf-chat__typing { padding: 10px 8px; }
+.tf-chat__elapsed { font-size: 12px; color: var(--tf-text-muted); white-space: nowrap; }
+.tf-chat__stop { color: var(--tf-text-body); background: var(--tf-bg-surface); border: 1px solid var(--tf-border-strong); }
+.tf-chat__stop:hover { border-color: var(--tf-orange-400); background: var(--tf-orange-50); }
+.tf-chat__retry:focus-visible, .tf-chat__stop:focus-visible { outline: 3px solid var(--tf-navy-700); outline-offset: 2px; }
 
 .tf-chat__footer { border-top: 1px solid var(--tf-border); background: var(--tf-bg-surface); }
 .tf-chat__form { display: flex; gap: 8px; padding: 12px 12px 6px; }
@@ -387,6 +404,8 @@
 .tf-chat__send { flex-shrink: 0; width: 44px; height: 44px; display: grid; place-items: center; color: var(--tf-text-inverted); background: var(--tf-orange-600); border: 0; border-radius: 50%; cursor: pointer; }
 .tf-chat__send:hover:not(:disabled) { background: var(--tf-orange-700); }
 .tf-chat__send:disabled { opacity: 0.45; cursor: default; }
+.tf-chat__send--stop { background: var(--tf-text-body); }
+.tf-chat__send--stop:hover { background: var(--tf-navy-700); }
 .tf-chat__disclaimer { margin: 0; padding: 0 14px 10px; font-size: 11px; text-align: center; color: var(--tf-text-muted); }
 
 /* Kéo thả, phóng to và thẻ quán/món trong khung chat */
